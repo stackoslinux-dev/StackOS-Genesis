@@ -1,0 +1,208 @@
+#!/usr/bin/env python3
+
+import gi
+gi.require_version("Gtk", "4.0")
+
+from gi.repository import Gtk, Gio
+import subprocess
+
+
+class FactoryResetWindow(Gtk.ApplicationWindow):
+    def __init__(self, app):
+        super().__init__(application=app)
+
+        self.set_title("Restaurar StackOS")
+        self.set_default_size(620, 440)
+        self.set_resizable(False)
+
+        main = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=18
+        )
+        main.set_margin_top(28)
+        main.set_margin_bottom(28)
+        main.set_margin_start(32)
+        main.set_margin_end(32)
+
+        self.set_child(main)
+
+        title = Gtk.Label()
+        title.set_markup(
+            '<span size="x-large" weight="bold">'
+            'Restaurar StackOS Genesis'
+            '</span>'
+        )
+        title.set_halign(Gtk.Align.START)
+        main.append(title)
+
+        subtitle = Gtk.Label(
+            label="Restaure o sistema para um estado limpo e funcional."
+        )
+        subtitle.set_halign(Gtk.Align.START)
+        subtitle.set_wrap(True)
+        main.append(subtitle)
+
+        separator = Gtk.Separator()
+        main.append(separator)
+
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=10
+        )
+        card.set_margin_top(8)
+        card.set_margin_bottom(8)
+
+        option_title = Gtk.Label()
+        option_title.set_markup(
+            '<span weight="bold">'
+            'Restaurar para o padrão de fábrica'
+            '</span>'
+        )
+        option_title.set_halign(Gtk.Align.START)
+        card.append(option_title)
+
+        option_text = Gtk.Label(
+            label=(
+                "O StackOS será restaurado para o estado original da instalação.\n\n"
+                "Programas instalados depois da instalação, alterações do sistema "
+                "e configurações serão removidos."
+            )
+        )
+        option_text.set_halign(Gtk.Align.START)
+        option_text.set_wrap(True)
+        option_text.set_xalign(0.0)
+        card.append(option_text)
+
+        main.append(card)
+
+        warning = Gtk.Label()
+        warning.set_markup(
+            '<span weight="bold">Atenção:</span> '
+            'este processo não pode ser desfeito.'
+        )
+        warning.set_halign(Gtk.Align.START)
+        warning.set_wrap(True)
+        warning.set_xalign(0.0)
+        main.append(warning)
+
+        main.append(Gtk.Box(vexpand=True))
+
+        buttons = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10
+        )
+        buttons.set_halign(Gtk.Align.END)
+
+        cancel = Gtk.Button(label="Cancelar")
+        cancel.connect("clicked", lambda *_: self.close())
+        buttons.append(cancel)
+
+        continue_btn = Gtk.Button(label="Continuar")
+        continue_btn.add_css_class("suggested-action")
+        continue_btn.connect("clicked", self.on_continue)
+        buttons.append(continue_btn)
+
+        main.append(buttons)
+
+    def on_continue(self, button):
+        dialog = Gtk.AlertDialog()
+
+        dialog.set_message(
+            "Restaurar o StackOS para o estado de fábrica?"
+        )
+
+        dialog.set_detail(
+            "Todos os seus arquivos, aplicativos, configurações "
+            "e os 3 backups locais serão apagados.\n\n"
+            "Esta operação não pode ser desfeita."
+        )
+
+        dialog.set_buttons([
+            "Cancelar",
+            "Restaurar"
+        ])
+
+        dialog.set_cancel_button(0)
+        dialog.set_default_button(0)
+
+        dialog.choose(
+            self,
+            None,
+            self.on_factory_confirmation
+        )
+
+    def on_factory_confirmation(self, dialog, result):
+        try:
+            choice = dialog.choose_finish(result)
+        except Exception:
+            return
+
+        if choice != 1:
+            return
+
+        try:
+            result = subprocess.run(
+                [
+                    "pkexec",
+                    "/usr/lib/stackos/"
+                    "stackos-factory-reset-request"
+                ],
+                capture_output=True,
+                text=True
+            )
+
+        except Exception as exc:
+            self.show_reset_error(str(exc))
+            return
+
+        if result.returncode != 0:
+            message = (
+                result.stderr.strip()
+                or result.stdout.strip()
+                or "Não foi possível preparar a restauração."
+            )
+
+            self.show_reset_error(message)
+            return
+
+        # O helper já validou a imagem Factory e gravou
+        # o pedido. Só reiniciamos depois de sucesso.
+        try:
+            subprocess.Popen(
+                [
+                    "systemctl",
+                    "reboot"
+                ]
+            )
+
+        except Exception as exc:
+            self.show_reset_error(str(exc))
+
+    def show_reset_error(self, message):
+        dialog = Gtk.AlertDialog()
+
+        dialog.set_message(
+            "Não foi possível iniciar o Factory Reset"
+        )
+
+        dialog.set_detail(message)
+        dialog.set_buttons(["OK"])
+        dialog.show(self)
+
+
+class FactoryResetApp(Gtk.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="com.stackos.factoryreset",
+            flags=Gio.ApplicationFlags.DEFAULT_FLAGS
+        )
+
+    def do_activate(self):
+        win = self.props.active_window
+        if not win:
+            win = FactoryResetWindow(self)
+        win.present()
+
+
+app = FactoryResetApp()
+app.run()

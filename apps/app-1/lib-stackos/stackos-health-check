@@ -1,0 +1,29 @@
+#!/bin/bash
+
+fail()
+{
+    logger -t stackos-snapshot "Health Check falhou: $*"
+    exit 1
+}
+
+dpkg --audit 2>/dev/null | grep -q . &&
+    fail "dpkg inconsistente"
+
+[ -f /boot/vmlinuz ] ||
+    fail "kernel ausente"
+
+[ -f /boot/initrd.img ] ||
+    fail "initramfs ausente"
+
+[ -f /boot/grub/grub.cfg ] ||
+    fail "GRUB ausente"
+
+findfs LABEL=STACKOS_RECOVERY >/dev/null 2>&1 ||
+    fail "Recovery ausente"
+
+AVAILABLE="$(df -Pk / | awk 'NR==2 {print $4}')"
+
+[ "${AVAILABLE:-0}" -gt 1048576 ] ||
+    fail "espaco insuficiente"
+
+exit 0

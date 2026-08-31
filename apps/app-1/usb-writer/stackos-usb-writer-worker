@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/python3 -m stackos_usb_writer.worker "$@"

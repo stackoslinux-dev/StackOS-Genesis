@@ -1,0 +1,193 @@
+#!/usr/bin/python3
+
+import os
+import shutil
+import stat
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+
+FORBIDDEN = {
+    "snapd",
+    "snap-confine",
+    "snapd-xdg-open",
+    "ubuntu-core-launcher",
+}
+
+
+def fail(msg, code=1):
+    print(msg, file=sys.stderr)
+    raise SystemExit(code)
+
+
+def run(cmd):
+    return subprocess.run(
+        cmd,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+
+
+def verify_deb(path):
+    source = Path(path)
+
+    if source.suffix.lower() != ".deb":
+        fail("O arquivo selecionado não é um pacote .deb.")
+
+    flags = os.O_RDONLY | os.O_CLOEXEC
+
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+
+    try:
+        fd = os.open(str(source), flags)
+    except FileNotFoundError:
+        fail("Arquivo .deb não encontrado.")
+    except OSError as exc:
+        fail(f"Não foi possível abrir o pacote DEB: {exc}")
+
+    tmpdir = None
+
+    try:
+        info = os.fstat(fd)
+
+        if not stat.S_ISREG(info.st_mode):
+            fail("O arquivo selecionado não é um arquivo regular.")
+
+        tmpdir = Path(
+            tempfile.mkdtemp(
+                prefix="stackos-package-installer-"
+            )
+        )
+
+        os.chmod(tmpdir, 0o700)
+
+        deb = tmpdir / "package.deb"
+
+        with os.fdopen(
+            fd,
+            "rb",
+            closefd=False,
+        ) as src, open(deb, "xb") as dst:
+            shutil.copyfileobj(
+                src,
+                dst,
+                length=1024 * 1024,
+            )
+
+        os.chmod(deb, 0o600)
+
+    except BaseException:
+        if tmpdir is not None:
+            shutil.rmtree(
+                tmpdir,
+                ignore_errors=True,
+            )
+        raise
+
+    finally:
+        os.close(fd)
+
+    r = run([
+        "dpkg-deb",
+        "-f",
+        str(deb),
+        "Package",
+    ])
+
+    if r.returncode != 0:
+        shutil.rmtree(
+            tmpdir,
+            ignore_errors=True,
+        )
+        fail("Pacote DEB inválido.")
+
+    return deb, tmpdir
+
+
+def check_snap(deb):
+    r = run([
+        "apt-get",
+        "-s",
+        "--no-install-recommends",
+        "install",
+        str(deb),
+    ])
+
+    output = r.stdout
+    low = output.lower()
+
+    if r.returncode != 0:
+        fail(output)
+
+    for pkg in FORBIDDEN:
+        if f"inst {pkg.lower()}" in low:
+            fail(
+                "Instalação bloqueada pela política StackOS.\n"
+                f"O pacote tentaria instalar {pkg}."
+            )
+
+    if "snap1-" in low:
+        fail(
+            "Instalação bloqueada pela política StackOS.\n"
+            "A resolução de dependências tenta utilizar um pacote ligado ao Snap."
+        )
+
+    return output
+
+
+def install(deb):
+    check_snap(deb)
+
+    cmd = [
+        "apt-get",
+        "-y",
+        "--no-install-recommends",
+        "install",
+        str(deb),
+    ]
+
+    proc = subprocess.Popen(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+
+    for line in proc.stdout:
+        print(line, end="", flush=True)
+
+    code = proc.wait()
+
+    if code != 0:
+        fail("Falha ao instalar o pacote.", code)
+
+    print("STACKOS_INSTALL_OK")
+
+
+def main():
+    if os.geteuid() != 0:
+        fail("Este helper deve ser executado como root.")
+
+    if len(sys.argv) != 3 or sys.argv[1] != "install":
+        fail(
+            "Uso: stackos-package-installer-helper install arquivo.deb"
+        )
+
+    deb, tmpdir = verify_deb(sys.argv[2])
+
+    try:
+        install(deb)
+    finally:
+        shutil.rmtree(
+            tmpdir,
+            ignore_errors=True,
+        )
+
+
+if __name__ == "__main__":
+    main()

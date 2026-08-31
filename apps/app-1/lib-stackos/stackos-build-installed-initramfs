@@ -1,0 +1,71 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -eq 1 ]; then
+    KVER="$1"
+else
+    KVER="$(
+        find /usr/lib/modules \
+            -mindepth 1 \
+            -maxdepth 1 \
+            -type d \
+            -printf '%f\n' |
+        sort -V |
+        tail -n1
+    )"
+fi
+
+[ -n "$KVER" ] || {
+    echo "StackOS: kernel não encontrado" >&2
+    exit 1
+}
+
+[ -d "/usr/lib/modules/$KVER" ] || {
+    echo "StackOS: módulos ausentes para $KVER" >&2
+    exit 1
+}
+
+TMP="$(mktemp -d /tmp/stackos-initramfs.XXXXXX)"
+
+cleanup()
+{
+    umount /usr/share/initramfs-tools/scripts 2>/dev/null || true
+    umount /usr/share/initramfs-tools/hooks 2>/dev/null || true
+    rm -rf "$TMP"
+}
+
+trap cleanup EXIT
+
+mkdir -p "$TMP/scripts" "$TMP/hooks"
+
+rsync -a \
+    --exclude='casper' \
+    --exclude='casper-*' \
+    /usr/share/initramfs-tools/scripts/ \
+    "$TMP/scripts/"
+
+rsync -a \
+    --exclude='casper' \
+    --exclude='casper-*' \
+    /usr/share/initramfs-tools/hooks/ \
+    "$TMP/hooks/"
+
+mount --bind \
+    "$TMP/scripts" \
+    /usr/share/initramfs-tools/scripts
+
+mount --bind \
+    "$TMP/hooks" \
+    /usr/share/initramfs-tools/hooks
+
+mkinitramfs \
+    -o "/boot/initrd.img-$KVER" \
+    "$KVER"
+
+ln -sfn \
+    "initrd.img-$KVER" \
+    /boot/initrd.img
+
+sync
+
+echo "StackOS installed initramfs: $KVER"

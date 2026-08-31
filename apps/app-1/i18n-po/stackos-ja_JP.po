@@ -1,0 +1,766 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: StackOS Genesis\n"
+"Language: ja_JP\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Bem-vindo ao StackOS Genesis"
+msgstr "StackOS Genesis へようこそ"
+
+msgid "Modular. Leve. Poderoso."
+msgstr "モジュラー。軽量。高性能。"
+
+msgid "📦 Loja de Apps"
+msgstr "📦 アプリストア"
+
+msgid "🔧 Drivers"
+msgstr "🔧 ドライバー"
+
+msgid "🌐 Site Oficial"
+msgstr "🌐 公式ウェブサイト"
+
+msgid "📖 Documentacao"
+msgstr "📖 ドキュメント"
+
+msgid "💬 Forum"
+msgstr "💬 フォーラム"
+
+msgid "📧 Contato"
+msgstr "📧 お問い合わせ"
+
+msgid "Comecar a usar o StackOS →"
+msgstr "StackOS を使い始める →"
+
+msgid "StackOS — Primeiro acesso"
+msgstr "StackOS — 初回セットアップ"
+
+msgid "Crie o usuário principal deste computador."
+msgstr "このコンピューターのメインユーザーを作成します。"
+
+msgid "Nome do usuário"
+msgstr "ユーザー名"
+
+msgid "exemplo: fabio"
+msgstr "例: fabio"
+
+msgid "Senha"
+msgstr "パスワード"
+
+msgid "Digite sua senha"
+msgstr "パスワードを入力"
+
+msgid "Confirmar senha"
+msgstr "パスワードの確認"
+
+msgid "Digite novamente"
+msgstr "もう一度入力"
+
+msgid "Nome do computador"
+msgstr "コンピューター名"
+
+msgid "exemplo: stackos-pc"
+msgstr "例: stackos-pc"
+
+msgid "Criar usuário e continuar"
+msgstr "ユーザーを作成して続行"
+
+msgid "Conclua a criação do usuário para utilizar o sistema."
+msgstr "システムを使用するにはユーザー作成を完了してください。"
+
+msgid "O nome do usuário deve começar com uma letra e usar apenas letras minúsculas, números, _ ou -."
+msgstr "ユーザー名は英字で始まり、小文字、数字、_、- のみ使用できます。"
+
+msgid "Esse nome de usuário é reservado."
+msgstr "このユーザー名は予約されています。"
+
+msgid "As senhas não coincidem."
+msgstr "パスワードが一致しません。"
+
+msgid "Informe um nome válido para o computador."
+msgstr "有効なコンピューター名を入力してください。"
+
+msgid "O nome do computador é muito longo."
+msgstr "コンピューター名が長すぎます。"
+
+msgid "Criando usuário e configurando o sistema..."
+msgstr "ユーザーを作成し、システムを設定しています..."
+
+msgid "Falha desconhecida."
+msgstr "不明なエラーです。"
+
+msgid "Configuração concluída. Reiniciando..."
+msgstr "設定が完了しました。再起動しています..."
+
+msgid "Não foi possível criar o usuário:\n{error}"
+msgstr "ユーザーを作成できませんでした:\n{error}"
+
+# StackOS Bug Report
+
+msgid "StackOS - Report a problem"
+msgstr "StackOS - 問題を報告"
+
+msgid "Diagnostics and Report — "
+msgstr "診断とレポート — "
+
+msgid "StackOS will analyze hardware, drivers "
+msgstr "StackOS will analyze hardware, drivers "
+
+msgid "and relevant kernel events before "
+msgstr "and relevant kernel events before "
+
+msgid "creating the report."
+msgstr "creating the report."
+
+msgid "IP address, MAC address, computer name "
+msgstr "IP address, MAC address, computer name "
+
+msgid "and username are removed from the report "
+msgstr "and username are removed from the report "
+
+msgid "when identified."
+msgstr "when identified."
+
+msgid "Problem title:"
+msgstr "問題のタイトル:"
+
+msgid "Example: computer freezes while gaming"
+msgstr "Example: computer freezes while gaming"
+
+msgid "What happened?"
+msgstr "何が起きましたか？"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
+msgid "Create report"
+msgstr "レポートを作成"
+
+msgid "Enter a title for the problem."
+msgstr "問題のタイトルを入力してください。"
+
+msgid "Analyzing hardware, drivers and kernel..."
+msgstr "ハードウェア、ドライバー、カーネルを解析しています..."
+
+msgid "Diagnostics completed. "
+msgstr "診断が完了しました。 "
+
+msgid "Report saved to "
+msgstr "レポートの保存先: "
+
+msgid "Opening GitHub..."
+msgstr "GitHub を開いています..."
+
+msgid "Could not generate "
+msgstr "Could not generate "
+
+msgid "the report: "
+msgstr "the report: "
+
+msgid "Unknown device"
+msgstr "不明なデバイス"
+
+msgid "none"
+msgstr "なし"
+
+msgid "No critical errors were identified "
+msgstr "No critical errors were identified "
+
+msgid "automatically in the analyzed data."
+msgstr "automatically in the analyzed data."
+
+msgid "STACKOS GENESIS - TECHNICAL REPORT"
+msgstr "STACKOS GENESIS - TECHNICAL REPORT"
+
+msgid "Title: "
+msgstr "Title: "
+
+msgid "User description:"
+msgstr "User description:"
+
+msgid "Not provided."
+msgstr "Not provided."
+
+msgid "Automatic diagnostics:"
+msgstr "自動診断:"
+
+msgid "System:"
+msgstr "システム:"
+
+msgid "Hardware / Drivers:"
+msgstr "ハードウェア / ドライバー:"
+
+msgid "Relevant kernel events:"
+msgstr "関連するカーネルイベント:"
+
+msgid "Analyzed kernel log:"
+msgstr "解析したカーネルログ:"
+
+msgid "StackOS Drivers diagnostics "
+msgstr "StackOS Drivers diagnostics "
+
+msgid "unavailable."
+msgstr "unavailable."
+
+msgid "No known critical pattern "
+msgstr "No known critical pattern "
+
+msgid "was detected."
+msgstr "was detected."
+
+msgid "## Description"
+msgstr "## Description"
+
+msgid "## Automatic diagnostics"
+msgstr "## Automatic diagnostics"
+
+msgid "## System"
+msgstr "## System"
+
+msgid "## Hardware / drivers"
+msgstr "## Hardware / drivers"
+
+msgid "## Kernel events"
+msgstr "## Kernel events"
+
+msgid "The complete technical report was "
+msgstr "The complete technical report was "
+
+msgid "saved locally at:"
+msgstr "saved locally at:"
+
+msgid "ERROR:"
+msgstr "エラー:"
+
+msgid "WARNING:"
+msgstr "警告:"
+
+msgid "DRIVER:"
+msgstr "DRIVER:"
+
+msgid "StackOS diagnostic test"
+msgstr "StackOS 診断テスト"
+
+msgid "Automatic diagnostic generated for validation."
+msgstr "Automatic diagnostic generated for validation."
+
+msgid "Back"
+msgstr "戻る"
+
+msgid "Check again"
+msgstr "再確認"
+
+msgid "Checking for updates..."
+msgstr "更新を確認しています..."
+
+msgid "Description"
+msgstr "説明"
+
+msgid "Failed: {package}."
+msgstr "失敗: {package}。"
+
+msgid "Install"
+msgstr "インストール"
+
+msgid "Installed"
+msgstr "インストール済み"
+
+msgid "Installed version: {version}"
+msgstr "インストール済みバージョン: {version}"
+
+msgid "Installing {package}..."
+msgstr "{package} をインストールしています..."
+
+msgid "Installing: {package}"
+msgstr "インストール中: {package}"
+
+msgid "No applications found."
+msgstr "アプリケーションが見つかりません。"
+
+msgid "No pending updates."
+msgstr "保留中の更新はありません。"
+
+msgid "Official website"
+msgstr "公式ウェブサイト"
+
+msgid "Package: {package}"
+msgstr "パッケージ: {package}"
+
+msgid "Please wait…"
+msgstr "お待ちください…"
+
+msgid "Preparing update..."
+msgstr "更新を準備しています..."
+
+msgid "RATE THIS APP"
+msgstr "このアプリを評価"
+
+msgid "Remove"
+msgstr "削除"
+
+msgid "Removing {package}..."
+msgstr "{package} を削除しています..."
+
+msgid "Search applications..."
+msgstr "アプリケーションを検索..."
+
+msgid "System is fully up to date!"
+msgstr "システムは完全に最新です！"
+
+msgid "System is up to date."
+msgstr "システムは最新です。"
+
+msgid "System updated!"
+msgstr "システムを更新しました！"
+
+msgid "Update failed."
+msgstr "更新に失敗しました。"
+
+msgid "Updates"
+msgstr "更新"
+
+msgid "Updates can be installed with administrative authentication."
+msgstr "更新のインストールには管理者認証が必要です。"
+
+msgid "Your rating helps other users."
+msgstr "あなたの評価は他のユーザーの参考になります。"
+
+msgid "{package} installed."
+msgstr "{package} をインストールしました。"
+
+msgid "{package} removed."
+msgstr "{package} を削除しました。"
+
+msgid "About"
+msgstr "このアプリについて"
+
+msgid "Architecture: {architecture}"
+msgstr "アーキテクチャ: {architecture}"
+
+msgid "DEB package ready to install."
+msgstr "DEB パッケージをインストールする準備ができました。"
+
+msgid "Executables"
+msgstr "実行可能ファイル"
+
+msgid "Failed to start: {error}"
+msgstr "起動に失敗しました: {error}"
+
+msgid "File not found."
+msgstr "ファイルが見つかりません。"
+
+msgid "File recognized and ready."
+msgstr "ファイルを認識しました。準備完了です。"
+
+msgid "Flatpak application installed successfully."
+msgstr "Flatpak アプリケーションを正常にインストールしました。"
+
+msgid "Flatpak installation failed."
+msgstr "Flatpak のインストールに失敗しました。"
+
+msgid "Flatpak is not installed on this system."
+msgstr "このシステムには Flatpak がインストールされていません。"
+
+msgid "Flatpak package"
+msgstr "Flatpak パッケージ"
+
+msgid "Flatpak reference"
+msgstr "Flatpak 参照"
+
+msgid "Format not recognized as a supported Linux installer."
+msgstr "対応する Linux インストーラー形式として認識されませんでした。"
+
+msgid "Formats"
+msgstr "形式"
+
+msgid "Help"
+msgstr "ヘルプ"
+
+msgid "Incompatible"
+msgstr "互換性なし"
+
+msgid "Install Linux applications and packages compatible with StackOS."
+msgstr "StackOS と互換性のある Linux アプリケーションとパッケージをインストールします。"
+
+msgid "Installation cancelled or not authorized."
+msgstr "インストールがキャンセルされたか、許可されませんでした。"
+
+msgid "Installation script"
+msgstr "インストールスクリプト"
+
+msgid "Installer"
+msgstr "インストーラー"
+
+msgid "Installer started."
+msgstr "インストーラーを起動しました。"
+
+msgid "Installing Flatpak application..."
+msgstr "Flatpak アプリケーションをインストールしています..."
+
+msgid "Installing package and resolving dependencies..."
+msgstr "パッケージをインストールし、依存関係を解決しています..."
+
+msgid "Invalid DEB package."
+msgstr "無効な DEB パッケージです。"
+
+msgid "Linux executable"
+msgstr "Linux 実行可能ファイル"
+
+msgid "No file selected"
+msgstr "ファイルが選択されていません"
+
+msgid "Package installed successfully."
+msgstr "パッケージを正常にインストールしました。"
+
+msgid "RUN installer"
+msgstr "RUN インストーラー"
+
+msgid "Run application"
+msgstr "アプリケーションを実行"
+
+msgid "Run installer"
+msgstr "インストーラーを実行"
+
+msgid "Run script"
+msgstr "スクリプトを実行"
+
+msgid "Security"
+msgstr "セキュリティ"
+
+msgid "Select"
+msgstr "選択"
+
+msgid "Select an application or package to continue."
+msgstr "続行するアプリケーションまたはパッケージを選択してください。"
+
+msgid "Select application or package"
+msgstr "アプリケーションまたはパッケージを選択"
+
+msgid "Select file"
+msgstr "ファイルを選択"
+
+msgid "Snap blocked"
+msgstr "Snap はブロックされています"
+
+msgid "Snap is blocked by StackOS policy."
+msgstr "Snap は StackOS のポリシーによってブロックされています。"
+
+msgid "StackOS Application Installer"
+msgstr "StackOS アプリケーションインストーラー"
+
+msgid "Supported formats:"
+msgstr "対応形式:"
+
+msgid "This application was created for Windows and cannot be installed natively on StackOS. Use Wine/Bottles or look for a Linux version."
+msgstr "このアプリケーションは Windows 用に作成されており、StackOS にネイティブインストールできません。Wine/Bottles を使用するか、Linux 版を探してください。"
+
+msgid "Type: {type}"
+msgstr "種類: {type}"
+
+msgid "Version: {version}"
+msgstr "バージョン: {version}"
+
+msgid "Windows application (.exe)"
+msgstr "Windows アプリケーション (.exe)"
+
+msgid "Windows installer (.msi)"
+msgstr "Windows インストーラー (.msi)"
+
+msgid "unknown"
+msgstr "不明"
+
+# StackOS Store
+msgid "Desenvolvimento"
+msgstr "開発"
+
+# StackOS Store
+msgid "Internet"
+msgstr "インターネット"
+
+# StackOS Store
+msgid "Jogos"
+msgstr "ゲーム"
+
+# StackOS Store
+msgid "Jogos Nativos"
+msgstr "ネイティブゲーム"
+
+# StackOS Store
+msgid "Multimidia"
+msgstr "マルチメディア"
+
+# StackOS Store
+msgid "Office"
+msgstr "オフィス"
+
+# StackOS Store
+msgid "Seguranca"
+msgstr "セキュリティ"
+
+# StackOS Store
+msgid "Sistema"
+msgstr "システム"
+
+# StackOS Store
+msgid "Analisador"
+msgstr "解析ツール"
+
+# StackOS Store
+msgid "Build Tools"
+msgstr "ビルドツール"
+
+# StackOS Store
+msgid "Calendario"
+msgstr "カレンダー"
+
+# StackOS Store
+msgid "Navegador Web"
+msgstr "ウェブブラウザー"
+
+# StackOS Store
+msgid "🔔 {count} update available!"
+msgstr "🔔 {count} 件のアップデートがあります！"
+
+# StackOS Store
+msgid "🔔 {count} updates available!"
+msgstr "🔔 {count} 件のアップデートがあります！"
+
+# StackOS Store
+msgid "🔔 {count} update available! Click Updates."
+msgstr "🔔 {count} 件のアップデートがあります！「アップデート」をクリックしてください。"
+
+# StackOS Store
+msgid "🔔 {count} updates available! Click Updates."
+msgstr "🔔 {count} 件のアップデートがあります！「アップデート」をクリックしてください。"
+
+# StackOS Store
+msgid "Acesso remoto RDP/VNC/SSH"
+msgstr "RDP/VNC/SSH リモートアクセス"
+
+# StackOS Store
+msgid "Ajustes avancados do GNOME"
+msgstr "GNOME の詳細設定"
+
+# StackOS Store
+msgid "Antivirus open source"
+msgstr "オープンソースのアンチウイルス"
+
+# StackOS Store
+msgid "Backup do sistema"
+msgstr "システムバックアップ"
+
+# StackOS Store
+msgid "Banco de dados leve"
+msgstr "軽量データベース"
+
+# StackOS Store
+msgid "BitTorrent avancado sem anuncios"
+msgstr "広告なしの高機能 BitTorrent"
+
+# StackOS Store
+msgid "Bloqueio de ataques bruta"
+msgstr "ブルートフォース攻撃のブロック"
+
+# StackOS Store
+msgid "Calendario do GNOME"
+msgstr "GNOME カレンダー"
+
+# StackOS Store
+msgid "Cliente BitTorrent"
+msgstr "BitTorrent クライアント"
+
+# StackOS Store
+msgid "Cliente Epic Games e GOG"
+msgstr "Epic Games / GOG クライアント"
+
+# StackOS Store
+msgid "Cliente FTP/SFTP"
+msgstr "FTP/SFTP クライアント"
+
+# StackOS Store
+msgid "Cliente de email simples"
+msgstr "シンプルなメールクライアント"
+
+# StackOS Store
+msgid "Comparador visual de arquivos"
+msgstr "ファイルの視覚的比較"
+
+# StackOS Store
+msgid "Compatibilidade Windows"
+msgstr "Windows 互換性"
+
+# StackOS Store
+msgid "Containers Linux"
+msgstr "Linux コンテナー"
+
+# StackOS Store
+msgid "Controle de versao"
+msgstr "バージョン管理"
+
+# StackOS Store
+msgid "Conversor de video"
+msgstr "動画コンバーター"
+
+# StackOS Store
+msgid "Criptografia PGP"
+msgstr "PGP 暗号化"
+
+# StackOS Store
+msgid "Downloader via terminal"
+msgstr "端末からのダウンロード"
+
+# StackOS Store
+msgid "Editor de audio profissional"
+msgstr "プロ向け音声エディター"
+
+# StackOS Store
+msgid "Editor de codigo profissional"
+msgstr "プロ向けコードエディター"
+
+# StackOS Store
+msgid "Editor de imagens profissional"
+msgstr "プロ向け画像エディター"
+
+# StackOS Store
+msgid "Editor de texto avancado"
+msgstr "高機能テキストエディター"
+
+# StackOS Store
+msgid "Editor de texto simples"
+msgstr "シンプルなテキストエディター"
+
+# StackOS Store
+msgid "Editor de video nao-linear"
+msgstr "ノンリニア動画エディター"
+
+# StackOS Store
+msgid "Editor vetorial SVG"
+msgstr "SVG ベクターエディター"
+
+# StackOS Store
+msgid "Estrategia em turno fantasy"
+msgstr "ターン制ファンタジー戦略ゲーム"
+
+# StackOS Store
+msgid "Estrategia historica RTS"
+msgstr "歴史 RTS 戦略ゲーム"
+
+# StackOS Store
+msgid "FPS rapido open-source"
+msgstr "高速なオープンソース FPS"
+
+# StackOS Store
+msgid "Ferramentas de compilacao"
+msgstr "コンパイルツール"
+
+# StackOS Store
+msgid "Financas pessoais"
+msgstr "個人財務管理"
+
+# StackOS Store
+msgid "Firewall simples"
+msgstr "シンプルなファイアウォール"
+
+# StackOS Store
+msgid "Gerenciador de particoes"
+msgstr "パーティションマネージャー"
+
+# StackOS Store
+msgid "Gerenciador de senhas"
+msgstr "パスワードマネージャー"
+
+# StackOS Store
+msgid "Gerenciador universal de jogos"
+msgstr "汎用ゲームマネージャー"
+
+# StackOS Store
+msgid "Gravacao e streaming ao vivo"
+msgstr "ライブ録画とストリーミング"
+
+# StackOS Store
+msgid "Info do sistema no terminal"
+msgstr "端末でのシステム情報"
+
+# StackOS Store
+msgid "Interface grafica para UFW"
+msgstr "UFW のグラフィカルインターフェース"
+
+# StackOS Store
+msgid "Kart open-source divertido"
+msgstr "楽しいオープンソースのカートレース"
+
+# StackOS Store
+msgid "Leitor de PDF"
+msgstr "PDF リーダー"
+
+# StackOS Store
+msgid "Limpeza do sistema"
+msgstr "システムクリーナー"
+
+# StackOS Store
+msgid "Linguagem de programacao"
+msgstr "プログラミング言語"
+
+# StackOS Store
+msgid "Monitor de processos"
+msgstr "プロセスモニター"
+
+# StackOS Store
+msgid "Navegador baseado no Chrome"
+msgstr "Chrome ベースのブラウザー"
+
+# StackOS Store
+msgid "Navegador rapido e seguro"
+msgstr "高速で安全なブラウザー"
+
+# StackOS Store
+msgid "Otimizador do sistema"
+msgstr "システム最適化ツール"
+
+# StackOS Store
+msgid "Otimizador para jogos"
+msgstr "ゲーム最適化ツール"
+
+# StackOS Store
+msgid "Pintura digital e concept art"
+msgstr "デジタルペイントとコンセプトアート"
+
+# StackOS Store
+msgid "Planilhas eletronicas"
+msgstr "スプレッドシート"
+
+# StackOS Store
+msgid "Plataforma de jogos da Valve"
+msgstr "Valve ゲームプラットフォーム"
+
+# StackOS Store
+msgid "Player de musica do GNOME"
+msgstr "GNOME 音楽プレーヤー"
+
+# StackOS Store
+msgid "Processador de texto"
+msgstr "ワードプロセッサ"
+
+# StackOS Store
+msgid "Reprodutor de midia universal"
+msgstr "汎用メディアプレーヤー"
+
+# StackOS Store
+msgid "Runtime JavaScript"
+msgstr "JavaScript ランタイム"
+
+# StackOS Store
+msgid "Sandbox estilo Minecraft"
+msgstr "Minecraft スタイルのサンドボックス"
+
+# StackOS Store
+msgid "Shooter multiplayer"
+msgstr "マルチプレイヤーシューティング"
+
+# StackOS Store
+msgid "Suite de escritorio completa"
+msgstr "完全なオフィススイート"
+
+# StackOS Store
+msgid "Uso de disco por pasta"
+msgstr "フォルダー別ディスク使用量"

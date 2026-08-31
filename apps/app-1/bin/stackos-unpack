@@ -1,0 +1,9 @@
+#!/bin/bash
+# Encontrar root do calamares
+ROOT=$(ls -d /tmp/calamares-root-* 2>/dev/null | head -1)
+if [ -z "$ROOT" ]; then
+  echo "ERRO: rootMountPoint nao encontrado"
+  exit 1
+fi
+echo "Descompactando para $ROOT"
+unsquashfs -f -d "$ROOT" /cdrom/casper/filesystem.squashfs

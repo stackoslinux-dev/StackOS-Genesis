@@ -1,0 +1,13 @@
+[Unit]
+Description=Verificador de atualizações do StackOS
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/stackos-updater-service
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

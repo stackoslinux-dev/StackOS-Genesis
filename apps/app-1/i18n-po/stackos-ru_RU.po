@@ -1,0 +1,766 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: StackOS Genesis\n"
+"Language: ru_RU\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Bem-vindo ao StackOS Genesis"
+msgstr "Добро пожаловать в StackOS Genesis"
+
+msgid "Modular. Leve. Poderoso."
+msgstr "Модульный. Лёгкий. Мощный."
+
+msgid "📦 Loja de Apps"
+msgstr "📦 Магазин приложений"
+
+msgid "🔧 Drivers"
+msgstr "🔧 Драйверы"
+
+msgid "🌐 Site Oficial"
+msgstr "🌐 Официальный сайт"
+
+msgid "📖 Documentacao"
+msgstr "📖 Документация"
+
+msgid "💬 Forum"
+msgstr "💬 Форум"
+
+msgid "📧 Contato"
+msgstr "📧 Контакты"
+
+msgid "Comecar a usar o StackOS →"
+msgstr "Начать работу со StackOS →"
+
+msgid "StackOS — Primeiro acesso"
+msgstr "StackOS — Первая настройка"
+
+msgid "Crie o usuário principal deste computador."
+msgstr "Создайте основного пользователя этого компьютера."
+
+msgid "Nome do usuário"
+msgstr "Имя пользователя"
+
+msgid "exemplo: fabio"
+msgstr "пример: fabio"
+
+msgid "Senha"
+msgstr "Пароль"
+
+msgid "Digite sua senha"
+msgstr "Введите пароль"
+
+msgid "Confirmar senha"
+msgstr "Подтвердите пароль"
+
+msgid "Digite novamente"
+msgstr "Введите ещё раз"
+
+msgid "Nome do computador"
+msgstr "Имя компьютера"
+
+msgid "exemplo: stackos-pc"
+msgstr "пример: stackos-pc"
+
+msgid "Criar usuário e continuar"
+msgstr "Создать пользователя и продолжить"
+
+msgid "Conclua a criação do usuário para utilizar o sistema."
+msgstr "Завершите создание пользователя, чтобы использовать систему."
+
+msgid "O nome do usuário deve começar com uma letra e usar apenas letras minúsculas, números, _ ou -."
+msgstr "Имя пользователя должно начинаться с буквы и содержать только строчные буквы, цифры, _ или -."
+
+msgid "Esse nome de usuário é reservado."
+msgstr "Это имя пользователя зарезервировано."
+
+msgid "As senhas não coincidem."
+msgstr "Пароли не совпадают."
+
+msgid "Informe um nome válido para o computador."
+msgstr "Введите допустимое имя компьютера."
+
+msgid "O nome do computador é muito longo."
+msgstr "Имя компьютера слишком длинное."
+
+msgid "Criando usuário e configurando o sistema..."
+msgstr "Создание пользователя и настройка системы..."
+
+msgid "Falha desconhecida."
+msgstr "Неизвестная ошибка."
+
+msgid "Configuração concluída. Reiniciando..."
+msgstr "Настройка завершена. Перезагрузка..."
+
+msgid "Não foi possível criar o usuário:\n{error}"
+msgstr "Не удалось создать пользователя:\n{error}"
+
+# StackOS Bug Report
+
+msgid "StackOS - Report a problem"
+msgstr "StackOS - Сообщить о проблеме"
+
+msgid "Diagnostics and Report — "
+msgstr "Диагностика и отчёт — "
+
+msgid "StackOS will analyze hardware, drivers "
+msgstr "StackOS will analyze hardware, drivers "
+
+msgid "and relevant kernel events before "
+msgstr "and relevant kernel events before "
+
+msgid "creating the report."
+msgstr "creating the report."
+
+msgid "IP address, MAC address, computer name "
+msgstr "IP address, MAC address, computer name "
+
+msgid "and username are removed from the report "
+msgstr "and username are removed from the report "
+
+msgid "when identified."
+msgstr "when identified."
+
+msgid "Problem title:"
+msgstr "Название проблемы:"
+
+msgid "Example: computer freezes while gaming"
+msgstr "Example: computer freezes while gaming"
+
+msgid "What happened?"
+msgstr "Что произошло?"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Create report"
+msgstr "Создать отчёт"
+
+msgid "Enter a title for the problem."
+msgstr "Введите название проблемы."
+
+msgid "Analyzing hardware, drivers and kernel..."
+msgstr "Анализ оборудования, драйверов и ядра..."
+
+msgid "Diagnostics completed. "
+msgstr "Диагностика завершена. "
+
+msgid "Report saved to "
+msgstr "Отчёт сохранён в "
+
+msgid "Opening GitHub..."
+msgstr "Открытие GitHub..."
+
+msgid "Could not generate "
+msgstr "Could not generate "
+
+msgid "the report: "
+msgstr "the report: "
+
+msgid "Unknown device"
+msgstr "Неизвестное устройство"
+
+msgid "none"
+msgstr "нет"
+
+msgid "No critical errors were identified "
+msgstr "No critical errors were identified "
+
+msgid "automatically in the analyzed data."
+msgstr "automatically in the analyzed data."
+
+msgid "STACKOS GENESIS - TECHNICAL REPORT"
+msgstr "STACKOS GENESIS - TECHNICAL REPORT"
+
+msgid "Title: "
+msgstr "Title: "
+
+msgid "User description:"
+msgstr "User description:"
+
+msgid "Not provided."
+msgstr "Not provided."
+
+msgid "Automatic diagnostics:"
+msgstr "Автоматическая диагностика:"
+
+msgid "System:"
+msgstr "Система:"
+
+msgid "Hardware / Drivers:"
+msgstr "Оборудование / Драйверы:"
+
+msgid "Relevant kernel events:"
+msgstr "Важные события ядра:"
+
+msgid "Analyzed kernel log:"
+msgstr "Проанализированный журнал ядра:"
+
+msgid "StackOS Drivers diagnostics "
+msgstr "StackOS Drivers diagnostics "
+
+msgid "unavailable."
+msgstr "unavailable."
+
+msgid "No known critical pattern "
+msgstr "No known critical pattern "
+
+msgid "was detected."
+msgstr "was detected."
+
+msgid "## Description"
+msgstr "## Description"
+
+msgid "## Automatic diagnostics"
+msgstr "## Automatic diagnostics"
+
+msgid "## System"
+msgstr "## System"
+
+msgid "## Hardware / drivers"
+msgstr "## Hardware / drivers"
+
+msgid "## Kernel events"
+msgstr "## Kernel events"
+
+msgid "The complete technical report was "
+msgstr "The complete technical report was "
+
+msgid "saved locally at:"
+msgstr "saved locally at:"
+
+msgid "ERROR:"
+msgstr "ОШИБКА:"
+
+msgid "WARNING:"
+msgstr "ПРЕДУПРЕЖДЕНИЕ:"
+
+msgid "DRIVER:"
+msgstr "DRIVER:"
+
+msgid "StackOS diagnostic test"
+msgstr "Диагностический тест StackOS"
+
+msgid "Automatic diagnostic generated for validation."
+msgstr "Automatic diagnostic generated for validation."
+
+msgid "Back"
+msgstr "Назад"
+
+msgid "Check again"
+msgstr "Проверить снова"
+
+msgid "Checking for updates..."
+msgstr "Проверка обновлений..."
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "Failed: {package}."
+msgstr "Ошибка: {package}."
+
+msgid "Install"
+msgstr "Установить"
+
+msgid "Installed"
+msgstr "Установлено"
+
+msgid "Installed version: {version}"
+msgstr "Установленная версия: {version}"
+
+msgid "Installing {package}..."
+msgstr "Установка {package}..."
+
+msgid "Installing: {package}"
+msgstr "Установка: {package}"
+
+msgid "No applications found."
+msgstr "Приложения не найдены."
+
+msgid "No pending updates."
+msgstr "Нет ожидающих обновлений."
+
+msgid "Official website"
+msgstr "Официальный сайт"
+
+msgid "Package: {package}"
+msgstr "Пакет: {package}"
+
+msgid "Please wait…"
+msgstr "Пожалуйста, подождите…"
+
+msgid "Preparing update..."
+msgstr "Подготовка обновления..."
+
+msgid "RATE THIS APP"
+msgstr "ОЦЕНИТЬ ПРИЛОЖЕНИЕ"
+
+msgid "Remove"
+msgstr "Удалить"
+
+msgid "Removing {package}..."
+msgstr "Удаление {package}..."
+
+msgid "Search applications..."
+msgstr "Поиск приложений..."
+
+msgid "System is fully up to date!"
+msgstr "Система полностью обновлена!"
+
+msgid "System is up to date."
+msgstr "Система обновлена."
+
+msgid "System updated!"
+msgstr "Система обновлена!"
+
+msgid "Update failed."
+msgstr "Не удалось обновить систему."
+
+msgid "Updates"
+msgstr "Обновления"
+
+msgid "Updates can be installed with administrative authentication."
+msgstr "Обновления можно устанавливать после административной аутентификации."
+
+msgid "Your rating helps other users."
+msgstr "Ваша оценка помогает другим пользователям."
+
+msgid "{package} installed."
+msgstr "{package} установлен."
+
+msgid "{package} removed."
+msgstr "{package} удалён."
+
+msgid "About"
+msgstr "О программе"
+
+msgid "Architecture: {architecture}"
+msgstr "Архитектура: {architecture}"
+
+msgid "DEB package ready to install."
+msgstr "Пакет DEB готов к установке."
+
+msgid "Executables"
+msgstr "Исполняемые файлы"
+
+msgid "Failed to start: {error}"
+msgstr "Не удалось запустить: {error}"
+
+msgid "File not found."
+msgstr "Файл не найден."
+
+msgid "File recognized and ready."
+msgstr "Файл распознан и готов."
+
+msgid "Flatpak application installed successfully."
+msgstr "Приложение Flatpak успешно установлено."
+
+msgid "Flatpak installation failed."
+msgstr "Ошибка установки Flatpak."
+
+msgid "Flatpak is not installed on this system."
+msgstr "Flatpak не установлен в этой системе."
+
+msgid "Flatpak package"
+msgstr "Пакет Flatpak"
+
+msgid "Flatpak reference"
+msgstr "Ссылка Flatpak"
+
+msgid "Format not recognized as a supported Linux installer."
+msgstr "Формат не распознан как поддерживаемый установщик Linux."
+
+msgid "Formats"
+msgstr "Форматы"
+
+msgid "Help"
+msgstr "Справка"
+
+msgid "Incompatible"
+msgstr "Несовместимо"
+
+msgid "Install Linux applications and packages compatible with StackOS."
+msgstr "Устанавливайте приложения и пакеты Linux, совместимые со StackOS."
+
+msgid "Installation cancelled or not authorized."
+msgstr "Установка отменена или не авторизована."
+
+msgid "Installation script"
+msgstr "Скрипт установки"
+
+msgid "Installer"
+msgstr "Установщик"
+
+msgid "Installer started."
+msgstr "Установщик запущен."
+
+msgid "Installing Flatpak application..."
+msgstr "Установка приложения Flatpak..."
+
+msgid "Installing package and resolving dependencies..."
+msgstr "Установка пакета и разрешение зависимостей..."
+
+msgid "Invalid DEB package."
+msgstr "Недопустимый пакет DEB."
+
+msgid "Linux executable"
+msgstr "Исполняемый файл Linux"
+
+msgid "No file selected"
+msgstr "Файл не выбран"
+
+msgid "Package installed successfully."
+msgstr "Пакет успешно установлен."
+
+msgid "RUN installer"
+msgstr "Установщик RUN"
+
+msgid "Run application"
+msgstr "Запустить приложение"
+
+msgid "Run installer"
+msgstr "Запустить установщик"
+
+msgid "Run script"
+msgstr "Запустить скрипт"
+
+msgid "Security"
+msgstr "Безопасность"
+
+msgid "Select"
+msgstr "Выбрать"
+
+msgid "Select an application or package to continue."
+msgstr "Выберите приложение или пакет для продолжения."
+
+msgid "Select application or package"
+msgstr "Выбрать приложение или пакет"
+
+msgid "Select file"
+msgstr "Выбрать файл"
+
+msgid "Snap blocked"
+msgstr "Snap заблокирован"
+
+msgid "Snap is blocked by StackOS policy."
+msgstr "Snap заблокирован политикой StackOS."
+
+msgid "StackOS Application Installer"
+msgstr "Установщик приложений StackOS"
+
+msgid "Supported formats:"
+msgstr "Поддерживаемые форматы:"
+
+msgid "This application was created for Windows and cannot be installed natively on StackOS. Use Wine/Bottles or look for a Linux version."
+msgstr "Это приложение создано для Windows и не может быть установлено в StackOS как нативное приложение. Используйте Wine/Bottles или найдите версию для Linux."
+
+msgid "Type: {type}"
+msgstr "Тип: {type}"
+
+msgid "Version: {version}"
+msgstr "Версия: {version}"
+
+msgid "Windows application (.exe)"
+msgstr "Приложение Windows (.exe)"
+
+msgid "Windows installer (.msi)"
+msgstr "Установщик Windows (.msi)"
+
+msgid "unknown"
+msgstr "неизвестно"
+
+# StackOS Store
+msgid "Desenvolvimento"
+msgstr "Разработка"
+
+# StackOS Store
+msgid "Internet"
+msgstr "Интернет"
+
+# StackOS Store
+msgid "Jogos"
+msgstr "Игры"
+
+# StackOS Store
+msgid "Jogos Nativos"
+msgstr "Нативные игры"
+
+# StackOS Store
+msgid "Multimidia"
+msgstr "Мультимедиа"
+
+# StackOS Store
+msgid "Office"
+msgstr "Офис"
+
+# StackOS Store
+msgid "Seguranca"
+msgstr "Безопасность"
+
+# StackOS Store
+msgid "Sistema"
+msgstr "Система"
+
+# StackOS Store
+msgid "Analisador"
+msgstr "Анализатор"
+
+# StackOS Store
+msgid "Build Tools"
+msgstr "Инструменты сборки"
+
+# StackOS Store
+msgid "Calendario"
+msgstr "Календарь"
+
+# StackOS Store
+msgid "Navegador Web"
+msgstr "Веб-браузер"
+
+# StackOS Store
+msgid "🔔 {count} update available!"
+msgstr "🔔 Доступно обновлений: {count}!"
+
+# StackOS Store
+msgid "🔔 {count} updates available!"
+msgstr "🔔 Доступно обновлений: {count}!"
+
+# StackOS Store
+msgid "🔔 {count} update available! Click Updates."
+msgstr "🔔 Доступно обновлений: {count}! Нажмите «Обновления»."
+
+# StackOS Store
+msgid "🔔 {count} updates available! Click Updates."
+msgstr "🔔 Доступно обновлений: {count}! Нажмите «Обновления»."
+
+# StackOS Store
+msgid "Acesso remoto RDP/VNC/SSH"
+msgstr "Удалённый доступ RDP/VNC/SSH"
+
+# StackOS Store
+msgid "Ajustes avancados do GNOME"
+msgstr "Расширенные настройки GNOME"
+
+# StackOS Store
+msgid "Antivirus open source"
+msgstr "Антивирус с открытым исходным кодом"
+
+# StackOS Store
+msgid "Backup do sistema"
+msgstr "Резервное копирование системы"
+
+# StackOS Store
+msgid "Banco de dados leve"
+msgstr "Лёгкая база данных"
+
+# StackOS Store
+msgid "BitTorrent avancado sem anuncios"
+msgstr "Расширенный BitTorrent без рекламы"
+
+# StackOS Store
+msgid "Bloqueio de ataques bruta"
+msgstr "Блокировка атак перебором"
+
+# StackOS Store
+msgid "Calendario do GNOME"
+msgstr "Календарь GNOME"
+
+# StackOS Store
+msgid "Cliente BitTorrent"
+msgstr "Клиент BitTorrent"
+
+# StackOS Store
+msgid "Cliente Epic Games e GOG"
+msgstr "Клиент Epic Games и GOG"
+
+# StackOS Store
+msgid "Cliente FTP/SFTP"
+msgstr "Клиент FTP/SFTP"
+
+# StackOS Store
+msgid "Cliente de email simples"
+msgstr "Простой почтовый клиент"
+
+# StackOS Store
+msgid "Comparador visual de arquivos"
+msgstr "Визуальное сравнение файлов"
+
+# StackOS Store
+msgid "Compatibilidade Windows"
+msgstr "Совместимость с Windows"
+
+# StackOS Store
+msgid "Containers Linux"
+msgstr "Контейнеры Linux"
+
+# StackOS Store
+msgid "Controle de versao"
+msgstr "Контроль версий"
+
+# StackOS Store
+msgid "Conversor de video"
+msgstr "Конвертер видео"
+
+# StackOS Store
+msgid "Criptografia PGP"
+msgstr "Шифрование PGP"
+
+# StackOS Store
+msgid "Downloader via terminal"
+msgstr "Загрузка через терминал"
+
+# StackOS Store
+msgid "Editor de audio profissional"
+msgstr "Профессиональный аудиоредактор"
+
+# StackOS Store
+msgid "Editor de codigo profissional"
+msgstr "Профессиональный редактор кода"
+
+# StackOS Store
+msgid "Editor de imagens profissional"
+msgstr "Профессиональный редактор изображений"
+
+# StackOS Store
+msgid "Editor de texto avancado"
+msgstr "Расширенный текстовый редактор"
+
+# StackOS Store
+msgid "Editor de texto simples"
+msgstr "Простой текстовый редактор"
+
+# StackOS Store
+msgid "Editor de video nao-linear"
+msgstr "Нелинейный видеоредактор"
+
+# StackOS Store
+msgid "Editor vetorial SVG"
+msgstr "Векторный редактор SVG"
+
+# StackOS Store
+msgid "Estrategia em turno fantasy"
+msgstr "Пошаговая фэнтезийная стратегия"
+
+# StackOS Store
+msgid "Estrategia historica RTS"
+msgstr "Историческая стратегия RTS"
+
+# StackOS Store
+msgid "FPS rapido open-source"
+msgstr "Быстрый FPS с открытым исходным кодом"
+
+# StackOS Store
+msgid "Ferramentas de compilacao"
+msgstr "Инструменты компиляции"
+
+# StackOS Store
+msgid "Financas pessoais"
+msgstr "Личные финансы"
+
+# StackOS Store
+msgid "Firewall simples"
+msgstr "Простой брандмауэр"
+
+# StackOS Store
+msgid "Gerenciador de particoes"
+msgstr "Менеджер разделов"
+
+# StackOS Store
+msgid "Gerenciador de senhas"
+msgstr "Менеджер паролей"
+
+# StackOS Store
+msgid "Gerenciador universal de jogos"
+msgstr "Универсальный менеджер игр"
+
+# StackOS Store
+msgid "Gravacao e streaming ao vivo"
+msgstr "Запись и прямые трансляции"
+
+# StackOS Store
+msgid "Info do sistema no terminal"
+msgstr "Информация о системе в терминале"
+
+# StackOS Store
+msgid "Interface grafica para UFW"
+msgstr "Графический интерфейс для UFW"
+
+# StackOS Store
+msgid "Kart open-source divertido"
+msgstr "Весёлые гонки на картах с открытым исходным кодом"
+
+# StackOS Store
+msgid "Leitor de PDF"
+msgstr "Чтение PDF"
+
+# StackOS Store
+msgid "Limpeza do sistema"
+msgstr "Очистка системы"
+
+# StackOS Store
+msgid "Linguagem de programacao"
+msgstr "Язык программирования"
+
+# StackOS Store
+msgid "Monitor de processos"
+msgstr "Монитор процессов"
+
+# StackOS Store
+msgid "Navegador baseado no Chrome"
+msgstr "Браузер на основе Chrome"
+
+# StackOS Store
+msgid "Navegador rapido e seguro"
+msgstr "Быстрый и безопасный браузер"
+
+# StackOS Store
+msgid "Otimizador do sistema"
+msgstr "Оптимизатор системы"
+
+# StackOS Store
+msgid "Otimizador para jogos"
+msgstr "Оптимизатор для игр"
+
+# StackOS Store
+msgid "Pintura digital e concept art"
+msgstr "Цифровая живопись и концепт-арт"
+
+# StackOS Store
+msgid "Planilhas eletronicas"
+msgstr "Электронные таблицы"
+
+# StackOS Store
+msgid "Plataforma de jogos da Valve"
+msgstr "Игровая платформа Valve"
+
+# StackOS Store
+msgid "Player de musica do GNOME"
+msgstr "Музыкальный проигрыватель GNOME"
+
+# StackOS Store
+msgid "Processador de texto"
+msgstr "Текстовый процессор"
+
+# StackOS Store
+msgid "Reprodutor de midia universal"
+msgstr "Универсальный медиаплеер"
+
+# StackOS Store
+msgid "Runtime JavaScript"
+msgstr "Среда выполнения JavaScript"
+
+# StackOS Store
+msgid "Sandbox estilo Minecraft"
+msgstr "Песочница в стиле Minecraft"
+
+# StackOS Store
+msgid "Shooter multiplayer"
+msgstr "Многопользовательский шутер"
+
+# StackOS Store
+msgid "Suite de escritorio completa"
+msgstr "Полный офисный пакет"
+
+# StackOS Store
+msgid "Uso de disco por pasta"
+msgstr "Использование диска по папкам"

@@ -1,0 +1,1113 @@
+#!/usr/bin/env python3
+
+import gi
+gi.require_version("Gtk", "4.0")
+
+from gi.repository import Gtk, Gdk, GLib
+
+import datetime
+import getpass
+import json
+import os
+import re
+import subprocess
+import threading
+import urllib.parse
+import webbrowser
+from pathlib import Path
+import sys
+
+sys.path.insert(0, "/usr/lib/stackos")
+from stackos_i18n import get_translator
+
+_ = get_translator("stackos")
+
+
+APP_ID = "com.stackos.bugreport"
+
+
+GITHUB_ISSUES = (
+    "https://github.com/stackoslinux-dev/bugs/issues/new"
+)
+
+
+DRIVERS_BIN = "/usr/local/bin/stackos-drivers"
+
+
+CSS = b"""
+window {
+    background-color: #05081c;
+}
+
+.title {
+    color: #3d78d8;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.label-white {
+    color: #e0e8ff;
+    font-size: 13px;
+}
+
+.label-blue {
+    color: #8fb7ff;
+    font-size: 12px;
+}
+
+.label-green {
+    color: #78dba9;
+    font-size: 12px;
+}
+
+.label-warn {
+    color: #f2c96d;
+    font-size: 12px;
+}
+
+.card {
+    background-color: #0d1530;
+    border-radius: 12px;
+    border: 1px solid #1e2d5a;
+}
+
+.btn-primary {
+    background-color: #3d78d8;
+    color: white;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-weight: bold;
+    border: none;
+}
+
+.btn-secondary {
+    background-color: #1a2040;
+    color: #a0b4d8;
+    border-radius: 6px;
+    padding: 8px 20px;
+    border: 1px solid #3d78d8;
+}
+
+.entry {
+    background-color: #0d1530;
+    color: #e0e8ff;
+    border: 1px solid #3d78d8;
+    border-radius: 6px;
+    padding: 8px;
+}
+"""
+
+
+def run(command, timeout=12):
+    try:
+        return subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except Exception:
+        return None
+
+
+def sanitize(text):
+    """Remove identificadores pessoais comuns dos logs."""
+    if not text:
+        return ""
+
+    text = str(text)
+
+    try:
+        username = getpass.getuser()
+    except Exception:
+        username = ""
+
+    try:
+        hostname = os.uname().nodename
+    except Exception:
+        hostname = ""
+
+    if username:
+        text = text.replace(
+            f"/home/{username}",
+            "/home/[USER]",
+        )
+
+        text = re.sub(
+            rf"\b{re.escape(username)}\b",
+            "[USER]",
+            text,
+            flags=re.I,
+        )
+
+    if hostname:
+        text = re.sub(
+            rf"\b{re.escape(hostname)}\b",
+            "[HOST]",
+            text,
+            flags=re.I,
+        )
+
+    # MAC
+    text = re.sub(
+        r"\b(?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}\b",
+        "[MAC]",
+        text,
+    )
+
+    # IPv4
+    text = re.sub(
+        r"\b(?:\d{1,3}\.){3}\d{1,3}\b",
+        "[IP]",
+        text,
+    )
+
+    return text
+
+
+def system_info():
+    info = {}
+
+    commands = {
+        "kernel": ["uname", "-r"],
+        "arch": ["uname", "-m"],
+        "os": [
+            "bash",
+            "-lc",
+            "grep '^PRETTY_NAME=' /etc/os-release "
+            "| cut -d= -f2- | tr -d '\"'",
+        ],
+    }
+
+    for key, command in commands.items():
+        r = run(command)
+
+        if r and r.returncode == 0:
+            info[key] = sanitize(r.stdout.strip())
+        else:
+            info[key] = "desconhecido"
+
+    return info
+
+
+def driver_diagnostics():
+    if not Path(DRIVERS_BIN).exists():
+        return {
+            "available": False,
+            "devices": [],
+        }
+
+    r = run(
+        [DRIVERS_BIN, "--diagnose-json"],
+        timeout=20,
+    )
+
+    if not r or r.returncode != 0:
+        return {
+            "available": False,
+            "devices": [],
+        }
+
+    try:
+        data = json.loads(r.stdout)
+
+        return {
+            "available": True,
+            "devices": data.get("devices", []),
+        }
+
+    except Exception:
+        return {
+            "available": False,
+            "devices": [],
+        }
+
+
+def kernel_log():
+    r = run(
+        [
+            "journalctl",
+            "-k",
+            "-b",
+            "--no-pager",
+            "-o",
+            "cat",
+            "-n",
+            "400",
+        ],
+        timeout=15,
+    )
+
+    if not r:
+        return ""
+
+    return sanitize(r.stdout)
+
+
+def kernel_findings(text):
+    """
+    Classificação conservadora.
+    Não declara defeito físico automaticamente.
+    """
+
+    patterns = [
+        (
+            "error",
+            "GPU reset detectado",
+            r"\bgpu reset\b|"
+            r"\bamdgpu.*reset\b|"
+            r"\bnvidia.*xid\b",
+        ),
+        (
+            "warning",
+            "Timeout de hardware/driver detectado",
+            r"\btimeout\b|"
+            r"\btimed out\b|"
+            r"\breg_wait\b",
+        ),
+        (
+            "warning",
+            "Falha no carregamento de firmware",
+            r"failed to load firmware|"
+            r"firmware.*failed|"
+            r"firmware.*not found",
+        ),
+        (
+            "warning",
+            "Erro PCIe/AER registrado",
+            r"\baer:\b|"
+            r"pcie.*error|"
+            r"pci.*error",
+        ),
+        (
+            "error",
+            "Erro de entrada/saída detectado",
+            r"\bi/o error\b|"
+            r"\bblk_update_request.*error\b",
+        ),
+        (
+            "warning",
+            "Evento térmico detectado",
+            r"thermal.*critical|"
+            r"critical temperature|"
+            r"overheat",
+        ),
+        (
+            "warning",
+            "Pressão de memória/OOM detectada",
+            r"out of memory|"
+            r"oom-killer|"
+            r"killed process .* total-vm",
+        ),
+    ]
+
+    findings = []
+
+    lines = text.splitlines()
+
+    for severity, title, pattern in patterns:
+        rx = re.compile(pattern, re.I)
+
+        matches = [
+            line.strip()
+            for line in lines
+            if rx.search(line)
+        ]
+
+        if not matches:
+            continue
+
+        findings.append({
+            "severity": severity,
+            "title": title,
+            "count": len(matches),
+            "example": matches[-1][:300],
+        })
+
+    return findings
+
+
+def device_findings(driver_data):
+    result = []
+
+    for item in driver_data.get("devices", []):
+        dev = item.get("device", {})
+        support = item.get("support", {})
+        health = item.get("health", {})
+
+        name = sanitize(
+            dev.get("name", _("Unknown device"))
+        )
+
+        driver = sanitize(
+            support.get("active_driver")
+            or dev.get("driver")
+            or _("none")
+        )
+
+        support_state = support.get(
+            "state",
+            "unknown",
+        )
+
+        health_state = health.get(
+            "state",
+            "unknown",
+        )
+
+        entry = {
+            "name": name,
+            "driver": driver,
+            "support": support_state,
+            "health": health_state,
+        }
+
+        if health_state in (
+            "warning",
+            "error",
+        ):
+            events = health.get(
+                "events",
+                [],
+            )
+
+            technical = []
+
+            for event in events:
+                category = event.get(
+                    "category",
+                    "",
+                )
+
+                if category == "info":
+                    continue
+
+                msg = sanitize(
+                    event.get(
+                        "message",
+                        "",
+                    )
+                ).strip()
+
+                if msg:
+                    technical.append(msg)
+
+            entry["events"] = technical[:5]
+
+        result.append(entry)
+
+    return result
+
+
+def diagnosis_summary(devices, kernel):
+    problems = []
+
+    for dev in devices:
+        if dev.get("health") == "error":
+            problems.append(
+                "ERRO: "
+                + dev.get("name", "hardware")
+            )
+
+        elif dev.get("health") == "warning":
+            problems.append(
+                "AVISO: "
+                + dev.get("name", "hardware")
+            )
+
+        if (
+            dev.get("support") == "unsupported"
+            or dev.get("driver") == _("none")
+        ):
+            problems.append(
+                "DRIVER: "
+                + dev.get("name", "hardware")
+            )
+
+    for finding in kernel:
+        problems.append(
+            finding["title"]
+        )
+
+    if not problems:
+        return (
+            _("No critical errors were identified ")
+            + _("automatically in the analyzed data.")
+        )
+
+    return "; ".join(problems[:8])
+
+
+def make_full_report(title, description):
+    sysinfo = system_info()
+    driver_data = driver_diagnostics()
+
+    klog = kernel_log()
+    kfind = kernel_findings(klog)
+    devices = device_findings(driver_data)
+
+    summary = diagnosis_summary(
+        devices,
+        kfind,
+    )
+
+    lines = []
+
+    lines.append(
+        _("STACKOS GENESIS - TECHNICAL REPORT")
+    )
+    lines.append(
+        "=" * 48
+    )
+    lines.append("")
+
+    lines.append(
+        f"Titulo: {sanitize(title)}"
+    )
+    lines.append("")
+
+    lines.append(
+        _("User description:")
+    )
+    lines.append(
+        sanitize(description)
+        if description
+        else _("Not provided.")
+    )
+
+    lines.append("")
+    lines.append(
+        _("Automatic diagnostics:")
+    )
+    lines.append(summary)
+
+    lines.append("")
+    lines.append(
+        _("System:")
+    )
+    lines.append(
+        f"  Sistema: {sysinfo.get('os')}"
+    )
+    lines.append(
+        f"  Kernel: {sysinfo.get('kernel')}"
+    )
+    lines.append(
+        f"  Arquitetura: {sysinfo.get('arch')}"
+    )
+
+    lines.append("")
+    lines.append(
+        _("Hardware / Drivers:")
+    )
+
+    if devices:
+        for dev in devices:
+            lines.append(
+                "  - "
+                f"{dev['name']} | "
+                f"driver={dev['driver']} | "
+                f"suporte={dev['support']} | "
+                f"saude={dev['health']}"
+            )
+
+            for event in dev.get(
+                "events",
+                [],
+            ):
+                lines.append(
+                    "      evento: "
+                    + event
+                )
+    else:
+        lines.append(
+            "  " + _("StackOS Drivers diagnostics ")
+            + _("unavailable.")
+        )
+
+    lines.append("")
+    lines.append(
+        _("Relevant kernel events:")
+    )
+
+    if kfind:
+        for item in kfind:
+            lines.append(
+                "  - "
+                f"[{item['severity']}] "
+                f"{item['title']} "
+                f"(ocorrencias: {item['count']})"
+            )
+
+            lines.append(
+                "      "
+                + item["example"]
+            )
+    else:
+        lines.append(
+            "  " + _("No known critical pattern ")
+            + _("was detected.")
+        )
+
+    lines.append("")
+    lines.append(
+        _("Analyzed kernel log:")
+    )
+    lines.append(klog[-16000:])
+
+    full = "\n".join(lines)
+
+    return {
+        "report": full,
+        "summary": summary,
+        "system": sysinfo,
+        "devices": devices,
+        "kernel_findings": kfind,
+    }
+
+
+def save_report(text):
+    directory = (
+        Path.home()
+        / ".local/share/stackos/bugreports"
+    )
+
+    directory.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    stamp = datetime.datetime.now().strftime(
+        "%Y%m%d-%H%M%S"
+    )
+
+    path = directory / (
+        f"stackos-bugreport-{stamp}.txt"
+    )
+
+    path.write_text(
+        text,
+        encoding="utf-8",
+    )
+
+    return path
+
+
+
+
+
+def github_body(
+    title,
+    description,
+    diagnostic,
+):
+    sysinfo = diagnostic["system"]
+
+    lines = [
+        _("## Description"),
+        sanitize(description)
+        if description
+        else _("Not provided."),
+        "",
+        _("## Automatic diagnostics"),
+        sanitize(diagnostic["summary"]),
+        "",
+        _("## System"),
+        "- OS: " + sanitize(
+            str(sysinfo.get("os", ""))
+        ),
+        "- Kernel: " + sanitize(
+            str(sysinfo.get("kernel", ""))
+        ),
+        "- Architecture: " + sanitize(
+            str(sysinfo.get("arch", ""))
+        ),
+        "",
+        _("## Hardware / drivers"),
+    ]
+
+    for dev in diagnostic["devices"][:12]:
+        lines.append(
+            "- "
+            + sanitize(str(dev.get("name", "")))
+            + " | driver: "
+            + sanitize(str(dev.get("driver", "")))
+            + " | support: "
+            + sanitize(str(dev.get("support", "")))
+            + " | health: "
+            + sanitize(str(dev.get("health", "")))
+        )
+
+        for event in dev.get("events", [])[:3]:
+            lines.append(
+                "  - "
+                + sanitize(str(event))
+            )
+
+    lines.extend([
+        "",
+        _("## Kernel events"),
+    ])
+
+    for item in diagnostic["kernel_findings"][:10]:
+        lines.append(
+            "- "
+            + sanitize(str(item.get("title", "")))
+            + " ("
+            + str(item.get("count", 0))
+            + ")"
+        )
+
+    lines.extend([
+        "",
+        _(
+            "The complete technical report remains "
+            "saved locally on the user's computer."
+        ),
+    ])
+
+    body = sanitize(
+        "\n".join(lines)
+    )
+
+    return body[:6000]
+
+
+def open_github(
+    title,
+    description,
+    diagnostic,
+):
+    body = github_body(
+        title,
+        description,
+        diagnostic,
+    )
+
+    query = urllib.parse.urlencode({
+        "title": "[Bug] " + sanitize(title),
+        "body": body,
+        "labels": "bug",
+    })
+
+    return webbrowser.open(
+        GITHUB_ISSUES + "?" + query
+    )
+
+
+class BugReport(Gtk.Application):
+
+    def __init__(self):
+        super().__init__(
+            application_id=APP_ID
+        )
+
+        self.connect(
+            "activate",
+            self.on_activate,
+        )
+
+    def on_activate(self, app):
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        self.win = Gtk.ApplicationWindow(
+            application=app
+        )
+
+        self.win.set_title(
+            _("StackOS - Report a problem")
+        )
+
+        self.win.set_default_size(
+            620,
+            600,
+        )
+
+        self.build_ui()
+        self.win.present()
+
+    def build_ui(self):
+        outer = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=14,
+        )
+
+        outer.set_margin_top(22)
+        outer.set_margin_bottom(22)
+        outer.set_margin_start(22)
+        outer.set_margin_end(22)
+
+        title = Gtk.Label(
+            label=(
+                _("Diagnostics and Report — ")
+                + "StackOS Genesis"
+            )
+        )
+
+        title.add_css_class("title")
+        title.set_halign(Gtk.Align.START)
+
+        outer.append(title)
+
+        info = Gtk.Label(
+            label=(
+                _("StackOS will analyze hardware, drivers ") +
+                _("and relevant kernel events before ") +
+                _("creating the report.")
+            )
+        )
+
+        info.add_css_class("label-blue")
+        info.set_halign(Gtk.Align.START)
+        info.set_wrap(True)
+
+        outer.append(info)
+
+        privacy = Gtk.Label(
+            label=(
+                _("IP address, MAC address, computer name ") +
+                _("and username are removed from the report ") +
+                _("when identified.")
+            )
+        )
+
+        privacy.add_css_class("label-green")
+        privacy.set_halign(Gtk.Align.START)
+        privacy.set_wrap(True)
+
+        outer.append(privacy)
+
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=10,
+        )
+
+        card.add_css_class("card")
+
+        lbl_title = Gtk.Label(
+            label=_("Problem title:")
+        )
+
+        lbl_title.add_css_class("label-white")
+        lbl_title.set_halign(Gtk.Align.START)
+        lbl_title.set_margin_top(12)
+        lbl_title.set_margin_start(12)
+
+        card.append(lbl_title)
+
+        self.entry_title = Gtk.Entry()
+        self.entry_title.add_css_class("entry")
+        self.entry_title.set_placeholder_text(
+            _("Example: computer freezes while gaming")
+        )
+        self.entry_title.set_margin_start(12)
+        self.entry_title.set_margin_end(12)
+
+        card.append(self.entry_title)
+
+        lbl_desc = Gtk.Label(
+            label=(
+                _("What happened?")
+            )
+        )
+
+        lbl_desc.add_css_class("label-white")
+        lbl_desc.set_halign(Gtk.Align.START)
+        lbl_desc.set_margin_start(12)
+
+        card.append(lbl_desc)
+
+        self.text_desc = Gtk.TextView()
+        self.text_desc.add_css_class("entry")
+        self.text_desc.set_wrap_mode(
+            Gtk.WrapMode.WORD
+        )
+        self.text_desc.set_size_request(
+            -1,
+            130,
+        )
+        self.text_desc.set_margin_start(12)
+        self.text_desc.set_margin_end(12)
+        self.text_desc.set_margin_bottom(12)
+
+        card.append(self.text_desc)
+
+        outer.append(card)
+
+        self.status = Gtk.Label(
+            label=""
+        )
+
+        self.status.add_css_class(
+            "label-blue"
+        )
+
+        self.status.set_halign(
+            Gtk.Align.START
+        )
+
+        self.status.set_wrap(True)
+
+        outer.append(self.status)
+
+        self.progress = Gtk.ProgressBar()
+        self.progress.set_visible(False)
+
+        outer.append(self.progress)
+
+        buttons = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=8,
+        )
+
+        buttons.set_halign(
+            Gtk.Align.END
+        )
+
+        cancel = Gtk.Button(
+            label=_("Cancel")
+        )
+
+        cancel.add_css_class(
+            "btn-secondary"
+        )
+
+        cancel.connect(
+            "clicked",
+            lambda _b: self.win.close(),
+        )
+
+        buttons.append(cancel)
+
+        self.send = Gtk.Button(
+            label=_("Create report")
+        )
+
+        self.send.add_css_class(
+            "btn-primary"
+        )
+
+        self.send.connect(
+            "clicked",
+            self.on_create,
+        )
+
+        buttons.append(self.send)
+
+        outer.append(buttons)
+
+        self.win.set_child(outer)
+
+    def ask_send_report(
+        self,
+        title,
+        description,
+        diagnostic,
+        report_path,
+    ):
+        dialog = Gtk.MessageDialog(
+            transient_for=self.win,
+            modal=True,
+            message_type=Gtk.MessageType.QUESTION,
+            buttons=Gtk.ButtonsType.NONE,
+            text=_(
+                "A problem report was generated."
+            ),
+        )
+
+        dialog.format_secondary_text(
+            _(
+                "A technical problem was detected. "
+                "Do you want to send a sanitized report "
+                "to the public StackOS bug repository?"
+            )
+        )
+
+        dialog.add_button(
+            _("Do not send"),
+            Gtk.ResponseType.CANCEL,
+        )
+
+        dialog.add_button(
+            _("Send report"),
+            Gtk.ResponseType.ACCEPT,
+        )
+
+        dialog.connect(
+            "response",
+            self.on_send_report_response,
+            title,
+            description,
+            diagnostic,
+            report_path,
+        )
+
+        dialog.present()
+
+        return False
+
+
+    def on_send_report_response(
+        self,
+        dialog,
+        response,
+        title,
+        description,
+        diagnostic,
+        report_path,
+    ):
+        dialog.close()
+
+        if response != Gtk.ResponseType.ACCEPT:
+            self.status.set_text(
+                _(
+                    "Report saved locally. "
+                    "Nothing was sent."
+                )
+            )
+            return
+
+        self.status.set_text(
+            _(
+                "Preparing the public StackOS bug report..."
+            )
+        )
+
+        try:
+            opened = open_github(
+                title,
+                description,
+                diagnostic,
+            )
+
+            if opened:
+                self.status.set_text(
+                    _(
+                        "The report was prepared. "
+                        "Review it and confirm publication."
+                    )
+                )
+            else:
+                self.status.set_text(
+                    _(
+                        "Could not open the StackOS "
+                        "bug report page."
+                    )
+                )
+
+        except Exception as e:
+            self.status.set_text(
+                _("Could not prepare the report: ")
+                + sanitize(str(e))
+            )
+
+
+    def on_create(self, _button):
+        title = (
+            self.entry_title
+            .get_text()
+            .strip()
+        )
+
+        buf = self.text_desc.get_buffer()
+
+        description = buf.get_text(
+            buf.get_start_iter(),
+            buf.get_end_iter(),
+            False,
+        ).strip()
+
+        if not title:
+            self.status.set_text(
+                _("Enter a title for the problem.")
+            )
+            return
+
+        self.send.set_sensitive(False)
+        self.progress.set_visible(True)
+        self.progress.pulse()
+
+        self.status.set_text(
+            _("Analyzing hardware, drivers and kernel...")
+        )
+
+        def worker():
+            try:
+                diagnostic = make_full_report(
+                    title,
+                    description,
+                )
+
+                report_path = save_report(
+                    diagnostic["report"]
+                )
+
+                GLib.idle_add(
+                    self.status.set_text,
+                    (
+                        _("Diagnostics completed. ")
+                        + _("Report saved to ")
+                        + f"{report_path}."
+                    ),
+                )
+
+                GLib.idle_add(
+                    self.ask_send_report,
+                    title,
+                    description,
+                    diagnostic,
+                    report_path,
+                )
+
+            except Exception as e:
+                GLib.idle_add(
+                    self.status.set_text,
+                    (
+                        _("Could not generate ") +
+                        _("the report: ")
+                        + sanitize(str(e))
+                    ),
+                )
+
+            finally:
+                GLib.idle_add(
+                    self.progress.set_visible,
+                    False,
+                )
+
+                GLib.idle_add(
+                    self.send.set_sensitive,
+                    True,
+                )
+
+        threading.Thread(
+            target=worker,
+            daemon=True,
+        ).start()
+
+
+if __name__ == "__main__":
+    if "--diagnose" in sys.argv:
+        diagnostic = make_full_report(
+            _("StackOS diagnostic test"),
+            _("Automatic diagnostic generated for validation."),
+        )
+
+        path = save_report(
+            diagnostic["report"]
+        )
+
+        print(diagnostic["report"])
+        print()
+        print("REPORT_FILE=" + str(path))
+
+    else:
+        app = BugReport()
+        app.run([])

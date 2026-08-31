@@ -1,0 +1,65 @@
+#!/bin/sh
+
+set -u
+
+STATE="/var/lib/stackos/recovery"
+REQUEST="$STATE/factory-reset-requested"
+
+MOUNT="/run/stackos-recovery-request"
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "StackOS Factory Reset: root privileges required" >&2
+    exit 1
+fi
+
+DEV="$(findfs LABEL=STACKOS_RECOVERY 2>/dev/null || true)"
+
+if [ -z "$DEV" ]; then
+    echo "StackOS Factory Reset: Recovery partition not found" >&2
+    exit 2
+fi
+
+mkdir -p "$MOUNT"
+
+if ! mount -o ro "$DEV" "$MOUNT"; then
+    echo "StackOS Factory Reset: unable to mount Recovery" >&2
+    exit 3
+fi
+
+if [ ! -f "$MOUNT/factory/factory.squashfs" ] || \
+   [ ! -f "$MOUNT/factory/factory.sha256" ]; then
+
+    umount "$MOUNT" 2>/dev/null || true
+
+    echo "StackOS Factory Reset: factory image missing" >&2
+    exit 4
+fi
+
+if ! (
+    cd "$MOUNT/factory" &&
+    sha256sum -c factory.sha256 >/dev/null
+); then
+
+    umount "$MOUNT" 2>/dev/null || true
+
+    echo "StackOS Factory Reset: factory validation failed" >&2
+    exit 5
+fi
+
+umount "$MOUNT" 2>/dev/null || true
+rmdir "$MOUNT" 2>/dev/null || true
+
+mkdir -p "$STATE"
+chmod 700 "$STATE"
+
+umask 077
+
+printf '%s\n' \
+    "STACKOS_FACTORY_RESET_REQUESTED" \
+    > "$REQUEST"
+
+sync
+
+echo "StackOS Factory Reset: request created"
+
+exit 0

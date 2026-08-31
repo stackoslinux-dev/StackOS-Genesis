@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+
+import json
+import os
+from pathlib import Path
+import pwd
+import re
+import subprocess
+import sys
+
+
+def run(command, *, input_text=None, check=True):
+    result = subprocess.run(
+        command,
+        input=input_text,
+        text=True,
+        capture_output=True,
+    )
+
+    if check and result.returncode != 0:
+        raise RuntimeError(
+            result.stderr.strip()
+            or result.stdout.strip()
+            or f"Comando falhou: {' '.join(command)}"
+        )
+
+    return result
+
+
+def write_file(path, content, mode=None):
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content)
+
+    if mode is not None:
+        os.chmod(target, mode)
+
+
+def validate(data):
+    username = str(data.get("username", "")).strip().lower()
+    password = str(data.get("password", ""))
+    hostname = str(data.get("hostname", "")).strip().lower()
+
+    if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", username):
+        raise RuntimeError("Nome de usuário inválido.")
+
+    if username in {"root", "stackos"}:
+        raise RuntimeError("Nome de usuário reservado.")
+
+    if not re.fullmatch(
+        r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?",
+        hostname,
+    ):
+        raise RuntimeError("Nome do computador inválido.")
+
+    try:
+        pwd.getpwnam(username)
+    except KeyError:
+        pass
+    else:
+        raise RuntimeError(
+            f"O usuário {username} já existe."
+        )
+
+    return username, password, hostname
+
+
+def existing_groups(group_names):
+    result = []
+
+    for group in group_names:
+        found = subprocess.run(
+            ["getent", "group", group],
+            capture_output=True,
+            text=True,
+        )
+
+        if found.returncode == 0:
+            result.append(group)
+
+    return result
+
+
+def main():
+    if os.geteuid() != 0:
+        raise RuntimeError(
+            "O helper precisa ser executado como root."
+        )
+
+    raw = sys.stdin.read()
+
+    if not raw.strip():
+        raise RuntimeError(
+            "Nenhum dado foi recebido."
+        )
+
+    data = json.loads(raw)
+    username, password, hostname = validate(data)
+
+    groups = existing_groups([
+        "sudo",
+        "adm",
+        "cdrom",
+        "dip",
+        "plugdev",
+        "audio",
+        "video",
+        "netdev",
+        "lpadmin",
+        "dialout",
+    ])
+
+    command = [
+        "useradd",
+        "-m",
+        "-s",
+        "/bin/bash",
+    ]
+
+    if groups:
+        command.extend([
+            "-G",
+            ",".join(groups),
+        ])
+
+    command.append(username)
+    run(command)
+
+    # ------------------------------------------------------------
+    # STACKOS USER LOCALE
+    # O usuario criado no FirstBoot herda o idioma escolhido
+    # durante a instalacao. /etc/default/locale e a fonte unica.
+    # ------------------------------------------------------------
+
+    locale_file = Path("/etc/default/locale")
+    locale_values = {}
+
+    if locale_file.exists():
+        for line in locale_file.read_text(errors="replace").splitlines():
+            line = line.strip()
+
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+
+            if key in {"LANG", "LANGUAGE"} and value:
+                locale_values[key] = value
+
+    system_lang = locale_values.get("LANG", "en_US.UTF-8")
+    system_language = locale_values.get(
+        "LANGUAGE",
+        system_lang.split(".")[0] + ":" + system_lang.split("_")[0],
+    )
+
+    accounts_file = Path("/var/lib/AccountsService/users") / username
+    accounts_file.parent.mkdir(parents=True, exist_ok=True)
+
+    accounts_file.write_text(
+        "[User]\n"
+        f"Language={system_lang}\n"
+        f"XSession=\n"
+        f"SystemAccount=false\n"
+    )
+    os.chmod(accounts_file, 0o600)
+
+    user_home = Path("/home") / username
+    user_config = user_home / ".config"
+    user_config.mkdir(parents=True, exist_ok=True)
+
+    user_locale = user_config / "locale.conf"
+    user_locale.write_text(
+        f"LANG={system_lang}\n"
+        f"LANGUAGE={system_language}\n"
+    )
+
+    user_info = pwd.getpwnam(username)
+
+    os.chown(user_config, user_info.pw_uid, user_info.pw_gid)
+    os.chown(user_locale, user_info.pw_uid, user_info.pw_gid)
+
+    if password:
+        run(
+            ["chpasswd"],
+            input_text=f"{username}:{password}\n",
+        )
+    else:
+        run(
+            ["passwd", "-d", username],
+            check=False,
+        )
+
+    # ------------------------------------------------------------
+    # STACKOS RECOVERY AUTH
+    # Gera na P4 um verificador independente usando a mesma senha
+    # administrativa. A senha nunca e gravada em disco.
+    # ------------------------------------------------------------
+
+    recovery_auth = subprocess.run(
+        [
+            "/usr/lib/stackos/stackos-recovery-auth-update",
+        ],
+        input=password,
+        text=True,
+        capture_output=True,
+        env={
+            **os.environ,
+            "STACKOS_RECOVERY_USER": username,
+        },
+    )
+
+    if recovery_auth.returncode != 0:
+        raise RuntimeError(
+            recovery_auth.stderr.strip()
+            or recovery_auth.stdout.strip()
+            or "Falha ao configurar autenticação da Recovery."
+        )
+
+    write_file(
+        "/etc/hostname",
+        hostname + "\n",
+    )
+
+    write_file(
+        "/etc/hosts",
+        (
+            "127.0.0.1 localhost\n"
+            f"127.0.1.1 {hostname}\n"
+        ),
+    )
+
+    write_file(
+        "/etc/gdm3/custom.conf",
+        (
+            "[daemon]\n"
+            "AutomaticLoginEnable=true\n"
+            f"AutomaticLogin={username}\n"
+            "\n"
+            "[security]\n"
+            "AllowRoot=false\n"
+        ),
+    )
+
+    write_file(
+        "/etc/sudoers.d/stackos-user",
+        "%sudo ALL=(ALL:ALL) ALL\n",
+        0o440,
+    )
+
+    cleanup_script = """#!/bin/bash
+set -e
+
+systemctl stop display-manager.service >/dev/null 2>&1 || true
+
+if id stackos >/dev/null 2>&1; then
+    userdel -r stackos >/dev/null 2>&1 || true
+fi
+
+rm -f /etc/sudoers.d/stackos-live
+rm -f /etc/sudoers.d/stackos-installer
+rm -f /etc/sudoers.d/stackos-firstboot
+rm -f /var/lib/stackos/firstboot-pending
+rm -f /etc/xdg/autostart/stackos-firstboot.desktop
+rm -f /usr/share/applications/stackos-firstboot.desktop
+rm -f /usr/local/bin/stackos-firstboot
+rm -f /usr/lib/stackos/stackos-firstboot-helper
+
+systemctl disable stackos-firstboot-cleanup.service >/dev/null 2>&1 || true
+rm -f /etc/systemd/system/stackos-firstboot-cleanup.service
+
+systemctl daemon-reload
+"""
+
+    write_file(
+        "/usr/lib/stackos/stackos-firstboot-cleanup",
+        cleanup_script,
+        0o755,
+    )
+
+    cleanup_service = """[Unit]
+Description=Finalizar configuração inicial do StackOS
+DefaultDependencies=no
+After=local-fs.target
+Before=display-manager.service
+ConditionPathExists=/usr/lib/stackos/stackos-firstboot-cleanup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/lib/stackos/stackos-firstboot-cleanup
+
+[Install]
+WantedBy=multi-user.target
+"""
+
+    write_file(
+        "/etc/systemd/system/stackos-firstboot-cleanup.service",
+        cleanup_service,
+    )
+
+    run([
+        "systemctl",
+        "enable",
+        "stackos-firstboot-cleanup.service",
+    ])
+
+    write_file(
+        "/var/lib/stackos/firstboot-complete",
+        username + "\n",
+        0o600,
+    )
+
+    run([
+        "systemctl",
+        "reboot",
+    ])
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:
+        print(
+            f"ERRO: {error}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)

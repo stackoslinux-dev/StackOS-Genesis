@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+
+import hashlib
+import hmac
+import os
+from pathlib import Path
+import secrets
+import subprocess
+import sys
+
+
+LABEL = "STACKOS_BACKUPS"
+MOUNTPOINT = Path("/run/stackos-recovery-auth")
+AUTH_DIR = "recovery-auth"
+AUTH_FILE = "auth.conf"
+
+ITERATIONS = 600000
+DKLEN = 32
+
+
+def fail(message):
+    print(
+        f"StackOS Recovery Auth: {message}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+
+
+def run(command):
+    result = subprocess.run(
+        command,
+        text=True,
+        capture_output=True,
+    )
+
+    if result.returncode != 0:
+        fail(
+            result.stderr.strip()
+            or result.stdout.strip()
+            or "command failed"
+        )
+
+    return result.stdout.strip()
+
+
+def main():
+    if os.geteuid() != 0:
+        fail("root privileges required")
+
+    username = (
+        os.environ.get("STACKOS_RECOVERY_USER", "")
+        or os.environ.get("PAM_USER", "")
+    ).strip()
+
+    if not username:
+        fail("username missing")
+
+    # Durante o próprio FirstBoot, a gravação é feita
+    # explicitamente pelo stackos-firstboot-helper.
+    # Evita uma segunda gravação disparada por chpasswd/PAM.
+    if (
+        os.environ.get("PAM_USER")
+        and not Path("/var/lib/stackos/firstboot-complete").exists()
+    ):
+        raise SystemExit(0)
+
+    # A senha entra exclusivamente pelo stdin.
+    # Nunca aparece em argv nem é gravada em texto.
+    password = sys.stdin.buffer.read()
+
+    # PAM expose_authtok pode fornecer NUL final.
+    password = password.rstrip(b"\x00")
+
+    device = run([
+        "/usr/sbin/findfs",
+        f"LABEL={LABEL}",
+    ])
+
+    if not device.startswith("/dev/"):
+        fail("invalid backup device")
+
+    MOUNTPOINT.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    mounted_here = False
+
+    try:
+        source = subprocess.run(
+            [
+                "/usr/bin/findmnt",
+                "-n",
+                "-o",
+                "SOURCE",
+                "-M",
+                str(MOUNTPOINT),
+            ],
+            text=True,
+            capture_output=True,
+        )
+
+        if source.returncode != 0:
+            run([
+                "/usr/bin/mount",
+                "-o",
+                "rw,nosuid,nodev,noexec",
+                device,
+                str(MOUNTPOINT),
+            ])
+            mounted_here = True
+
+        auth_dir = MOUNTPOINT / AUTH_DIR
+        auth_dir.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        os.chmod(auth_dir, 0o700)
+
+        salt = secrets.token_bytes(8)
+
+        verifier = hashlib.pbkdf2_hmac(
+            "sha256",
+            password,
+            salt,
+            ITERATIONS,
+            dklen=DKLEN,
+        )
+
+        target = auth_dir / AUTH_FILE
+        temporary = auth_dir / ".auth.conf.tmp"
+
+        data = (
+            "version=1\n"
+            f"user={username}\n"
+            "algorithm=pbkdf2-sha256\n"
+            f"iterations={ITERATIONS}\n"
+            f"salt={salt.hex()}\n"
+            f"verifier={verifier.hex().upper()}\n"
+        )
+
+        fd = os.open(
+            temporary,
+            os.O_WRONLY
+            | os.O_CREAT
+            | os.O_TRUNC,
+            0o600,
+        )
+
+        try:
+            with os.fdopen(fd, "w") as handle:
+                handle.write(data)
+                handle.flush()
+                os.fsync(handle.fileno())
+        except Exception:
+            try:
+                temporary.unlink()
+            except FileNotFoundError:
+                pass
+            raise
+
+        os.replace(temporary, target)
+        os.chmod(target, 0o600)
+
+        dirfd = os.open(
+            auth_dir,
+            os.O_RDONLY,
+        )
+
+        try:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
+
+    finally:
+        if mounted_here:
+            subprocess.run(
+                [
+                    "/usr/bin/umount",
+                    str(MOUNTPOINT),
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+
+        try:
+            MOUNTPOINT.rmdir()
+        except OSError:
+            pass
+
+
+if __name__ == "__main__":
+    main()

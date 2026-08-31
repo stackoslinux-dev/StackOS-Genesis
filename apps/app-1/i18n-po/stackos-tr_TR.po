@@ -1,0 +1,766 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: StackOS Genesis\n"
+"Language: tr_TR\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Bem-vindo ao StackOS Genesis"
+msgstr "StackOS Genesis'e hoş geldiniz"
+
+msgid "Modular. Leve. Poderoso."
+msgstr "Modüler. Hafif. Güçlü."
+
+msgid "📦 Loja de Apps"
+msgstr "📦 Uygulama Mağazası"
+
+msgid "🔧 Drivers"
+msgstr "🔧 Sürücüler"
+
+msgid "🌐 Site Oficial"
+msgstr "🌐 Resmî Web Sitesi"
+
+msgid "📖 Documentacao"
+msgstr "📖 Belgeler"
+
+msgid "💬 Forum"
+msgstr "💬 Forum"
+
+msgid "📧 Contato"
+msgstr "📧 İletişim"
+
+msgid "Comecar a usar o StackOS →"
+msgstr "StackOS'u kullanmaya başla →"
+
+msgid "StackOS — Primeiro acesso"
+msgstr "StackOS — İlk kurulum"
+
+msgid "Crie o usuário principal deste computador."
+msgstr "Bu bilgisayarın ana kullanıcısını oluşturun."
+
+msgid "Nome do usuário"
+msgstr "Kullanıcı adı"
+
+msgid "exemplo: fabio"
+msgstr "örnek: fabio"
+
+msgid "Senha"
+msgstr "Parola"
+
+msgid "Digite sua senha"
+msgstr "Parolanızı girin"
+
+msgid "Confirmar senha"
+msgstr "Parolayı doğrula"
+
+msgid "Digite novamente"
+msgstr "Tekrar girin"
+
+msgid "Nome do computador"
+msgstr "Bilgisayar adı"
+
+msgid "exemplo: stackos-pc"
+msgstr "örnek: stackos-pc"
+
+msgid "Criar usuário e continuar"
+msgstr "Kullanıcı oluştur ve devam et"
+
+msgid "Conclua a criação do usuário para utilizar o sistema."
+msgstr "Sistemi kullanmak için kullanıcı oluşturmayı tamamlayın."
+
+msgid "O nome do usuário deve começar com uma letra e usar apenas letras minúsculas, números, _ ou -."
+msgstr "Kullanıcı adı bir harfle başlamalı ve yalnızca küçük harfler, rakamlar, _ veya - içermelidir."
+
+msgid "Esse nome de usuário é reservado."
+msgstr "Bu kullanıcı adı ayrılmıştır."
+
+msgid "As senhas não coincidem."
+msgstr "Parolalar eşleşmiyor."
+
+msgid "Informe um nome válido para o computador."
+msgstr "Geçerli bir bilgisayar adı girin."
+
+msgid "O nome do computador é muito longo."
+msgstr "Bilgisayar adı çok uzun."
+
+msgid "Criando usuário e configurando o sistema..."
+msgstr "Kullanıcı oluşturuluyor ve sistem yapılandırılıyor..."
+
+msgid "Falha desconhecida."
+msgstr "Bilinmeyen hata."
+
+msgid "Configuração concluída. Reiniciando..."
+msgstr "Yapılandırma tamamlandı. Yeniden başlatılıyor..."
+
+msgid "Não foi possível criar o usuário:\n{error}"
+msgstr "Kullanıcı oluşturulamadı:\n{error}"
+
+# StackOS Bug Report
+
+msgid "StackOS - Report a problem"
+msgstr "StackOS - Sorun bildir"
+
+msgid "Diagnostics and Report — "
+msgstr "Tanılama ve Rapor — "
+
+msgid "StackOS will analyze hardware, drivers "
+msgstr "StackOS will analyze hardware, drivers "
+
+msgid "and relevant kernel events before "
+msgstr "and relevant kernel events before "
+
+msgid "creating the report."
+msgstr "creating the report."
+
+msgid "IP address, MAC address, computer name "
+msgstr "IP address, MAC address, computer name "
+
+msgid "and username are removed from the report "
+msgstr "and username are removed from the report "
+
+msgid "when identified."
+msgstr "when identified."
+
+msgid "Problem title:"
+msgstr "Sorun başlığı:"
+
+msgid "Example: computer freezes while gaming"
+msgstr "Example: computer freezes while gaming"
+
+msgid "What happened?"
+msgstr "Ne oldu?"
+
+msgid "Cancel"
+msgstr "İptal"
+
+msgid "Create report"
+msgstr "Rapor oluştur"
+
+msgid "Enter a title for the problem."
+msgstr "Sorun için bir başlık girin."
+
+msgid "Analyzing hardware, drivers and kernel..."
+msgstr "Donanım, sürücüler ve çekirdek analiz ediliyor..."
+
+msgid "Diagnostics completed. "
+msgstr "Tanılama tamamlandı. "
+
+msgid "Report saved to "
+msgstr "Rapor şuraya kaydedildi: "
+
+msgid "Opening GitHub..."
+msgstr "GitHub açılıyor..."
+
+msgid "Could not generate "
+msgstr "Could not generate "
+
+msgid "the report: "
+msgstr "the report: "
+
+msgid "Unknown device"
+msgstr "Bilinmeyen aygıt"
+
+msgid "none"
+msgstr "yok"
+
+msgid "No critical errors were identified "
+msgstr "No critical errors were identified "
+
+msgid "automatically in the analyzed data."
+msgstr "automatically in the analyzed data."
+
+msgid "STACKOS GENESIS - TECHNICAL REPORT"
+msgstr "STACKOS GENESIS - TECHNICAL REPORT"
+
+msgid "Title: "
+msgstr "Title: "
+
+msgid "User description:"
+msgstr "User description:"
+
+msgid "Not provided."
+msgstr "Not provided."
+
+msgid "Automatic diagnostics:"
+msgstr "Otomatik tanılama:"
+
+msgid "System:"
+msgstr "Sistem:"
+
+msgid "Hardware / Drivers:"
+msgstr "Donanım / Sürücüler:"
+
+msgid "Relevant kernel events:"
+msgstr "İlgili çekirdek olayları:"
+
+msgid "Analyzed kernel log:"
+msgstr "Analiz edilen çekirdek günlüğü:"
+
+msgid "StackOS Drivers diagnostics "
+msgstr "StackOS Drivers diagnostics "
+
+msgid "unavailable."
+msgstr "unavailable."
+
+msgid "No known critical pattern "
+msgstr "No known critical pattern "
+
+msgid "was detected."
+msgstr "was detected."
+
+msgid "## Description"
+msgstr "## Description"
+
+msgid "## Automatic diagnostics"
+msgstr "## Automatic diagnostics"
+
+msgid "## System"
+msgstr "## System"
+
+msgid "## Hardware / drivers"
+msgstr "## Hardware / drivers"
+
+msgid "## Kernel events"
+msgstr "## Kernel events"
+
+msgid "The complete technical report was "
+msgstr "The complete technical report was "
+
+msgid "saved locally at:"
+msgstr "saved locally at:"
+
+msgid "ERROR:"
+msgstr "HATA:"
+
+msgid "WARNING:"
+msgstr "UYARI:"
+
+msgid "DRIVER:"
+msgstr "DRIVER:"
+
+msgid "StackOS diagnostic test"
+msgstr "StackOS tanılama testi"
+
+msgid "Automatic diagnostic generated for validation."
+msgstr "Automatic diagnostic generated for validation."
+
+msgid "Back"
+msgstr "Geri"
+
+msgid "Check again"
+msgstr "Tekrar kontrol et"
+
+msgid "Checking for updates..."
+msgstr "Güncellemeler kontrol ediliyor..."
+
+msgid "Description"
+msgstr "Açıklama"
+
+msgid "Failed: {package}."
+msgstr "Başarısız: {package}."
+
+msgid "Install"
+msgstr "Yükle"
+
+msgid "Installed"
+msgstr "Yüklü"
+
+msgid "Installed version: {version}"
+msgstr "Yüklü sürüm: {version}"
+
+msgid "Installing {package}..."
+msgstr "{package} yükleniyor..."
+
+msgid "Installing: {package}"
+msgstr "Yükleniyor: {package}"
+
+msgid "No applications found."
+msgstr "Uygulama bulunamadı."
+
+msgid "No pending updates."
+msgstr "Bekleyen güncelleme yok."
+
+msgid "Official website"
+msgstr "Resmî web sitesi"
+
+msgid "Package: {package}"
+msgstr "Paket: {package}"
+
+msgid "Please wait…"
+msgstr "Lütfen bekleyin…"
+
+msgid "Preparing update..."
+msgstr "Güncelleme hazırlanıyor..."
+
+msgid "RATE THIS APP"
+msgstr "BU UYGULAMAYI DEĞERLENDİR"
+
+msgid "Remove"
+msgstr "Kaldır"
+
+msgid "Removing {package}..."
+msgstr "{package} kaldırılıyor..."
+
+msgid "Search applications..."
+msgstr "Uygulama ara..."
+
+msgid "System is fully up to date!"
+msgstr "Sistem tamamen güncel!"
+
+msgid "System is up to date."
+msgstr "Sistem güncel."
+
+msgid "System updated!"
+msgstr "Sistem güncellendi!"
+
+msgid "Update failed."
+msgstr "Güncelleme başarısız."
+
+msgid "Updates"
+msgstr "Güncellemeler"
+
+msgid "Updates can be installed with administrative authentication."
+msgstr "Güncellemeler yönetici kimlik doğrulamasıyla yüklenebilir."
+
+msgid "Your rating helps other users."
+msgstr "Değerlendirmeniz diğer kullanıcılara yardımcı olur."
+
+msgid "{package} installed."
+msgstr "{package} yüklendi."
+
+msgid "{package} removed."
+msgstr "{package} kaldırıldı."
+
+msgid "About"
+msgstr "Hakkında"
+
+msgid "Architecture: {architecture}"
+msgstr "Mimari: {architecture}"
+
+msgid "DEB package ready to install."
+msgstr "DEB paketi kuruluma hazır."
+
+msgid "Executables"
+msgstr "Çalıştırılabilir dosyalar"
+
+msgid "Failed to start: {error}"
+msgstr "Başlatılamadı: {error}"
+
+msgid "File not found."
+msgstr "Dosya bulunamadı."
+
+msgid "File recognized and ready."
+msgstr "Dosya tanındı ve hazır."
+
+msgid "Flatpak application installed successfully."
+msgstr "Flatpak uygulaması başarıyla kuruldu."
+
+msgid "Flatpak installation failed."
+msgstr "Flatpak kurulumu başarısız oldu."
+
+msgid "Flatpak is not installed on this system."
+msgstr "Flatpak bu sistemde kurulu değil."
+
+msgid "Flatpak package"
+msgstr "Flatpak paketi"
+
+msgid "Flatpak reference"
+msgstr "Flatpak referansı"
+
+msgid "Format not recognized as a supported Linux installer."
+msgstr "Biçim desteklenen bir Linux yükleyicisi olarak tanınmadı."
+
+msgid "Formats"
+msgstr "Biçimler"
+
+msgid "Help"
+msgstr "Yardım"
+
+msgid "Incompatible"
+msgstr "Uyumsuz"
+
+msgid "Install Linux applications and packages compatible with StackOS."
+msgstr "StackOS ile uyumlu Linux uygulamalarını ve paketlerini kurun."
+
+msgid "Installation cancelled or not authorized."
+msgstr "Kurulum iptal edildi veya yetkilendirilmedi."
+
+msgid "Installation script"
+msgstr "Kurulum betiği"
+
+msgid "Installer"
+msgstr "Yükleyici"
+
+msgid "Installer started."
+msgstr "Yükleyici başlatıldı."
+
+msgid "Installing Flatpak application..."
+msgstr "Flatpak uygulaması kuruluyor..."
+
+msgid "Installing package and resolving dependencies..."
+msgstr "Paket kuruluyor ve bağımlılıklar çözümleniyor..."
+
+msgid "Invalid DEB package."
+msgstr "Geçersiz DEB paketi."
+
+msgid "Linux executable"
+msgstr "Linux çalıştırılabilir dosyası"
+
+msgid "No file selected"
+msgstr "Dosya seçilmedi"
+
+msgid "Package installed successfully."
+msgstr "Paket başarıyla kuruldu."
+
+msgid "RUN installer"
+msgstr "RUN yükleyicisi"
+
+msgid "Run application"
+msgstr "Uygulamayı çalıştır"
+
+msgid "Run installer"
+msgstr "Yükleyiciyi çalıştır"
+
+msgid "Run script"
+msgstr "Betiği çalıştır"
+
+msgid "Security"
+msgstr "Güvenlik"
+
+msgid "Select"
+msgstr "Seç"
+
+msgid "Select an application or package to continue."
+msgstr "Devam etmek için bir uygulama veya paket seçin."
+
+msgid "Select application or package"
+msgstr "Uygulama veya paket seç"
+
+msgid "Select file"
+msgstr "Dosya seç"
+
+msgid "Snap blocked"
+msgstr "Snap engellendi"
+
+msgid "Snap is blocked by StackOS policy."
+msgstr "Snap, StackOS politikası tarafından engellenmiştir."
+
+msgid "StackOS Application Installer"
+msgstr "StackOS Uygulama Yükleyicisi"
+
+msgid "Supported formats:"
+msgstr "Desteklenen biçimler:"
+
+msgid "This application was created for Windows and cannot be installed natively on StackOS. Use Wine/Bottles or look for a Linux version."
+msgstr "Bu uygulama Windows için oluşturulmuştur ve StackOS üzerinde yerel olarak kurulamaz. Wine/Bottles kullanın veya Linux sürümünü arayın."
+
+msgid "Type: {type}"
+msgstr "Tür: {type}"
+
+msgid "Version: {version}"
+msgstr "Sürüm: {version}"
+
+msgid "Windows application (.exe)"
+msgstr "Windows uygulaması (.exe)"
+
+msgid "Windows installer (.msi)"
+msgstr "Windows yükleyicisi (.msi)"
+
+msgid "unknown"
+msgstr "bilinmiyor"
+
+# StackOS Store
+msgid "Desenvolvimento"
+msgstr "Geliştirme"
+
+# StackOS Store
+msgid "Internet"
+msgstr "İnternet"
+
+# StackOS Store
+msgid "Jogos"
+msgstr "Oyunlar"
+
+# StackOS Store
+msgid "Jogos Nativos"
+msgstr "Yerel Oyunlar"
+
+# StackOS Store
+msgid "Multimidia"
+msgstr "Multimedya"
+
+# StackOS Store
+msgid "Office"
+msgstr "Ofis"
+
+# StackOS Store
+msgid "Seguranca"
+msgstr "Güvenlik"
+
+# StackOS Store
+msgid "Sistema"
+msgstr "Sistem"
+
+# StackOS Store
+msgid "Analisador"
+msgstr "Analizör"
+
+# StackOS Store
+msgid "Build Tools"
+msgstr "Derleme Araçları"
+
+# StackOS Store
+msgid "Calendario"
+msgstr "Takvim"
+
+# StackOS Store
+msgid "Navegador Web"
+msgstr "Web Tarayıcısı"
+
+# StackOS Store
+msgid "🔔 {count} update available!"
+msgstr "🔔 {count} güncelleme mevcut!"
+
+# StackOS Store
+msgid "🔔 {count} updates available!"
+msgstr "🔔 {count} güncelleme mevcut!"
+
+# StackOS Store
+msgid "🔔 {count} update available! Click Updates."
+msgstr "🔔 {count} güncelleme mevcut! Güncellemeler'e tıklayın."
+
+# StackOS Store
+msgid "🔔 {count} updates available! Click Updates."
+msgstr "🔔 {count} güncelleme mevcut! Güncellemeler'e tıklayın."
+
+# StackOS Store
+msgid "Acesso remoto RDP/VNC/SSH"
+msgstr "Uzak RDP/VNC/SSH erişimi"
+
+# StackOS Store
+msgid "Ajustes avancados do GNOME"
+msgstr "Gelişmiş GNOME ayarları"
+
+# StackOS Store
+msgid "Antivirus open source"
+msgstr "Açık kaynak antivirüs"
+
+# StackOS Store
+msgid "Backup do sistema"
+msgstr "Sistem yedeği"
+
+# StackOS Store
+msgid "Banco de dados leve"
+msgstr "Hafif veritabanı"
+
+# StackOS Store
+msgid "BitTorrent avancado sem anuncios"
+msgstr "Reklamsız gelişmiş BitTorrent"
+
+# StackOS Store
+msgid "Bloqueio de ataques bruta"
+msgstr "Kaba kuvvet saldırılarını engelleme"
+
+# StackOS Store
+msgid "Calendario do GNOME"
+msgstr "GNOME Takvim"
+
+# StackOS Store
+msgid "Cliente BitTorrent"
+msgstr "BitTorrent istemcisi"
+
+# StackOS Store
+msgid "Cliente Epic Games e GOG"
+msgstr "Epic Games ve GOG istemcisi"
+
+# StackOS Store
+msgid "Cliente FTP/SFTP"
+msgstr "FTP/SFTP istemcisi"
+
+# StackOS Store
+msgid "Cliente de email simples"
+msgstr "Basit e-posta istemcisi"
+
+# StackOS Store
+msgid "Comparador visual de arquivos"
+msgstr "Görsel dosya karşılaştırma"
+
+# StackOS Store
+msgid "Compatibilidade Windows"
+msgstr "Windows uyumluluğu"
+
+# StackOS Store
+msgid "Containers Linux"
+msgstr "Linux konteynerleri"
+
+# StackOS Store
+msgid "Controle de versao"
+msgstr "Sürüm kontrolü"
+
+# StackOS Store
+msgid "Conversor de video"
+msgstr "Video dönüştürücü"
+
+# StackOS Store
+msgid "Criptografia PGP"
+msgstr "PGP şifreleme"
+
+# StackOS Store
+msgid "Downloader via terminal"
+msgstr "Terminal üzerinden indirme"
+
+# StackOS Store
+msgid "Editor de audio profissional"
+msgstr "Profesyonel ses düzenleyici"
+
+# StackOS Store
+msgid "Editor de codigo profissional"
+msgstr "Profesyonel kod düzenleyici"
+
+# StackOS Store
+msgid "Editor de imagens profissional"
+msgstr "Profesyonel görüntü düzenleyici"
+
+# StackOS Store
+msgid "Editor de texto avancado"
+msgstr "Gelişmiş metin düzenleyici"
+
+# StackOS Store
+msgid "Editor de texto simples"
+msgstr "Basit metin düzenleyici"
+
+# StackOS Store
+msgid "Editor de video nao-linear"
+msgstr "Doğrusal olmayan video düzenleyici"
+
+# StackOS Store
+msgid "Editor vetorial SVG"
+msgstr "SVG vektör düzenleyici"
+
+# StackOS Store
+msgid "Estrategia em turno fantasy"
+msgstr "Sıra tabanlı fantastik strateji"
+
+# StackOS Store
+msgid "Estrategia historica RTS"
+msgstr "Tarihî RTS stratejisi"
+
+# StackOS Store
+msgid "FPS rapido open-source"
+msgstr "Hızlı açık kaynak FPS"
+
+# StackOS Store
+msgid "Ferramentas de compilacao"
+msgstr "Derleme araçları"
+
+# StackOS Store
+msgid "Financas pessoais"
+msgstr "Kişisel finans"
+
+# StackOS Store
+msgid "Firewall simples"
+msgstr "Basit güvenlik duvarı"
+
+# StackOS Store
+msgid "Gerenciador de particoes"
+msgstr "Bölüm yöneticisi"
+
+# StackOS Store
+msgid "Gerenciador de senhas"
+msgstr "Parola yöneticisi"
+
+# StackOS Store
+msgid "Gerenciador universal de jogos"
+msgstr "Evrensel oyun yöneticisi"
+
+# StackOS Store
+msgid "Gravacao e streaming ao vivo"
+msgstr "Canlı kayıt ve yayın"
+
+# StackOS Store
+msgid "Info do sistema no terminal"
+msgstr "Terminalde sistem bilgileri"
+
+# StackOS Store
+msgid "Interface grafica para UFW"
+msgstr "UFW için grafik arayüz"
+
+# StackOS Store
+msgid "Kart open-source divertido"
+msgstr "Eğlenceli açık kaynak kart yarışı"
+
+# StackOS Store
+msgid "Leitor de PDF"
+msgstr "PDF okuyucu"
+
+# StackOS Store
+msgid "Limpeza do sistema"
+msgstr "Sistem temizleyici"
+
+# StackOS Store
+msgid "Linguagem de programacao"
+msgstr "Programlama dili"
+
+# StackOS Store
+msgid "Monitor de processos"
+msgstr "İşlem monitörü"
+
+# StackOS Store
+msgid "Navegador baseado no Chrome"
+msgstr "Chrome tabanlı tarayıcı"
+
+# StackOS Store
+msgid "Navegador rapido e seguro"
+msgstr "Hızlı ve güvenli tarayıcı"
+
+# StackOS Store
+msgid "Otimizador do sistema"
+msgstr "Sistem iyileştirici"
+
+# StackOS Store
+msgid "Otimizador para jogos"
+msgstr "Oyun iyileştirici"
+
+# StackOS Store
+msgid "Pintura digital e concept art"
+msgstr "Dijital boyama ve konsept sanatı"
+
+# StackOS Store
+msgid "Planilhas eletronicas"
+msgstr "Elektronik tablolar"
+
+# StackOS Store
+msgid "Plataforma de jogos da Valve"
+msgstr "Valve oyun platformu"
+
+# StackOS Store
+msgid "Player de musica do GNOME"
+msgstr "GNOME müzik çalar"
+
+# StackOS Store
+msgid "Processador de texto"
+msgstr "Kelime işlemci"
+
+# StackOS Store
+msgid "Reprodutor de midia universal"
+msgstr "Evrensel medya oynatıcı"
+
+# StackOS Store
+msgid "Runtime JavaScript"
+msgstr "JavaScript çalışma zamanı"
+
+# StackOS Store
+msgid "Sandbox estilo Minecraft"
+msgstr "Minecraft tarzı sandbox"
+
+# StackOS Store
+msgid "Shooter multiplayer"
+msgstr "Çok oyunculu nişancı"
+
+# StackOS Store
+msgid "Suite de escritorio completa"
+msgstr "Eksiksiz ofis paketi"
+
+# StackOS Store
+msgid "Uso de disco por pasta"
+msgstr "Klasöre göre disk kullanımı"

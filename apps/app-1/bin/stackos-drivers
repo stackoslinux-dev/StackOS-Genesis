@@ -1,0 +1,1939 @@
+#!/usr/bin/env python3
+import json
+import gi
+import sys
+sys.path.insert(0, '/usr/lib/stackos')
+from stackos_i18n import get_translator
+_ = get_translator("stackos")
+gi.require_version('Gtk', '4.0')
+from gi.repository import Gtk, Gdk, GLib
+import subprocess, threading, os
+from pathlib import Path
+
+CSS = b"""
+* { font-family: 'Cantarell', 'Noto Sans', sans-serif; }
+window { background-color: #05081c; }
+
+.header { background: linear-gradient(135deg, #080d20, #0a1228); border-bottom: 2px solid #1a2a5e; padding: 14px 20px; }
+.title   { color: #ffffff; font-size: 20px; font-weight: bold; letter-spacing: 1px; }
+.title-accent { color: #3d78d8; font-size: 20px; font-weight: bold; }
+.subtitle { color: #7b2ff7; font-size: 9px; font-weight: bold; letter-spacing: 3px; }
+
+.btn-scan {
+    background: linear-gradient(135deg, #3d78d8, #2a5ab8);
+    color: white; border-radius: 8px; padding: 8px 18px;
+    font-size: 12px; font-weight: bold; border: none;
+    box-shadow: 0 2px 10px rgba(61,120,216,0.4);
+}
+.btn-scan:hover { background: linear-gradient(135deg, #4d88e8, #3d6ed0); }
+
+.section-title { color: #ffffff; font-size: 13px; font-weight: bold; letter-spacing: 0.5px; }
+
+.hw-card {
+    background: linear-gradient(145deg, #0d1535, #080e24);
+    border-radius: 14px; border: 1px solid #1a2850;
+    padding: 0;
+}
+.hw-card:hover { border-color: rgba(61,120,216,0.4); }
+
+.drv-row {
+    background: rgba(10,16,40,0.6);
+    border-radius: 8px; border: 1px solid #111e40;
+    padding: 10px 14px;
+}
+
+.label-white  { color: #e8f0ff; font-size: 13px; }
+.label-blue   { color: #3d78d8; font-size: 11px; }
+.label-gray   { color: #5060a0; font-size: 11px; }
+.label-green  { color: #00cc66; font-size: 11px; font-weight: bold; }
+.label-yellow { color: #ffcc00; font-size: 11px; font-weight: bold; }
+.label-red    { color: #ff4444; font-size: 11px; }
+.label-orange { color: #ff8830; font-size: 11px; font-weight: bold; }
+
+.badge-rec  { background: #3d78d8; color: white; border-radius: 4px; padding: 2px 8px; font-size: 9px; font-weight: bold; letter-spacing: 1px; }
+.badge-ok   { background: #00aa44; color: white; border-radius: 4px; padding: 2px 8px; font-size: 9px; font-weight: bold; }
+.badge-prop { background: #7b2ff7; color: white; border-radius: 4px; padding: 2px 8px; font-size: 9px; font-weight: bold; }
+.badge-free { background: #1a2850; color: #7090c0; border-radius: 4px; padding: 2px 8px; font-size: 9px; }
+
+.btn-install {
+    background: linear-gradient(135deg, #3d78d8, #2a5ab8);
+    color: white; border-radius: 8px; padding: 7px 18px;
+    font-size: 12px; font-weight: bold; border: none; min-width: 90px;
+    box-shadow: 0 2px 8px rgba(61,120,216,0.35);
+}
+.btn-install:hover { background: linear-gradient(135deg, #4d88e8, #3d6ed0); }
+.btn-remove {
+    background: linear-gradient(135deg, #7b2ff7, #5a1fd0);
+    color: white; border-radius: 8px; padding: 7px 18px;
+    font-size: 12px; font-weight: bold; border: none; min-width: 90px;
+}
+.btn-remove:hover { background: linear-gradient(135deg, #9040ff, #7030e0); }
+.btn-installed {
+    background: rgba(0,180,80,0.15); color: #00cc66;
+    border-radius: 8px; padding: 7px 18px;
+    font-size: 12px; font-weight: bold;
+    border: 1px solid rgba(0,180,80,0.3); min-width: 90px;
+}
+
+.status-bar { background: linear-gradient(90deg, #080d1e, #060a18); border-top: 1px solid #1a2850; padding: 8px 20px; }
+.status-text  { color: #5060a0; font-size: 11px; }
+.status-ok    { color: #00cc66; font-size: 11px; font-weight: bold; }
+.status-err   { color: #ff4466; font-size: 11px; font-weight: bold; }
+.status-info  { color: #3d78d8; font-size: 11px; font-weight: bold; }
+.status-warn  { color: #ff8830; font-size: 11px; font-weight: bold; }
+
+.progress trough  { background: #0d1530; border-radius: 3px; min-height: 5px; }
+.progress progress{ background: linear-gradient(90deg, #3d78d8, #7b2ff7); border-radius: 3px; }
+
+.info-banner {
+    background: linear-gradient(135deg, #08102a, #0d1535);
+    border-radius: 12px; border: 1px solid #1a2850;
+    padding: 14px 18px;
+}
+.reboot-banner {
+    background: linear-gradient(135deg, #1a0800, #240e00);
+    border-radius: 12px; border: 1px solid rgba(255,140,0,0.3);
+    padding: 12px 18px;
+}
+
+scrollbar { background: transparent; min-width: 5px; }
+scrollbar slider { background: rgba(61,120,216,0.2); border-radius: 3px; min-width: 4px; }
+scrollbar slider:hover { background: rgba(61,120,216,0.4); }
+"""
+
+def run(cmd):
+    return subprocess.run(cmd, shell=True, capture_output=True, text=True)
+
+def is_installed(pkg):
+    return bool(run(f"dpkg -l {pkg} 2>/dev/null | grep '^ii'").stdout.strip())
+
+def get_pkg_version(pkg):
+    r = run(f"dpkg -l {pkg} 2>/dev/null | grep '^ii'")
+    if r.stdout.strip():
+        p = r.stdout.strip().split()
+        return p[2] if len(p) >= 3 else ''
+    return ''
+
+ALT_PKGS = {
+    # Apenas equivalências reais e intencionais devem ficar aqui.
+    # Pacotes diferentes não podem ser tratados como "instalados"
+    # apenas porque fazem parte da mesma pilha gráfica/áudio.
+    'linux-firmware': ['linux-firmware'],
+    'bluez': ['bluez'],
+}
+
+KMOD_MAP = {
+    'xserver-xorg-video-nouveau':'nouveau',
+}
+
+def is_driver_present(pkg):
+    if is_installed(pkg): return True
+    kmod = KMOD_MAP.get(pkg)
+    if kmod:
+        if run(f"lsmod 2>/dev/null | grep '^{kmod} '").stdout.strip(): return True
+    for alt in ALT_PKGS.get(pkg, []):
+        if is_installed(alt): return True
+    return False
+
+def get_driver_version(pkg):
+    ver = get_pkg_version(pkg)
+    if ver: return ver
+    kmod = KMOD_MAP.get(pkg)
+    if kmod:
+        r = run(f"modinfo {kmod} 2>/dev/null | grep '^version:'")
+        if r.stdout.strip():
+            return r.stdout.strip().split()[-1]
+    for alt in ALT_PKGS.get(pkg, []):
+        ver = get_pkg_version(alt)
+        if ver: return f'{ver}'
+    return ''
+
+def get_active_gpu_driver():
+    """Detecta o driver de GPU ativo no momento."""
+    # Tenta glxinfo
+    r = run("glxinfo 2>/dev/null | grep 'OpenGL renderer'")
+    if r.stdout.strip():
+        return r.stdout.strip().split(':', 1)[-1].strip()
+    # Tenta lsmod
+    for mod in ['amdgpu', 'nvidia', 'i915', 'radeon', 'nouveau']:
+        r = run(f"lsmod 2>/dev/null | grep '^{mod}'")
+        if r.stdout.strip():
+            return mod
+    return ''
+
+def get_kernel_version():
+    r = run("uname -r")
+    return r.stdout.strip()
+
+def get_gpu_info():
+    """Info extra da GPU via lspci -v."""
+    r = run("lspci -v 2>/dev/null | grep -A3 -iE 'vga|3d|display' | grep -i 'kernel driver'")
+    if r.stdout.strip():
+        return r.stdout.strip().split(':', 1)[-1].strip()
+    return ''
+
+def detect_hardware():
+    """Detecta hardware usando IDs PCI/USB reais."""
+    devices = []
+    seen = set()
+
+    # PCI: GPU, rede e áudio.
+    #
+    # Cada dispositivo é consultado isoladamente pelo endereço PCI.
+    # Isso impede que informações de driver de outro dispositivo
+    # sejam associadas ao hardware errado.
+    import re
+
+    pci_list = run("lspci -D -nn 2>/dev/null")
+
+    for first in pci_list.stdout.splitlines():
+        first = first.strip()
+
+        m_slot = re.match(
+            r'^([0-9A-Fa-f]{4}:'
+            r'[0-9A-Fa-f]{2}:'
+            r'[0-9A-Fa-f]{2}\.[0-7])\s+',
+            first
+        )
+
+        if not m_slot:
+            continue
+
+        slot = m_slot.group(1)
+        up = first.upper()
+
+        if (
+            'VGA COMPATIBLE CONTROLLER' in up
+            or '3D CONTROLLER' in up
+            or 'DISPLAY CONTROLLER' in up
+        ):
+            dtype = 'GPU'
+            icon = 'video-display-symbolic'
+
+        elif (
+            'NETWORK CONTROLLER' in up
+            or 'WIRELESS' in up
+            or '802.11' in up
+        ):
+            dtype = 'WiFi'
+            icon = 'network-wireless-symbolic'
+
+        elif 'ETHERNET CONTROLLER' in up:
+            dtype = 'Ethernet'
+            icon = 'network-wired-symbolic'
+
+        elif (
+            'AUDIO DEVICE' in up
+            or 'MULTIMEDIA AUDIO' in up
+            or 'SOUND' in up
+        ):
+            dtype = 'Áudio'
+            icon = 'audio-card-symbolic'
+
+        else:
+            continue
+
+        ids = re.findall(
+            r'\[([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4})\]',
+            first
+        )
+
+        if not ids:
+            continue
+
+        vendor_id, device_id = ids[-1]
+        vendor_id = vendor_id.lower()
+        device_id = device_id.lower()
+
+        # Consulta SOMENTE este endereço PCI.
+        detail = run(
+            f"lspci -D -nnk -s {slot} 2>/dev/null"
+        )
+
+        driver = ''
+        modules = ''
+
+        for line in detail.stdout.splitlines():
+            line = line.strip()
+            low = line.lower()
+
+            if low.startswith('kernel driver in use:'):
+                driver = line.split(':', 1)[1].strip()
+
+            elif low.startswith('kernel modules:'):
+                modules = line.split(':', 1)[1].strip()
+
+        vendors = {
+            '10de': 'NVIDIA',
+            '1002': 'AMD',
+            '8086': 'Intel',
+            '14e4': 'Broadcom',
+            '10ec': 'Realtek',
+            '168c': 'Atheros',
+            '17cb': 'Qualcomm',
+            '14c3': 'MediaTek',
+        }
+
+        vendor = vendors.get(vendor_id, 'Generic')
+
+        name = re.sub(
+            r'^[0-9A-Fa-f]{4}:'
+            r'[0-9A-Fa-f]{2}:'
+            r'[0-9A-Fa-f]{2}\.[0-7]\s+'
+            r'[^:]+:\s*',
+            '',
+            first
+        ).strip()
+
+        key = ('pci', vendor_id, device_id, dtype)
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        # Modalias real exposto pelo kernel.
+        sysfs_modalias = Path(
+            f"/sys/bus/pci/devices/{slot}/modalias"
+        )
+
+        try:
+            modalias = sysfs_modalias.read_text().strip()
+        except Exception:
+            modalias = (
+                f"pci:v0000{vendor_id.upper()}"
+                f"d0000{device_id.upper()}"
+            )
+
+        devices.append({
+            'type': dtype,
+            'vendor': vendor,
+            'name': name,
+            'bus': 'pci',
+            'address': slot,
+            'vendor_id': vendor_id,
+            'device_id': device_id,
+            'modalias': modalias,
+            'driver': driver,
+            'modules': modules,
+            'icon': icon,
+        })
+
+    # USB: Bluetooth e outros dispositivos que explicitamente
+    # se identificam como Bluetooth.
+    usb = run("lsusb 2>/dev/null")
+
+    for line in usb.stdout.splitlines():
+        up = line.upper()
+
+        if 'BLUETOOTH' not in up:
+            continue
+
+        import re
+        m = re.search(
+            r'ID\s+([0-9A-Fa-f]{4}):([0-9A-Fa-f]{4})',
+            line
+        )
+        if not m:
+            continue
+
+        vendor_id = m.group(1).lower()
+        device_id = m.group(2).lower()
+
+        key = ('usb', vendor_id, device_id, 'Bluetooth')
+        if key in seen:
+            continue
+        seen.add(key)
+
+        name = line.split('ID ', 1)[-1]
+        if ' ' in name:
+            name = name.split(' ', 1)[1].strip()
+
+        # Descobre o driver realmente associado às interfaces
+        # deste dispositivo Bluetooth USB através do sysfs.
+        usb_drivers = set()
+
+        try:
+            usb_root = Path('/sys/bus/usb/devices')
+
+            for usb_dev in usb_root.iterdir():
+                vid_file = usb_dev / 'idVendor'
+                pid_file = usb_dev / 'idProduct'
+
+                if not vid_file.exists() or not pid_file.exists():
+                    continue
+
+                try:
+                    sys_vid = vid_file.read_text().strip().lower()
+                    sys_pid = pid_file.read_text().strip().lower()
+                except OSError:
+                    continue
+
+                if sys_vid != vendor_id or sys_pid != device_id:
+                    continue
+
+                # O nó USB pai normalmente usa o driver genérico
+                # "usb". O driver Bluetooth está nas interfaces
+                # filhas, por exemplo 3-10:1.0 -> btusb.
+                prefix = usb_dev.name + ':'
+
+                for interface in usb_root.glob(prefix + '*'):
+                    driver_link = interface / 'driver'
+
+                    if not driver_link.exists():
+                        continue
+
+                    try:
+                        drv = driver_link.resolve().name
+                    except OSError:
+                        continue
+
+                    if drv and drv != 'usb':
+                        usb_drivers.add(drv)
+
+        except OSError:
+            pass
+
+        # btmtk é o suporte específico MediaTek utilizado junto
+        # ao btusb. Só o registramos para hardware MediaTek
+        # identificado e quando o módulo está realmente carregado.
+        name_upper = name.upper()
+
+        if (
+            'btusb' in usb_drivers
+            and 'MEDIATEK' in name_upper
+            and Path('/sys/module/btmtk').exists()
+        ):
+            usb_drivers.add('btmtk')
+
+        # Driver principal da interface.
+        if 'btusb' in usb_drivers:
+            usb_driver = 'btusb'
+        elif usb_drivers:
+            usb_driver = sorted(usb_drivers)[0]
+        else:
+            usb_driver = ''
+
+        usb_modules = ', '.join(
+            sorted(
+                usb_drivers,
+                key=lambda item: (
+                    item != usb_driver,
+                    item
+                )
+            )
+        )
+
+        devices.append({
+            'type': 'Bluetooth',
+            'vendor': 'USB',
+            'name': name,
+            'bus': 'usb',
+            'vendor_id': vendor_id,
+            'device_id': device_id,
+            'modalias': (
+                f"usb:v{vendor_id.upper()}"
+                f"p{device_id.upper()}"
+            ),
+            'driver': usb_driver,
+            'modules': usb_modules,
+            'icon': 'bluetooth-symbolic',
+        })
+
+    return devices
+
+def _nvidia_package_metadata(pkg):
+    """Retorna os metadados da versão candidata do pacote NVIDIA."""
+    import re
+
+    if not re.fullmatch(r'nvidia-driver-[0-9]+', pkg):
+        return {}
+
+    # apt-cache policy é traduzido conforme o locale.
+    # madison evita depender de "Candidate"/"Candidato".
+    madison = run(f"apt-cache madison {pkg} 2>/dev/null")
+
+    versions = []
+
+    for line in madison.stdout.splitlines():
+        parts = line.split('|')
+
+        if len(parts) < 2:
+            continue
+
+        version = parts[1].strip()
+
+        if version and version not in versions:
+            versions.append(version)
+
+    if not versions:
+        return {}
+
+    # A primeira versão retornada pelo APT é a versão de maior
+    # prioridade disponível nos repositórios configurados.
+    candidate = versions[0]
+
+    show = run(f"apt-cache show {pkg} 2>/dev/null")
+
+    if show.returncode != 0 or not show.stdout.strip():
+        return {}
+
+    records = re.split(r'\n\s*\n', show.stdout)
+
+    for record in records:
+        fields = {}
+        current = None
+
+        for line in record.splitlines():
+            if line.startswith((' ', '\t')) and current:
+                fields[current] += ' ' + line.strip()
+                continue
+
+            if ':' not in line:
+                continue
+
+            key, value = line.split(':', 1)
+            current = key.strip()
+            fields[current] = value.strip()
+
+        if (
+            fields.get('Package') == pkg
+            and fields.get('Version') == candidate
+        ):
+            fields['_candidate'] = candidate
+            return fields
+
+    return {}
+
+
+def _nvidia_is_transitional(pkg, metadata):
+    """Impede que pacotes que apenas redirecionam para outra série
+    apareçam como drivers independentes."""
+    import re
+
+    description = (
+        metadata.get('Description', '') + ' ' +
+        metadata.get('Description-en', '')
+    ).lower()
+
+    if 'transitional' in description:
+        return True
+
+    depends = metadata.get('Depends', '')
+
+    own = re.fullmatch(r'nvidia-driver-([0-9]+)', pkg)
+    if not own:
+        return True
+
+    own_series = own.group(1)
+
+    for target in re.findall(
+        r'\bnvidia-driver-([0-9]+)\b',
+        depends
+    ):
+        if target != own_series:
+            return True
+
+    return False
+
+
+def _nvidia_modalias_matches(device, metadata):
+    """Compara o modalias PCI real da GPU com os padrões do pacote."""
+    import fnmatch
+    import re
+
+    actual = device.get('modalias', '').strip()
+
+    if not actual:
+        return False
+
+    aliases_field = metadata.get('Modaliases', '').strip()
+
+    if not aliases_field:
+        return False
+
+    # Campo típico:
+    # nvidia(pci:v000010DEd000028A1sv*sd*bc03sc*i*, ...)
+    m = re.match(
+        r'^[^(]+\((.*)\)\s*$',
+        aliases_field,
+        re.S
+    )
+
+    if m:
+        aliases_field = m.group(1)
+
+    aliases = [
+        item.strip()
+        for item in aliases_field.split(',')
+        if item.strip()
+    ]
+
+    actual_upper = actual.upper()
+
+    for alias in aliases:
+        if fnmatch.fnmatchcase(
+            actual_upper,
+            alias.upper()
+        ):
+            return True
+
+    return False
+
+
+def get_compatible_nvidia_drivers(device):
+    """Retorna somente séries NVIDIA compatíveis com a GPU."""
+    import re
+
+    search = run(
+        "apt-cache search nvidia-driver 2>/dev/null"
+    )
+
+    packages = set()
+
+    for line in search.stdout.splitlines():
+        if ' - ' not in line:
+            continue
+
+        pkg = line.split(' - ', 1)[0].strip()
+
+        # Somente série desktop padrão:
+        # nvidia-driver-580
+        # e não 580-open / 580-server etc.
+        if re.fullmatch(r'nvidia-driver-[0-9]+', pkg):
+            packages.add(pkg)
+
+    compatible = []
+
+    for pkg in packages:
+        metadata = _nvidia_package_metadata(pkg)
+
+        if not metadata:
+            continue
+
+        if _nvidia_is_transitional(pkg, metadata):
+            continue
+
+        if not _nvidia_modalias_matches(device, metadata):
+            continue
+
+        series = int(pkg.rsplit('-', 1)[1])
+
+        compatible.append((series, pkg))
+
+    compatible.sort(reverse=True)
+
+    return [pkg for _, pkg in compatible]
+
+
+
+def _split_modules(value):
+    """Normaliza a lista de módulos anunciados pelo hardware."""
+    if not value:
+        return []
+
+    import re
+
+    result = []
+
+    for item in re.split(r'[\s,]+', value):
+        item = item.strip()
+
+        if item and item not in result:
+            result.append(item)
+
+    return result
+
+
+def _module_info(module):
+    """Lê aliases, firmware e metadados reais de um módulo do kernel."""
+    if not module:
+        return {}
+
+    import re
+
+    r = run(f"modinfo {module} 2>/dev/null")
+
+    if r.returncode != 0 or not r.stdout.strip():
+        return {}
+
+    info = {
+        'module': module,
+        'aliases': [],
+        'firmware': [],
+        'version': '',
+        'filename': '',
+    }
+
+    for line in r.stdout.splitlines():
+        if ':' not in line:
+            continue
+
+        key, value = line.split(':', 1)
+        key = key.strip().lower()
+        value = value.strip()
+
+        if key == 'alias' and value:
+            info['aliases'].append(value)
+
+        elif key == 'firmware' and value:
+            info['firmware'].append(value)
+
+        elif key == 'version' and value:
+            info['version'] = value
+
+        elif key == 'filename' and value:
+            info['filename'] = value
+
+    # Remove duplicatas preservando ordem.
+    info['aliases'] = list(dict.fromkeys(info['aliases']))
+    info['firmware'] = list(dict.fromkeys(info['firmware']))
+
+    return info
+
+
+def _module_matches_device(module, device):
+    """Confirma compatibilidade módulo ↔ modalias do hardware."""
+    import fnmatch
+
+    actual = (device.get('modalias') or '').strip()
+
+    if not actual:
+        return False
+
+    info = _module_info(module)
+
+    for alias in info.get('aliases', []):
+        if fnmatch.fnmatchcase(
+            actual.upper(),
+            alias.upper()
+        ):
+            return True
+
+    return False
+
+
+
+def _kernel_resolve_alias(device):
+    """
+    Pergunta diretamente ao banco de módulos do kernel quais módulos
+    declaram suporte ao modalias real deste hardware.
+    """
+    import subprocess
+
+    modalias = (device.get('modalias') or '').strip()
+
+    if not modalias:
+        return []
+
+    result = subprocess.run(
+        ['modprobe', '--resolve-alias', modalias],
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        return []
+
+    modules = []
+
+    for line in result.stdout.splitlines():
+        module = line.strip()
+
+        if module and module not in modules:
+            modules.append(module)
+
+    return modules
+
+
+def _matching_kernel_modules(device):
+    """
+    Descobre módulos compatíveis usando três fontes:
+
+    1. driver realmente ativo no sysfs/lspci;
+    2. modprobe --resolve-alias do kernel atual;
+    3. módulos anunciados pelo próprio dispositivo/lspci.
+
+    O driver ativo possui a maior força porque comprova associação
+    real no sistema em execução.
+    """
+    active = (device.get('driver') or '').strip()
+
+    candidates = []
+
+    # Primeiro: módulos que o próprio kernel resolve para o modalias.
+    for module in _kernel_resolve_alias(device):
+        if module not in candidates:
+            candidates.append(module)
+
+    # Depois: módulos anunciados pelo lspci/sysfs.
+    for module in _split_modules(device.get('modules', '')):
+        if module not in candidates:
+            candidates.append(module)
+
+    matches = []
+
+    for module in candidates:
+        if _module_matches_device(module, device):
+            matches.append(module)
+
+    # Driver realmente associado ganha prioridade absoluta.
+    # Isto também cobre dispositivos cuja interface não possui
+    # modalias suficientemente completo para resolve-alias.
+    if active:
+        if active in matches:
+            matches.remove(active)
+
+        matches.insert(0, active)
+
+    return matches
+
+
+
+def _firmware_exists(pattern):
+    """
+    Verifica firmware em /usr/lib/firmware e /lib/firmware.
+    Aceita firmware comprimido (.zst, .xz, .gz).
+    """
+    from pathlib import Path
+    import glob
+
+    if not pattern:
+        return False
+
+    pattern = pattern.lstrip('/')
+
+    roots = (
+        Path('/usr/lib/firmware'),
+        Path('/lib/firmware'),
+    )
+
+    suffixes = ('', '.zst', '.xz', '.gz')
+
+    for root in roots:
+        for suffix in suffixes:
+            candidate = root / (pattern + suffix)
+
+            # Alguns nomes de firmware contêm curingas.
+            if any(c in str(candidate) for c in '*?['):
+                if glob.glob(str(candidate)):
+                    return True
+            elif candidate.exists():
+                return True
+
+    return False
+
+
+
+def _runtime_firmware_failures(device):
+    """
+    Procura falhas REAIS de carregamento de firmware registradas
+    pelo kernel no boot atual.
+
+    modinfo lista todos os firmwares que um módulo pode usar em
+    diferentes gerações de hardware; isso não significa que todos
+    sejam necessários para este dispositivo.
+    """
+    import re
+
+    active = (device.get('driver') or '').strip().lower()
+    address = (device.get('address') or '').strip().lower()
+
+    log = run(
+        "journalctl -k -b --no-pager -o cat 2>/dev/null"
+    )
+
+    if not log.stdout.strip():
+        log = run("dmesg 2>/dev/null")
+
+    failures = []
+
+    failure_patterns = (
+        'failed to load',
+        'direct firmware load for',
+        'firmware: failed',
+        'firmware load failed',
+        'failed to request firmware',
+    )
+
+    for line in log.stdout.splitlines():
+        low = line.lower()
+
+        if not any(pattern in low for pattern in failure_patterns):
+            continue
+
+        # Só relaciona a falha ao dispositivo quando há evidência
+        # no próprio log: endereço PCI ou nome do driver ativo.
+        related = False
+
+        if address and address in low:
+            related = True
+
+        if active and re.search(
+            r'(^|[^a-z0-9_])' + re.escape(active) + r'([^a-z0-9_]|$)',
+            low
+        ):
+            related = True
+
+        if not related:
+            continue
+
+        firmware = ''
+
+        patterns = (
+            r'direct firmware load for\s+(\S+)\s+failed',
+            r'failed to load\s+(\S+)',
+            r'failed to request firmware\s+(\S+)',
+        )
+
+        for pattern in patterns:
+            m = re.search(pattern, line, re.I)
+
+            if m:
+                firmware = m.group(1).strip(' :;,.')
+                break
+
+        item = {
+            'firmware': firmware,
+            'message': line.strip(),
+        }
+
+        if item not in failures:
+            failures.append(item)
+
+    return failures
+
+
+
+def analyze_device_health(device):
+    """
+    Analisa saúde do dispositivo usando evidências do kernel.
+
+    Eventos operacionais normais são separados de falhas.
+    Nenhum evento isolado é usado para afirmar defeito físico.
+    """
+    import re
+
+    active = (device.get('driver') or '').strip().lower()
+    address = (device.get('address') or '').strip().lower()
+
+    result = run(
+        "journalctl -k -b --no-pager -o cat 2>/dev/null"
+    )
+
+    if not result.stdout.strip():
+        result = run("dmesg 2>/dev/null")
+
+    patterns = {
+        'fatal': (
+            'fatal error',
+            'uncorrectable fatal',
+            'fallen off the bus',
+        ),
+
+        'error': (
+            'uncorrectable',
+            'i/o error',
+            'io error',
+            'failed to load firmware',
+            'firmware load failed',
+            'failed to request firmware',
+            'device not ready',
+            'device failed',
+            'tx timeout',
+            'transmit timeout',
+        ),
+
+        'reset': (
+            'gpu reset',
+            'device reset',
+            'resetting',
+            'reset failed',
+            'controller reset',
+        ),
+
+        'timeout': (
+            'timeout',
+            'timed out',
+        ),
+
+        'pcie': (
+            'aer:',
+            'pcie bus error',
+            'bad tlp',
+            'bad dllp',
+            'receiver error',
+        ),
+
+        # Estados que podem ser perfeitamente normais.
+        'info': (
+            'link is down',
+            'link down',
+            'disconnected',
+        ),
+    }
+
+    events = []
+
+    for line in result.stdout.splitlines():
+        low = line.lower()
+
+        related = False
+
+        if address and address in low:
+            related = True
+
+        if active and re.search(
+            r'(^|[^a-z0-9_])' +
+            re.escape(active) +
+            r'([^a-z0-9_]|$)',
+            low
+        ):
+            related = True
+
+        if not related:
+            continue
+
+        for category, words in patterns.items():
+            if any(word in low for word in words):
+
+                item = {
+                    'category': category,
+                    'message': line.strip(),
+                }
+
+                if item not in events:
+                    events.append(item)
+
+                break
+
+    counts = {}
+
+    for event in events:
+        category = event['category']
+        counts[category] = counts.get(category, 0) + 1
+
+    fatal = counts.get('fatal', 0)
+    errors = counts.get('error', 0)
+    resets = counts.get('reset', 0)
+    timeouts = counts.get('timeout', 0)
+    pcie = counts.get('pcie', 0)
+
+    technical = errors + resets + timeouts + pcie
+
+    if fatal:
+        state = 'error'
+
+    elif errors >= 3 or resets >= 3 or pcie >= 3:
+        state = 'error'
+
+    elif technical:
+        state = 'warning'
+
+    else:
+        state = 'healthy'
+
+    # Pesquisa online somente para evidência técnica,
+    # nunca por um simples Link Down/Disconnected.
+    online_lookup = state in ('warning', 'error')
+
+    return {
+        'state': state,
+        'events': events,
+        'counts': counts,
+        'online_lookup': online_lookup,
+    }
+
+
+
+def analyze_device_support(device):
+    """
+    Núcleo genérico do StackOS Hardware Resolver.
+
+    A compatibilidade vem de modalias/modinfo e do driver realmente
+    associado pelo kernel.
+
+    A ausência de firmware NÃO é inferida apenas pelo catálogo
+    'firmware:' do modinfo. Somente falhas observadas no kernel são
+    tratadas como problema real.
+    """
+    active = (device.get('driver') or '').strip()
+    modules = _matching_kernel_modules(device)
+
+    module_data = []
+    firmware_catalog = []
+
+    for module in modules:
+        info = _module_info(module)
+
+        firmware_info = []
+
+        for firmware in info.get('firmware', []):
+            present = _firmware_exists(firmware)
+
+            firmware_info.append({
+                'name': firmware,
+                'present': present,
+            })
+
+            if firmware not in firmware_catalog:
+                firmware_catalog.append(firmware)
+
+        module_data.append({
+            'name': module,
+            'active': module == active,
+            'version': info.get('version', ''),
+            'filename': info.get('filename', ''),
+            'firmware': firmware_info,
+        })
+
+    runtime_failures = _runtime_firmware_failures(device)
+
+    firmware_missing = []
+
+    for failure in runtime_failures:
+        firmware = failure.get('firmware', '').strip()
+
+        if firmware and firmware not in firmware_missing:
+            firmware_missing.append(firmware)
+
+    if active:
+        state = 'active'
+    elif modules:
+        state = 'compatible'
+    else:
+        state = 'unsupported'
+
+    return {
+        'state': state,
+        'active_driver': active,
+        'compatible_modules': modules,
+        'modules': module_data,
+
+        # Catálogo informativo do módulo, não lista de requisitos
+        # obrigatórios deste hardware.
+        'firmware_required': firmware_catalog,
+
+        # Somente problemas observados em runtime.
+        'firmware_missing': firmware_missing,
+        'firmware_failures': runtime_failures,
+        'needs_firmware': bool(runtime_failures),
+    }
+
+
+
+def get_drivers(device):
+    drivers = []
+    vendor = device['vendor']
+    dtype  = device['type']
+
+    if vendor == 'NVIDIA' and dtype == 'GPU':
+        versions = get_compatible_nvidia_drivers(device)
+
+        for i, pkg in enumerate(versions):
+            ver = pkg.replace('nvidia-driver-', '')
+
+            drivers.append({
+                'pkg': pkg,
+                'name': f'NVIDIA Driver {ver}',
+                'desc': _(
+                    "Driver proprietário NVIDIA versão {version}."
+                ).format(version=ver),
+                'tag': 'rec' if i == 0 else 'ok',
+                'type': 'prop'
+            })
+
+        # Nouveau continua sempre disponível como opção livre.
+        drivers.append({
+            'pkg': 'xserver-xorg-video-nouveau',
+            'name': 'Nouveau',
+            'desc': _(
+                "Driver open source para NVIDIA. Menor desempenho."
+            ),
+            'tag': 'free',
+            'type': 'free'
+        })
+
+    elif vendor == 'AMD' and dtype == 'GPU':
+        active_driver = (
+            device.get('driver') or ''
+        ).strip().lower()
+
+        if active_driver == 'amdgpu':
+            # GPUs AMD modernas usam o módulo DRM amdgpu do kernel
+            # com Mesa/RADV. O DDX xserver-xorg-video-amdgpu não
+            # é requisito para o caminho gráfico moderno.
+            drivers.append({
+                'pkg': 'linux-firmware',
+                'name': 'AMD GPU Firmware',
+                'desc': _(
+                    "Firmware utilizado pelo driver AMDGPU do kernel."
+                ),
+                'tag': 'rec',
+                'type': 'free'
+            })
+
+        elif active_driver == 'radeon':
+            # GPUs Radeon antigas usam o módulo radeon do kernel.
+            # Não instalamos automaticamente um DDX Xorg apenas
+            # porque o módulo radeon está ativo.
+            drivers.append({
+                'pkg': 'linux-firmware',
+                'name': 'Radeon Firmware',
+                'desc': _(
+                    "Firmware utilizado pelo driver Radeon do kernel."
+                ),
+                'tag': 'rec',
+                'type': 'free'
+            })
+
+        else:
+            # GPU AMD detectada sem driver conhecido associado.
+            # Não recomendamos cegamente amdgpu ou radeon.
+            pass
+
+    elif vendor == 'Intel' and dtype == 'GPU':
+        active_driver = (device.get('driver') or '').strip().lower()
+
+        # Intel moderna usa o driver DRM do kernel (i915/xe)
+        # juntamente com Mesa. Não recomendamos o antigo
+        # xserver-xorg-video-intel para esse caminho.
+        if active_driver in ('i915', 'xe'):
+            drivers.append({
+                'pkg': 'intel-media-va-driver',
+                'name': 'Intel Media Driver',
+                'desc': _(
+                    "Aceleração de vídeo por hardware para GPUs Intel modernas."
+                ),
+                'tag': 'rec',
+                'type': 'free'
+            })
+
+        else:
+            # Hardware Intel não identificado como i915/xe:
+            # não instala automaticamente um DDX legado.
+            # O driver correto será determinado pelo kernel.
+            pass
+
+    elif dtype == 'WiFi':
+        active_driver = (
+            device.get('driver') or ''
+        ).strip().lower()
+
+        # Se o kernel já associou um driver funcional ao dispositivo,
+        # não apresentamos linux-firmware como se fosse um driver
+        # adicional a instalar. O firmware-base da distribuição é
+        # tratado como parte do sistema.
+        #
+        # Drivers/alternativas realmente específicas do fabricante
+        # continuam sendo avaliadas abaixo.
+        if vendor == 'Broadcom':
+            drivers += [
+                {'pkg': 'broadcom-sta-dkms', 'name': 'Broadcom STA (wl)',
+                 'desc': _("Driver proprietário Broadcom para hardware compatível."),
+                 'tag': 'ok', 'type': 'prop'},
+                {'pkg': 'firmware-b43-installer', 'name': 'Broadcom B43',
+                 'desc': _("Firmware para chips Broadcom BCM43xx compatíveis."),
+                 'tag': 'ok', 'type': 'free'},
+            ]
+
+        # Intel, Realtek, Qualcomm/Atheros e MediaTek usam firmware
+        # fornecido pela pilha linux-firmware da distribuição.
+        # Se o kernel já associou um driver ao dispositivo, não
+        # oferecemos pacotes de firmware inexistentes ou genéricos.
+        else:
+            pass
+
+    elif dtype == 'Áudio':
+        active_driver = (
+            device.get('driver') or ''
+        ).strip().lower()
+
+        # Intel Sound Open Firmware (SOF).
+        # O módulo do kernel é o driver; firmware-sof-signed
+        # fornece o firmware necessário para esse hardware.
+        if active_driver.startswith('sof-audio-'):
+            drivers.append({
+                'pkg': 'firmware-sof-signed',
+                'name': 'Intel SOF Firmware',
+                'desc': _(
+                    "Firmware para dispositivos de áudio Intel "
+                    "Sound Open Firmware (SOF)."
+                ),
+                'tag': 'rec',
+                'type': 'free'
+            })
+
+        # snd_hda_intel já faz parte do kernel.
+        # Não existe motivo para recomendar PulseAudio,
+        # PipeWire ou firmware ALSA genérico como driver.
+        elif active_driver == 'snd_hda_intel':
+            pass
+
+        # Outros drivers de áudio já associados pelo kernel
+        # também não recebem pacotes genéricos sem comprovação
+        # de que o hardware necessita deles.
+        else:
+            pass
+
+    elif dtype == 'Bluetooth':
+        active_driver = (
+            device.get('driver') or ''
+        ).strip().lower()
+
+        # BlueZ e o metapacote "bluetooth" são componentes
+        # de espaço de usuário, não drivers de hardware.
+        #
+        # Se o kernel já associou um driver Bluetooth, como
+        # btusb, não apresentamos pacotes genéricos como se
+        # fossem drivers adicionais.
+        #
+        # Firmware específico só deve ser recomendado quando
+        # houver evidência de que realmente está ausente.
+        if active_driver:
+            pass
+        else:
+            pass
+
+    return drivers
+
+# ═══════════════════════════════════════════════════════════
+class StackOSDrivers(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id='com.stackos.drivers')
+        self.connect('activate', self.on_activate)
+        self.needs_reboot = False
+
+    def on_activate(self, app):
+        p = Gtk.CssProvider(); p.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), p, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.win = Gtk.ApplicationWindow(application=app)
+        self.win.set_title(_("StackOS Drivers"))
+        self.win.set_default_size(820, 600)
+        self._build_ui()
+        self.win.present()
+
+    def _build_ui(self):
+        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+
+        # Header
+        hdr = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=14)
+        hdr.add_css_class('header')
+        ic = Gtk.Image.new_from_icon_name('preferences-system-symbolic')
+        ic.set_pixel_size(36); hdr.append(ic)
+        tb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        tr = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        for txt, cls in [('Stack','title'),('OS','title-accent'),(' Drivers','title')]:
+            l = Gtk.Label(label=txt); l.add_css_class(cls); tr.append(l)
+        tb.append(tr)
+        sub = Gtk.Label(label=_("GERENCIADOR DE DRIVERS"))
+        sub.add_css_class('subtitle'); sub.set_halign(Gtk.Align.START); tb.append(sub)
+        hdr.append(tb)
+        sp2 = Gtk.Box(); sp2.set_hexpand(True); hdr.append(sp2)
+        # Info kernel + driver ativo
+        sys_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        sys_box.set_halign(Gtk.Align.END)
+        kl = Gtk.Label(label=_("Kernel: {kernel}").format(kernel=get_kernel_version()))
+        kl.add_css_class('label-gray'); sys_box.append(kl)
+        active = get_active_gpu_driver() or get_gpu_info()
+        if active:
+            al = Gtk.Label(label=_("Driver ativo: {driver}").format(driver=active[:40]))
+            al.add_css_class('label-green'); sys_box.append(al)
+        hdr.append(sys_box)
+        sp = Gtk.Box(); sp.set_hexpand(True); hdr.append(sp)
+        scan_btn = Gtk.Button(label=_("↻  Verificar Hardware"))
+        scan_btn.add_css_class('btn-scan')
+        scan_btn.connect('clicked', lambda _: self.scan())
+        hdr.append(scan_btn)
+        root.append(hdr)
+
+        # Status + progress
+        self.status_lbl = Gtk.Label(label=_("Detectando hardware..."))
+        self.status_lbl.add_css_class('status-info')
+        self.status_lbl.set_halign(Gtk.Align.START)
+        self.status_lbl.set_margin_start(20); self.status_lbl.set_margin_top(8)
+        self.status_lbl.set_margin_bottom(4); root.append(self.status_lbl)
+        self.progress = Gtk.ProgressBar()
+        self.progress.add_css_class('progress')
+        self.progress.set_margin_start(20); self.progress.set_margin_end(20)
+        self.progress.set_margin_bottom(8); self.progress.set_visible(False)
+        root.append(self.progress)
+
+        # Scroll + conteúdo
+        self.scroll = Gtk.ScrolledWindow()
+        self.scroll.set_vexpand(True)
+        self.scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        self.content.set_margin_top(10); self.content.set_margin_start(20)
+        self.content.set_margin_end(20); self.content.set_margin_bottom(20)
+        self.scroll.set_child(self.content)
+        root.append(self.scroll)
+
+        # Status bar
+        self.status_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+        self.status_bar.add_css_class('status-bar')
+        self.status_bar_lbl = Gtk.Label(label='')
+        self.status_bar_lbl.add_css_class('status-text')
+        self.status_bar_lbl.set_halign(Gtk.Align.START)
+        self.status_bar.append(self.status_bar_lbl)
+        root.append(self.status_bar)
+
+        self.win.set_child(root)
+        self.scan()
+
+    def _clear(self):
+        while c := self.content.get_first_child():
+            self.content.remove(c)
+
+    def _status(self, txt, kind='info'):
+        self.status_lbl.set_text(txt)
+        for c in ('status-info','status-ok','status-err','status-warn','status-text'):
+            self.status_lbl.remove_css_class(c)
+        self.status_lbl.add_css_class(f'status-{kind}')
+
+    def _bar(self, txt):
+        self.status_bar_lbl.set_text(txt)
+
+    # ── Scan ─────────────────────────────────────────────────
+    def scan(self):
+        self._clear()
+        self._status(_("Detectando hardware..."), 'info')
+        self.progress.set_visible(True)
+        def do():
+            GLib.idle_add(self.progress.pulse)
+            devices = detect_hardware()
+
+            results = []
+
+            for dev in devices:
+                support = analyze_device_support(dev)
+                health = analyze_device_health(dev)
+                drivers = get_drivers(dev)
+
+                results.append({
+                    'device': dev,
+                    'support': support,
+                    'health': health,
+                    'drivers': drivers,
+                })
+
+            GLib.idle_add(self._show_results, results)
+        threading.Thread(target=do, daemon=True).start()
+
+    def _show_results(self, results):
+        self._clear()
+        self.progress.set_visible(False)
+
+        # Banner de reinicialização pendente
+        if self.needs_reboot:
+            rb = Gtk.Box(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                spacing=12
+            )
+            rb.add_css_class('reboot-banner')
+            rb.set_margin_bottom(4)
+
+            ri = Gtk.Image.new_from_icon_name(
+                'system-restart-symbolic'
+            )
+            ri.set_pixel_size(24)
+            rb.append(ri)
+
+            rl = Gtk.Label(
+                label=_(
+                    "⚠  Driver instalado. Reinicie o sistema "
+                    "para aplicar as mudanças."
+                )
+            )
+            rl.add_css_class('status-warn')
+            rl.set_halign(Gtk.Align.START)
+            rl.set_hexpand(True)
+            rb.append(rl)
+
+            self.content.append(rb)
+
+        if not results:
+            e = Gtk.Label(
+                label=_("Nenhum dispositivo detectado.")
+            )
+            e.add_css_class('label-gray')
+            e.set_margin_top(60)
+            e.set_halign(Gtk.Align.CENTER)
+            self.content.append(e)
+
+            self._status(
+                _("Nenhum dispositivo encontrado."),
+                'warn'
+            )
+            return
+
+        active_total = 0
+        warning_total = 0
+        error_total = 0
+
+        for item in results:
+            dev = item['device']
+            support = item['support']
+            health = item['health']
+            drivers = item['drivers']
+
+            if support.get('active_driver'):
+                active_total += 1
+
+            if health.get('state') == 'warning':
+                warning_total += 1
+
+            elif health.get('state') == 'error':
+                error_total += 1
+
+            self.content.append(
+                self._mk_hw_card(
+                    dev,
+                    drivers,
+                    support,
+                    health
+                )
+            )
+
+        if error_total:
+            self._status(
+                _(
+                    "Hardware detectado: {devices} · "
+                    "Drivers ativos: {active} · "
+                    "Problemas: {errors}"
+                ).format(
+                    devices=len(results),
+                    active=active_total,
+                    errors=error_total,
+                ),
+                'err'
+            )
+
+        elif warning_total:
+            self._status(
+                _(
+                    "Hardware detectado: {devices} · "
+                    "Drivers ativos: {active} · "
+                    "Avisos: {warnings}"
+                ).format(
+                    devices=len(results),
+                    active=active_total,
+                    warnings=warning_total,
+                ),
+                'warn'
+            )
+
+        else:
+            self._status(
+                _(
+                    "✓ Hardware detectado: {devices} · "
+                    "Drivers ativos: {active}"
+                ).format(
+                    devices=len(results),
+                    active=active_total,
+                ),
+                'ok'
+            )
+
+        self._bar(
+            _(
+                "Hardware: {devices} dispositivos · "
+                "Instalações exigem autenticação administrativa"
+            ).format(
+                devices=len(results)
+            )
+        )
+
+    # ── Card de hardware ──────────────────────────────────────
+    def _mk_hw_card(
+        self,
+        dev,
+        drivers,
+        support,
+        health
+    ):
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=0
+        )
+        card.add_css_class('hw-card')
+
+        hdr = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=12
+        )
+        hdr.set_margin_top(14)
+        hdr.set_margin_start(16)
+        hdr.set_margin_end(16)
+        hdr.set_margin_bottom(10)
+
+        ic = Gtk.Image.new_from_icon_name(
+            dev.get(
+                'icon',
+                'preferences-system-symbolic'
+            )
+        )
+        ic.set_pixel_size(32)
+        hdr.append(ic)
+
+        info = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=3
+        )
+        info.set_hexpand(True)
+
+        name = Gtk.Label(
+            label=dev['name'][:80]
+        )
+        name.add_css_class('label-white')
+        name.set_halign(Gtk.Align.START)
+        info.append(name)
+
+        active_driver = (
+            support.get('active_driver') or ''
+        ).strip()
+
+        subtitle = (
+            f"{dev['type']}  ·  {dev['vendor']}"
+        )
+
+        if active_driver:
+            subtitle += _(
+                "  ·  Driver ativo: {driver}"
+            ).format(
+                driver=active_driver
+            )
+
+        sub = Gtk.Label(label=subtitle)
+        sub.add_css_class('label-gray')
+        sub.set_halign(Gtk.Align.START)
+        sub.set_wrap(True)
+        info.append(sub)
+
+        hdr.append(info)
+        card.append(hdr)
+
+        sep = Gtk.Separator()
+        card.append(sep)
+
+        drv_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=6
+        )
+        drv_box.set_margin_top(10)
+        drv_box.set_margin_start(14)
+        drv_box.set_margin_end(14)
+        drv_box.set_margin_bottom(14)
+
+        # ----------------------------------------------------
+        # Estado real do suporte
+        # ----------------------------------------------------
+
+        state = support.get('state', 'unsupported')
+        health_state = health.get('state', 'healthy')
+
+        if state == 'active':
+            supported = Gtk.Label(
+                label=_("✓ Driver do dispositivo ativo")
+            )
+            supported.add_css_class('status-ok')
+
+        elif state == 'compatible':
+            supported = Gtk.Label(
+                label=_(
+                    "Driver compatível encontrado, "
+                    "mas não está ativo."
+                )
+            )
+            supported.add_css_class('status-warn')
+
+        else:
+            supported = Gtk.Label(
+                label=_(
+                    "Nenhum driver compatível ativo foi encontrado."
+                )
+            )
+            supported.add_css_class('status-warn')
+
+        supported.set_halign(Gtk.Align.START)
+        supported.set_wrap(True)
+        drv_box.append(supported)
+
+        # ----------------------------------------------------
+        # Saúde
+        # ----------------------------------------------------
+
+        if health_state == 'healthy':
+            hl = Gtk.Label(
+                label=_("✓ Saúde do dispositivo: normal")
+            )
+            hl.add_css_class('status-ok')
+
+        elif health_state == 'warning':
+            hl = Gtk.Label(
+                label=_(
+                    "⚠ O sistema registrou um possível "
+                    "problema neste dispositivo."
+                )
+            )
+            hl.add_css_class('status-warn')
+
+        else:
+            hl = Gtk.Label(
+                label=_(
+                    "✗ O sistema registrou erros neste dispositivo."
+                )
+            )
+            hl.add_css_class('status-warn')
+
+        hl.set_halign(Gtk.Align.START)
+        hl.set_wrap(True)
+        drv_box.append(hl)
+
+        # ----------------------------------------------------
+        # Ethernet: Link Down é estado operacional, não falha.
+        # ----------------------------------------------------
+
+        info_events = [
+            event
+            for event in health.get('events', [])
+            if event.get('category') == 'info'
+        ]
+
+        ethernet_down = (
+            dev.get('type') == 'Ethernet'
+            and any(
+                'link is down' in
+                event.get('message', '').lower()
+                or
+                'link down' in
+                event.get('message', '').lower()
+                for event in info_events
+            )
+        )
+
+        if ethernet_down:
+            hint = Gtk.Label(
+                label=_(
+                    "Cabo de rede desconectado. "
+                    "Conecte um cabo para usar esta interface."
+                )
+            )
+            hint.add_css_class('label-gray')
+            hint.set_halign(Gtk.Align.START)
+            hint.set_wrap(True)
+            drv_box.append(hint)
+
+        # ----------------------------------------------------
+        # Firmware real
+        # ----------------------------------------------------
+
+        if support.get('needs_firmware'):
+            fw = Gtk.Label(
+                label=_(
+                    "⚠ Foi detectada uma falha real "
+                    "no carregamento de firmware."
+                )
+            )
+            fw.add_css_class('status-warn')
+            fw.set_halign(Gtk.Align.START)
+            fw.set_wrap(True)
+            drv_box.append(fw)
+
+        # ----------------------------------------------------
+        # Pacotes/alternativas
+        # ----------------------------------------------------
+
+        if drivers:
+            for d in drivers:
+                drv_box.append(
+                    self._mk_driver_row(d)
+                )
+
+        elif state == 'active':
+            no_extra = Gtk.Label(
+                label=_(
+                    "Nenhum driver adicional necessário."
+                )
+            )
+            no_extra.add_css_class('label-gray')
+            no_extra.set_halign(Gtk.Align.START)
+            drv_box.append(no_extra)
+
+        elif state == 'unsupported':
+            no_driver = Gtk.Label(
+                label=_(
+                    "Nenhum driver instalável foi encontrado "
+                    "nos repositórios atuais."
+                )
+            )
+            no_driver.add_css_class('label-gray')
+            no_driver.set_halign(Gtk.Align.START)
+            no_driver.set_wrap(True)
+            drv_box.append(no_driver)
+
+        # OnlineResolver será ligado depois.
+        if health.get('online_lookup'):
+            lookup = Gtk.Label(
+                label=_(
+                    "Este caso pode exigir verificação "
+                    "técnica online."
+                )
+            )
+            lookup.add_css_class('label-gray')
+            lookup.set_halign(Gtk.Align.START)
+            lookup.set_wrap(True)
+            drv_box.append(lookup)
+
+        card.append(drv_box)
+        return card
+
+    # ── Linha de driver ───────────────────────────────────────
+    def _mk_driver_row(self, drv):
+        row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        row.add_css_class('drv-row')
+
+        info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        info.set_hexpand(True)
+
+        # Nome + badges
+        nb = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        nl = Gtk.Label(label=drv['name'])
+        nl.add_css_class('label-white'); nl.set_halign(Gtk.Align.START); nb.append(nl)
+
+        tag = drv.get('tag','')
+        if tag == 'rec':
+            b = Gtk.Label(label=_("RECOMENDADO")); b.add_css_class('badge-rec'); nb.append(b)
+        elif tag == 'ok':
+            b = Gtk.Label(label=_("TESTADO")); b.add_css_class('badge-ok'); nb.append(b)
+        elif tag == 'free':
+            b = Gtk.Label(label=_("LIVRE")); b.add_css_class('badge-free'); nb.append(b)
+        if drv.get('type') == 'prop':
+            b2 = Gtk.Label(label=_("PROPRIETÁRIO")); b2.add_css_class('badge-prop'); nb.append(b2)
+        info.append(nb)
+
+        # Desc + versão instalada
+        desc_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        dl = Gtk.Label(label=drv.get('desc','')[:80])
+        dl.add_css_class('label-gray'); dl.set_halign(Gtk.Align.START)
+        dl.set_wrap(True); desc_row.append(dl)
+        ver = get_pkg_version(drv['pkg'])
+        if ver:
+            vl = Gtk.Label(label=f'v{ver}')
+            vl.add_css_class('label-green'); desc_row.append(vl)
+        info.append(desc_row)
+
+        # Pacote
+        pl = Gtk.Label(label=drv['pkg'])
+        pl.add_css_class('label-gray'); pl.set_halign(Gtk.Align.START)
+        info.append(pl)
+
+        row.append(info)
+
+        installed = is_driver_present(drv['pkg'])
+        ver = get_driver_version(drv['pkg'])
+        btn_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        btn_box.set_halign(Gtk.Align.END); btn_box.set_valign(Gtk.Align.CENTER)
+        if installed:
+            inst_btn = Gtk.Button(label=_("✓ Instalado"))
+            inst_btn.add_css_class('btn-installed'); inst_btn.set_sensitive(False)
+            btn_box.append(inst_btn)
+            if ver:
+                vl = Gtk.Label(label=_("versão {version}").format(version=ver))
+                vl.add_css_class('label-green'); vl.set_halign(Gtk.Align.CENTER)
+                btn_box.append(vl)
+            rem_btn = Gtk.Button(label=_("Remover"))
+            rem_btn.add_css_class('btn-remove')
+            rem_btn.connect('clicked', lambda _, p=drv['pkg']: self._remove(p))
+            btn_box.append(rem_btn)
+        else:
+            btn = Gtk.Button(label=_("Instalar"))
+            btn.add_css_class('btn-install')
+            btn.connect('clicked', lambda _, p=drv['pkg']: self._install(p))
+            btn_box.append(btn)
+        row.append(btn_box)
+        return row
+
+    # ── Instalar driver ───────────────────────────────────────
+    def _install(self, pkg):
+        self._status(f'Instalando {pkg}...', 'info')
+        self.progress.set_visible(True)
+        def do():
+            GLib.idle_add(self.progress.pulse)
+            r = run(f"pkexec apt-get install -y {pkg} 2>&1")
+            ok = r.returncode == 0
+            if ok:
+                self.needs_reboot = True
+                GLib.idle_add(self._status, f'✓ {pkg} instalado! Reinicie para aplicar.', 'ok')
+            else:
+                GLib.idle_add(self._status, f'✗ Falha ao instalar {pkg}.', 'err')
+            GLib.idle_add(self.progress.set_visible, False)
+            GLib.idle_add(self.scan)
+        threading.Thread(target=do, daemon=True).start()
+
+    # ── Remover driver ────────────────────────────────────────
+    def _remove(self, pkg):
+        self._status(f'Removendo {pkg}...', 'warn')
+        self.progress.set_visible(True)
+        def do():
+            GLib.idle_add(self.progress.pulse)
+            r = run(f"pkexec apt-get remove -y {pkg} 2>&1")
+            ok = r.returncode == 0
+            if ok:
+                self.needs_reboot = True
+                GLib.idle_add(self._status, f'✓ {pkg} removido! Reinicie para aplicar.', 'ok')
+            else:
+                GLib.idle_add(self._status, f'✗ Falha ao remover {pkg}.', 'err')
+            GLib.idle_add(self.progress.set_visible, False)
+            GLib.idle_add(self.scan)
+        threading.Thread(target=do, daemon=True).start()
+
+def _diagnostic_json():
+    """Interface estruturada para outros componentes StackOS."""
+    devices = detect_hardware()
+    result = []
+
+    for dev in devices:
+        try:
+            support = analyze_device_support(dev)
+        except Exception as e:
+            support = {
+                "state": "unknown",
+                "error": str(e),
+            }
+
+        try:
+            health = analyze_device_health(dev)
+        except Exception as e:
+            health = {
+                "state": "unknown",
+                "events": [],
+                "error": str(e),
+            }
+
+        result.append({
+            "device": dev,
+            "support": support,
+            "health": health,
+        })
+
+    payload = {
+        "schema": 1,
+        "devices": result,
+    }
+
+    print(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            default=str,
+        )
+    )
+
+
+if "--diagnose-json" in sys.argv:
+    _diagnostic_json()
+else:
+    app = StackOSDrivers()
+    app.run([])

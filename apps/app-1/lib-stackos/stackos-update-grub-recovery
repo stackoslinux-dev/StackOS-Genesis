@@ -1,0 +1,135 @@
+#!/bin/bash
+set -euo pipefail
+
+ROOT_DEV="$(findmnt -no SOURCE /)"
+ROOT_UUID="$(blkid -s UUID -o value "$ROOT_DEV")"
+ROOT_PARTUUID="$(blkid -s PARTUUID -o value "$ROOT_DEV")"
+
+RECOVERY_DEV="$(findfs LABEL=STACKOS_RECOVERY 2>/dev/null || true)"
+BACKUPS_DEV="$(findfs LABEL=STACKOS_BACKUPS 2>/dev/null || true)"
+
+[ -n "$ROOT_UUID" ] || exit 1
+[ -n "$ROOT_PARTUUID" ] || exit 1
+[ -n "$RECOVERY_DEV" ] || exit 1
+
+RECOVERY_UUID="$(
+    blkid -s UUID -o value "$RECOVERY_DEV"
+)"
+
+RMOUNT="/run/stackos-recovery"
+BMOUNT="/run/stackos-backups-grub"
+
+mkdir -p "$RMOUNT" "$BMOUNT"
+
+recovery_mounted=0
+backups_mounted=0
+
+if ! mountpoint -q "$RMOUNT"; then
+    mount "$RECOVERY_DEV" "$RMOUNT"
+    recovery_mounted=1
+else
+    mount -o remount,rw "$RMOUNT"
+fi
+
+if [ -n "$BACKUPS_DEV" ]; then
+    if mount -o ro "$BACKUPS_DEV" "$BMOUNT"; then
+        backups_mounted=1
+    fi
+fi
+
+mkdir -p "$RMOUNT/boot/grub"
+
+BASE="$RMOUNT/boot/grub/grub-base.cfg"
+CFG="$RMOUNT/boot/grub/grub.cfg"
+TMPBASE="$BASE.tmp"
+TMP="$CFG.tmp"
+
+cat > "$TMPBASE" <<EOF
+set default=0
+set timeout=5
+
+menuentry 'StackOS Genesis' {
+    search --no-floppy --fs-uuid --set=root $ROOT_UUID
+    linux /boot/vmlinuz root=UUID=$ROOT_UUID quiet splash plymouth.enable=1 loglevel=3 systemd.show_status=false rd.systemd.show_status=false udev.log_priority=3 vt.global_cursor_default=0
+    initrd /boot/initrd.img
+}
+
+submenu 'StackOS Recovery' {
+
+    submenu 'Restaurar de fábrica' {
+
+        menuentry 'Cancelar e iniciar StackOS' {
+            search --no-floppy --fs-uuid --set=root $ROOT_UUID
+            linux /boot/vmlinuz root=UUID=$ROOT_UUID quiet splash
+            initrd /boot/initrd.img
+        }
+
+        menuentry 'CONFIRMAR - apagar sistema e restaurar fábrica' {
+            search --no-floppy --fs-uuid --set=root $RECOVERY_UUID
+            linux /boot/vmlinuz-recovery root=UUID=$ROOT_UUID stackos.root-partuuid=$ROOT_PARTUUID stackos.factory-reset=1 stackos.confirm=yes ro
+            initrd /boot/initrd-recovery.img
+        }
+    }
+EOF
+
+cp "$TMPBASE" "$TMP"
+
+if [ "$backups_mounted" -eq 1 ] && \
+   [ -d "$BMOUNT/snapshots" ]; then
+
+    find "$BMOUNT/snapshots" \
+        -maxdepth 1 \
+        -type f \
+        -name 'snapshot-*.squashfs' \
+        -printf '%f\n' |
+    sort -r |
+    head -n 3 |
+    while read -r image
+    do
+        [ -f "$BMOUNT/snapshots/$image.sha256" ] ||
+            continue
+
+        [ -f "$BMOUNT/snapshots/$image.meta" ] ||
+            continue
+
+        grep -q '^status=valid$' \
+            "$BMOUNT/snapshots/$image.meta" ||
+            continue
+
+        stamp="${image#snapshot-}"
+        stamp="${stamp%.squashfs}"
+
+        cat >> "$TMP" <<EOF
+
+    menuentry 'Restaurar backup $stamp' {
+        search --no-floppy --fs-uuid --set=root $RECOVERY_UUID
+        linux /boot/vmlinuz-recovery root=UUID=$ROOT_UUID stackos.root-partuuid=$ROOT_PARTUUID stackos.snapshot=$image ro
+        initrd /boot/initrd-recovery.img
+    }
+EOF
+    done
+fi
+
+cat >> "$TMP" <<'EOF'
+}
+EOF
+
+mv "$TMPBASE" "$BASE"
+mv "$TMP" "$CFG"
+
+mkdir -p /boot/grub
+cp -a "$CFG" /boot/grub/grub.cfg
+
+sync
+
+if [ "$backups_mounted" -eq 1 ]; then
+    umount "$BMOUNT" 2>/dev/null || true
+fi
+
+if [ "$recovery_mounted" -eq 1 ]; then
+    umount "$RMOUNT" 2>/dev/null || true
+else
+    mount -o remount,ro "$RMOUNT" 2>/dev/null || true
+fi
+
+exit 0
