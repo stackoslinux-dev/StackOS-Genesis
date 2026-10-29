@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+export GSK_RENDERER=cairo
+exec sudo -n /usr/local/bin/stackos-installer "$@"

@@ -1,0 +1,10 @@
+[Unit]
+Description=Initialize GNOME Keyring session components
+PartOf=graphical-session.target
+Before=graphical-session.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/gnome-keyring-daemon --start --components=pkcs11,secrets
+RemainAfterExit=yes
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,35 @@
+window.bugreport {background:#f3f5f9;color:#17255c;font-family:'Inter','Noto Sans',sans-serif;font-size:14px;}
+.root {background:linear-gradient(125deg,#f2f4f8,#f3f4f9 65%,#f1f3f8);}
+.header {background:linear-gradient(115deg,#f1f4f8,#f3f4f9);border-bottom:1px solid #bdc9db;min-height:48px;padding:5px 16px;color:#27365a;}
+.header button {padding:0;min-width:30px;min-height:28px;border:none;background:transparent;}
+.header button:hover {background:#ecf0f5;}
+.header-title {font-size:20px;font-weight:750;color:#171d5c;}
+.brand {font-size:15px;font-weight:700;color:#273c61;}
+.content {padding:18px 24px;}
+.hero {padding:0 4px 6px;}
+.hero-title {font-size:28px;font-weight:850;color:#17223b;}
+.accent-title {font-size:21px;font-weight:800;color:#1d2a74;}
+.subtitle {color:#31415c;font-size:14px;}
+.section-title {font-size:18px;font-weight:750;color:#17255b;}
+.card {background:linear-gradient(120deg,#f0f3f7,#f1f3f8 70%);border:1px solid #bdc8db;border-radius:15px;padding:14px 16px;}
+.card image {color:#1a3868;}
+.muted {color:#30415d;font-size:12px;}
+entry {background:linear-gradient(115deg,#eff2f7,#f1f3f8);color:#172e5e;border:1px solid #bdc8db;border-radius:10px;padding:10px 12px;box-shadow:none;font-size:15px;}
+entry:focus-within {border-color:#188fff;box-shadow:0 0 0 1px #188fff;}
+.description {border:1px solid #247cff;border-radius:12px;background:#f0f3f7;}
+textview,textview text {background:#f0f3f7;color:#172e5e;font-size:14px;}
+textview:focus-within {background:#f0f2f7;}
+.hint {border:1px solid #bdc8db;border-radius:12px;padding:12px;background:linear-gradient(120deg,#eff2f7,#f1f3f8);}
+.hint image {color:#1e5a76;}
+.hint-title {font-size:13px;font-weight:750;color:#17295c;}
+button {padding:10px 15px;border-radius:11px;background:#eff2f7;color:#213963;border:1px solid #bdc8db;box-shadow:none;font-weight:650;}
+button:hover {background:#ecf0f5;border-color:#429eff;}
+button.primary {background:linear-gradient(115deg,#0867ff,#9626ff);color:white;border:1px solid #6861ff;padding:13px 22px;font-size:15px;}
+button.primary:hover {background:linear-gradient(115deg,#2084ff,#ad41ff);}
+button:disabled {opacity:.5;}
+.footer {border-top:1px solid #bdc8db;padding:13px 24px;background:#f2f4f8;}
+.error {color:#6e1c2a;}
+checkbutton {color:#293d5d;font-size:12px;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#29426a;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#1d5573;background:transparent;}

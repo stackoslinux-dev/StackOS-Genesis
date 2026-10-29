@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=StackOS Drivers
+Comment=Gerenciador de drivers do StackOS
+Exec=/usr/local/bin/stackos-drivers
+Icon=org.stackos.Drivers
+Terminal=false
+Type=Application
+Categories=System;HardwareSettings;GTK;
+StartupNotify=true
+StartupWMClass=com.stackos.drivers

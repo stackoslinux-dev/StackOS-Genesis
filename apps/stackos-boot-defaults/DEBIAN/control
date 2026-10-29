@@ -1,0 +1,6 @@
+Package: stackos-boot-defaults
+Version: 10.8.5
+Architecture: all
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime (>= 10.8.2)
+Description: StackOS live hardware and update service defaults

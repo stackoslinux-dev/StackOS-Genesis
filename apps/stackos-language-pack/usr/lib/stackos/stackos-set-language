@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+import os,sys,subprocess,json
+from pathlib import Path
+SUPPORTED=['pt_BR','pt_PT','en_US','en_GB','es_ES','es_MX','fr_FR','de_DE','it_IT','nl_NL','pl_PL','tr_TR','ru_RU','ja_JP']
+if os.geteuid()!=0:raise SystemExit('É necessário executar como administrador.')
+code=sys.argv[1] if len(sys.argv)==2 else ''
+if code not in SUPPORTED:raise SystemExit('Idioma não suportado: '+code)
+lang=code+'.UTF-8';text='LANG='+lang+'\nLANGUAGE='+code+':'+code.split('_')[0]+'\n'
+for name in ['/etc/locale.conf','/etc/default/locale']:
+ p=Path(name);p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
+# Future applications in the active session inherit the selection too.
+subprocess.run(['systemctl','set-environment','LANG='+lang,'LANGUAGE='+code+':'+code.split('_')[0]],capture_output=True)
+user=os.environ.get('SUDO_USER','stackos')
+try:
+ import pwd
+ info=pwd.getpwnam(user)
+ if info.pw_uid:
+  env=['XDG_RUNTIME_DIR=/run/user/'+str(info.pw_uid),'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/'+str(info.pw_uid)+'/bus']
+  subprocess.run(['sudo','-H','-u',user,'env']+env+['systemctl','--user','set-environment','LANG='+lang,'LANGUAGE='+code+':'+code.split('_')[0]],capture_output=True)
+  subprocess.run(['sudo','-H','-u',user,'env']+env+['gsettings','set','org.gnome.system.locale','region',lang],capture_output=True)
+except KeyError:pass
+print('SYSTEM_LANGUAGE_APPLIED',code)

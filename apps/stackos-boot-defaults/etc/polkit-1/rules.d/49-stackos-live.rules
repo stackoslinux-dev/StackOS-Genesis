@@ -1,0 +1,6 @@
+// Administrative actions in the ephemeral local live session.
+polkit.addRule(function(action, subject) {
+    if (subject.user === "stackos" && subject.local && subject.active &&
+        subject.isInGroup("stackos-live"))
+        return polkit.Result.YES;
+});

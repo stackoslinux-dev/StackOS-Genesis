@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=StackOS GPU Manager
+GenericName=GPU Manager
+Comment=Gerencie a GPU utilizada pelos aplicativos
+Exec=stackos-gpu-manager
+Icon=/usr/share/icons/hicolor/256x256/apps/org.stackos.GPUManager.png
+Terminal=false
+Categories=Settings;HardwareSettings;
+StartupNotify=true
+StartupWMClass=org.stackos.GPUManager

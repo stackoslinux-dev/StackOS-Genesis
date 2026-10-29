@@ -1,0 +1,10 @@
+[Unit]
+Description=Initialize user desktop directories
+PartOf=graphical-session.target
+Before=graphical-session.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/xdg-user-dirs-update
+RemainAfterExit=yes
+[Install]
+WantedBy=graphical-session.target

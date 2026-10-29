@@ -1,0 +1,1198 @@
+#!/usr/bin/env python3
+
+import json
+from pathlib import Path
+import subprocess
+import threading
+import sys
+
+if "/usr/lib/stackos" not in sys.path:
+    sys.path.insert(0, "/usr/lib/stackos")
+
+from stackos_i18n import get_translator
+
+_ = get_translator("stackos")
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+
+from gi.repository import Gtk, Gdk, GLib
+
+
+CONFIG_DIR = Path.home() / ".config/stackos"
+CONFIG_FILE = CONFIG_DIR / "updater.json"
+
+STATUS_DIR = Path.home() / ".cache/stackos-updater"
+STATUS_FILE = STATUS_DIR / "status.json"
+
+DEFAULT_CONFIG = {
+    "mode": "manual",
+    "check_interval_hours": 6,
+    "check_on_startup": True,
+    "auto_install_normal": True,
+    "auto_install_critical": True,
+    "notify": True,
+}
+
+
+CSS = b"""
+window {
+    background: #05081c;
+    color: #ffffff;
+}
+
+.header {
+    background: alpha(#101633, 0.97);
+    border-bottom: 1px solid alpha(#3d78d8, 0.40);
+    padding: 18px 22px;
+}
+
+.title {
+    font-size: 23px;
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.section-title {
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.subtitle {
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: #aeb9d8;
+}
+
+.card {
+    background: alpha(#101633, 0.94);
+    border: 1px solid alpha(#3d78d8, 0.38);
+    border-radius: 16px;
+    padding: 18px;
+}
+
+.status-green {
+    background: alpha(#20c77a, 0.17);
+    border: 1px solid #20c77a;
+    border-radius: 14px;
+    padding: 16px;
+    color: #75f0b3;
+}
+
+.status-yellow {
+    background: alpha(#e8b640, 0.17);
+    border: 1px solid #e8b640;
+    border-radius: 14px;
+    padding: 16px;
+    color: #ffd66e;
+}
+
+.status-red {
+    background: alpha(#ed4f5e, 0.17);
+    border: 1px solid #ed4f5e;
+    border-radius: 14px;
+    padding: 16px;
+    color: #ff8994;
+}
+
+.package-row {
+    background: alpha(#182044, 0.82);
+    border-radius: 10px;
+    padding: 11px;
+}
+
+.package-name {
+    font-weight: 700;
+    color: #ffffff;
+}
+
+.package-info {
+    font-size: 11px;
+    color: #aeb9d8;
+}
+
+.critical {
+    color: #ff7885;
+    font-weight: 800;
+}
+
+.blocked {
+    color: #e8b640;
+}
+
+button.suggested-action {
+    background: linear-gradient(90deg, #3d78d8, #7b2ff7);
+    color: #ffffff;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-weight: 700;
+}
+
+button.destructive-action {
+    background: #b72c3a;
+    color: #ffffff;
+}
+
+button {
+    border-radius: 10px;
+    padding: 9px 15px;
+}
+
+progressbar trough {
+    min-height: 8px;
+    border-radius: 8px;
+    background: #182044;
+}
+
+progressbar progress {
+    border-radius: 8px;
+    background: linear-gradient(90deg, #3d78d8, #7b2ff7);
+}
+"""
+
+
+class StackOSUpdater(Gtk.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="org.stackos.Updater"
+        )
+
+        self.window = None
+        self.updates = []
+        self.blocked = []
+        self.current_data = {}
+
+    def ensure_config(self):
+        CONFIG_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        if not CONFIG_FILE.exists():
+            self.save_config(DEFAULT_CONFIG)
+
+    def load_config(self):
+        self.ensure_config()
+
+        try:
+            data = json.loads(
+                CONFIG_FILE.read_text(
+                    encoding="utf-8"
+                )
+            )
+        except Exception:
+            data = {}
+
+        config = DEFAULT_CONFIG.copy()
+        config.update(data)
+        return config
+
+    def save_config(self, config):
+        CONFIG_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        CONFIG_FILE.write_text(
+            json.dumps(
+                config,
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def write_status(self, data):
+        STATUS_DIR.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        STATUS_FILE.write_text(
+            json.dumps(
+                data,
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+
+    def do_activate(self):
+        if self.window:
+            self.window.present()
+            return
+
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        self.window = Gtk.ApplicationWindow(
+            application=self
+        )
+        self.window.set_title(_("StackOS Updater"))
+        self.window.set_default_size(900, 680)
+
+        root = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+        )
+        self.window.set_child(root)
+
+        self.build_header(root)
+
+        self.stack = Gtk.Stack()
+        self.stack.set_vexpand(True)
+        root.append(self.stack)
+
+        self.build_updates_page()
+        self.build_settings_page()
+
+        self.window.present()
+        self.load_cached_status()
+
+    def build_header(self, root):
+        header = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=14,
+        )
+        header.add_css_class("header")
+        root.append(header)
+
+        icon = Gtk.Image.new_from_icon_name(
+            "software-update-available-symbolic"
+        )
+        icon.set_pixel_size(40)
+        header.append(icon)
+
+        title_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=2,
+        )
+        title_box.set_hexpand(True)
+        header.append(title_box)
+
+        title = Gtk.Label(
+            label=_("StackOS Updater")
+        )
+        title.add_css_class("title")
+        title.set_halign(Gtk.Align.START)
+        title_box.append(title)
+
+        subtitle = Gtk.Label(
+            label=_("ATUALIZAÇÕES DO SISTEMA")
+        )
+        subtitle.add_css_class("subtitle")
+        subtitle.set_halign(Gtk.Align.START)
+        title_box.append(subtitle)
+
+        updates_button = Gtk.Button(
+            label=_("Atualizações")
+        )
+        updates_button.connect(
+            "clicked",
+            lambda _button: self.stack.set_visible_child_name(
+                "updates"
+            ),
+        )
+        header.append(updates_button)
+
+        settings_button = Gtk.Button(
+            label=_("Configurações")
+        )
+        settings_button.connect(
+            "clicked",
+            lambda _button: self.stack.set_visible_child_name(
+                "settings"
+            ),
+        )
+        header.append(settings_button)
+
+        self.check_button = Gtk.Button(
+            label=_("Verificar")
+        )
+        self.check_button.connect(
+            "clicked",
+            self.on_check_clicked,
+        )
+        header.append(self.check_button)
+
+    def build_updates_page(self):
+        content = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=15,
+        )
+        content.set_margin_top(18)
+        content.set_margin_bottom(18)
+        content.set_margin_start(22)
+        content.set_margin_end(22)
+
+        self.stack.add_named(
+            content,
+            "updates",
+        )
+
+        self.status_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=4,
+        )
+        self.status_box.add_css_class(
+            "status-green"
+        )
+        content.append(self.status_box)
+
+        self.status_title = Gtk.Label(
+            label=_("Pronto para verificar")
+        )
+        self.status_title.set_halign(
+            Gtk.Align.START
+        )
+        self.status_title.add_css_class(
+            "title"
+        )
+        self.status_box.append(
+            self.status_title
+        )
+
+        self.status_text = Gtk.Label(
+            label=_(
+                "Clique em Verificar para consultar "
+                "os repositórios."
+            )
+        )
+        self.status_text.set_halign(
+            Gtk.Align.START
+        )
+        self.status_text.set_wrap(True)
+        self.status_box.append(
+            self.status_text
+        )
+
+        self.progress = Gtk.ProgressBar()
+        self.progress.set_visible(False)
+        content.append(self.progress)
+
+        list_card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=10,
+        )
+        list_card.add_css_class("card")
+        list_card.set_vexpand(True)
+        content.append(list_card)
+
+        list_header = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+        list_card.append(list_header)
+
+        list_title = Gtk.Label(
+            label=_("Pacotes disponíveis")
+        )
+        list_title.add_css_class(
+            "section-title"
+        )
+        list_title.set_halign(Gtk.Align.START)
+        list_title.set_hexpand(True)
+        list_header.append(list_title)
+
+        self.count_label = Gtk.Label(
+            label=_("0 pacotes")
+        )
+        list_header.append(self.count_label)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+        scroll.set_policy(
+            Gtk.PolicyType.NEVER,
+            Gtk.PolicyType.AUTOMATIC,
+        )
+        list_card.append(scroll)
+
+        self.packages_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=7,
+        )
+        scroll.set_child(self.packages_box)
+
+        footer = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+        content.append(footer)
+
+        self.detail_label = Gtk.Label(
+            label=""
+        )
+        self.detail_label.set_halign(
+            Gtk.Align.START
+        )
+        self.detail_label.set_hexpand(True)
+        self.detail_label.set_wrap(True)
+        footer.append(self.detail_label)
+
+        self.reboot_button = Gtk.Button(
+            label=_("Reiniciar agora")
+        )
+        self.reboot_button.add_css_class(
+            "destructive-action"
+        )
+        self.reboot_button.set_visible(False)
+        self.reboot_button.connect(
+            "clicked",
+            self.on_reboot_clicked,
+        )
+        footer.append(self.reboot_button)
+
+        self.install_button = Gtk.Button(
+            label=_("Atualizar agora")
+        )
+        self.install_button.add_css_class(
+            "suggested-action"
+        )
+        self.install_button.set_sensitive(False)
+        self.install_button.connect(
+            "clicked",
+            self.on_install_clicked,
+        )
+        footer.append(self.install_button)
+
+    def build_settings_page(self):
+        content = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=16,
+        )
+        content.set_margin_top(22)
+        content.set_margin_bottom(22)
+        content.set_margin_start(24)
+        content.set_margin_end(24)
+
+        self.stack.add_named(
+            content,
+            "settings",
+        )
+
+        title = Gtk.Label(
+            label=_("Configurações de atualização")
+        )
+        title.add_css_class("title")
+        title.set_halign(Gtk.Align.START)
+        content.append(title)
+
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=16,
+        )
+        card.add_css_class("card")
+        content.append(card)
+
+        config = self.load_config()
+
+        mode_label = Gtk.Label(
+            label=_("Modo de atualização")
+        )
+        mode_label.add_css_class(
+            "section-title"
+        )
+        mode_label.set_halign(Gtk.Align.START)
+        card.append(mode_label)
+
+        self.mode_combo = Gtk.ComboBoxText()
+        self.mode_combo.append(
+            "manual",
+            _("Avisar e deixar que eu instale"),
+        )
+        self.mode_combo.append(
+            "automatic",
+            _("Instalar atualizações automaticamente"),
+        )
+        self.mode_combo.set_active_id(
+            config["mode"]
+        )
+        card.append(self.mode_combo)
+
+        interval_label = Gtk.Label(
+            label=_("Intervalo de verificação")
+        )
+        interval_label.add_css_class(
+            "section-title"
+        )
+        interval_label.set_halign(
+            Gtk.Align.START
+        )
+        card.append(interval_label)
+
+        self.interval_combo = Gtk.ComboBoxText()
+
+        for hours, text in (
+            (1, _("A cada hora")),
+            (3, _("A cada 3 horas")),
+            (6, _("A cada 6 horas")),
+            (12, _("A cada 12 horas")),
+            (24, _("Uma vez por dia")),
+        ):
+            self.interval_combo.append(
+                str(hours),
+                text,
+            )
+
+        self.interval_combo.set_active_id(
+            str(
+                config[
+                    "check_interval_hours"
+                ]
+            )
+        )
+        card.append(self.interval_combo)
+
+        self.startup_switch = Gtk.Switch(
+            active=bool(
+                config["check_on_startup"]
+            )
+        )
+        card.append(
+            self.setting_row(
+                _("Verificar ao iniciar a sessão"),
+                self.startup_switch,
+            )
+        )
+
+        self.normal_switch = Gtk.Switch(
+            active=bool(
+                config[
+                    "auto_install_normal"
+                ]
+            )
+        )
+        card.append(
+            self.setting_row(
+                _(
+                    "Instalar atualizações normais "
+                    "no modo automático"
+                ),
+                self.normal_switch,
+            )
+        )
+
+        self.critical_switch = Gtk.Switch(
+            active=bool(
+                config[
+                    "auto_install_critical"
+                ]
+            )
+        )
+        card.append(
+            self.setting_row(
+                _(
+                    "Instalar atualizações críticas "
+                    "no modo automático"
+                ),
+                self.critical_switch,
+            )
+        )
+
+        self.notify_switch = Gtk.Switch(
+            active=bool(config["notify"])
+        )
+        card.append(
+            self.setting_row(
+                _("Mostrar notificações"),
+                self.notify_switch,
+            )
+        )
+
+        note = Gtk.Label(
+            label=_(
+                "A StackOS nunca instalará Snap. "
+                "Pacotes que tentem introduzir Snap "
+                "serão bloqueados."
+            )
+        )
+        note.set_wrap(True)
+        note.set_halign(Gtk.Align.START)
+        note.add_css_class("blocked")
+        card.append(note)
+
+        save_button = Gtk.Button(
+            label=_("Salvar configurações")
+        )
+        save_button.add_css_class(
+            "suggested-action"
+        )
+        save_button.set_halign(Gtk.Align.END)
+        save_button.connect(
+            "clicked",
+            self.on_save_settings,
+        )
+        content.append(save_button)
+
+        self.settings_status = Gtk.Label(
+            label=""
+        )
+        self.settings_status.set_halign(
+            Gtk.Align.END
+        )
+        content.append(self.settings_status)
+
+    def setting_row(self, text, control):
+        row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=12,
+        )
+
+        label = Gtk.Label(label=text)
+        label.set_halign(Gtk.Align.START)
+        label.set_hexpand(True)
+        label.set_wrap(True)
+        row.append(label)
+        row.append(control)
+
+        return row
+
+    def on_save_settings(self, _button):
+        config = {
+            "mode": (
+                self.mode_combo.get_active_id()
+                or "manual"
+            ),
+            "check_interval_hours": int(
+                self.interval_combo.get_active_id()
+                or "6"
+            ),
+            "check_on_startup":
+                self.startup_switch.get_active(),
+            "auto_install_normal":
+                self.normal_switch.get_active(),
+            "auto_install_critical":
+                self.critical_switch.get_active(),
+            "notify":
+                self.notify_switch.get_active(),
+        }
+
+        self.save_config(config)
+
+        subprocess.run(
+            [
+                "systemctl",
+                "--user",
+                "restart",
+                "stackos-updater.service",
+            ],
+            check=False,
+        )
+
+        self.settings_status.set_text(
+            _("Configurações salvas.")
+        )
+
+    def clear_packages(self):
+        child = self.packages_box.get_first_child()
+
+        while child:
+            next_child = child.get_next_sibling()
+            self.packages_box.remove(child)
+            child = next_child
+
+    def set_busy(self, busy, text=""):
+        self.check_button.set_sensitive(not busy)
+        self.install_button.set_sensitive(
+            not busy and bool(self.updates)
+        )
+
+        self.progress.set_visible(busy)
+
+        if busy:
+            self.progress.set_fraction(0.0)
+            self.progress.set_text("0%")
+            self.progress.set_show_text(True)
+        else:
+            self.progress.set_show_text(False)
+
+        if text:
+            self.detail_label.set_text(text)
+
+    def set_status(self, status, title, text):
+        for css_class in (
+            "status-green",
+            "status-yellow",
+            "status-red",
+        ):
+            self.status_box.remove_css_class(
+                css_class
+            )
+
+        self.status_box.add_css_class(
+            f"status-{status}"
+        )
+
+        self.status_title.set_text(title)
+        self.status_text.set_text(text)
+
+    def load_cached_status(self):
+        if not STATUS_FILE.exists():
+            return
+
+        try:
+            data = json.loads(
+                STATUS_FILE.read_text(
+                    encoding="utf-8"
+                )
+            )
+        except Exception:
+            return
+
+        self.apply_data(data)
+
+    def on_check_clicked(self, _button):
+        self.set_busy(
+            True,
+            _(
+                "Atualizando os índices dos "
+                "repositórios..."
+            ),
+        )
+
+        threading.Thread(
+            target=self.check_updates,
+            daemon=True,
+        ).start()
+
+    def check_updates(self):
+        result = subprocess.run(
+            [
+                "/usr/lib/stackos/"
+                "stackos-updater-helper",
+                "check",
+            ],
+            capture_output=True,
+            text=True,
+        )
+
+        GLib.idle_add(
+            self.finish_check,
+            result.returncode,
+            result.stdout,
+            result.stderr,
+        )
+
+    def finish_check(
+        self,
+        return_code,
+        stdout,
+        stderr,
+    ):
+        self.progress.set_visible(False)
+        self.check_button.set_sensitive(True)
+
+        if return_code != 0:
+            self.updates = []
+            self.install_button.set_sensitive(
+                False
+            )
+
+            self.set_status(
+                "red",
+                _("Não foi possível verificar"),
+                stderr.strip()
+                or stdout.strip()
+                or _("Erro desconhecido."),
+            )
+
+            return False
+
+        try:
+            data = json.loads(stdout)
+        except Exception:
+            self.set_status(
+                "red",
+                _("Resposta inválida"),
+                stdout[-500:],
+            )
+            return False
+
+        self.write_status(data)
+        self.apply_data(data)
+        self.detail_label.set_text(
+            _("Verificação concluída.")
+        )
+
+        return False
+
+    def apply_data(self, data):
+        self.current_data = data
+        self.updates = data.get(
+            "packages",
+            [],
+        )
+        self.blocked = data.get(
+            "blocked",
+            [],
+        )
+
+        self.render_packages()
+
+        status = data.get(
+            "status",
+            "green",
+        )
+        count = data.get("count", 0)
+        critical_count = data.get(
+            "critical_count",
+            0,
+        )
+
+        error = data.get(
+            "service_error",
+            "",
+        )
+
+        if error:
+            self.set_status(
+                "red",
+                _("Falha na verificação automática"),
+                error,
+            )
+
+        elif status == "green":
+            self.set_status(
+                "green",
+                _("Sistema atualizado"),
+                _("Nenhuma atualização disponível."),
+            )
+
+        elif status == "yellow":
+            self.set_status(
+                "yellow",
+                _("{count} atualizações disponíveis").format(
+                    count=count
+                ),
+                _(
+                    "Existem atualizações normais "
+                    "aguardando instalação."
+                ),
+            )
+
+        else:
+            self.set_status(
+                "red",
+                _("Atualização necessária"),
+                _(
+                    "{count} atualização(ões) "
+                    "crítica(s) disponível(is)."
+                ).format(count=critical_count),
+            )
+
+        self.install_button.set_sensitive(
+            bool(self.updates)
+        )
+
+        reboot = bool(
+            data.get(
+                "reboot_required",
+                False,
+            )
+        )
+        self.reboot_button.set_visible(reboot)
+
+    def render_packages(self):
+        self.clear_packages()
+
+        total = len(self.updates)
+
+        self.count_label.set_text(
+            _("{count} pacotes").format(count=total)
+        )
+
+        if not self.updates and not self.blocked:
+            label = Gtk.Label(
+                label=_(
+                    "Nenhum pacote aguardando "
+                    "atualização."
+                )
+            )
+            label.set_margin_top(30)
+            label.set_margin_bottom(30)
+            self.packages_box.append(label)
+            return
+
+        for package in self.updates:
+            self.add_package_row(
+                package,
+                blocked=False,
+            )
+
+        for package in self.blocked:
+            self.add_package_row(
+                package,
+                blocked=True,
+            )
+
+    def add_package_row(
+        self,
+        package,
+        blocked=False,
+    ):
+        row = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=4,
+        )
+        row.add_css_class("package-row")
+
+        name_text = package.get(
+            "name",
+            _("Pacote desconhecido"),
+        )
+
+        if blocked:
+            name_text += _(" — BLOQUEADO")
+
+        name = Gtk.Label(label=name_text)
+        name.set_halign(Gtk.Align.START)
+        name.add_css_class("package-name")
+
+        if blocked:
+            name.add_css_class("blocked")
+        elif package.get("critical"):
+            name.add_css_class("critical")
+
+        row.append(name)
+
+        info = Gtk.Label(
+            label=package.get(
+                "description",
+                "",
+            )
+        )
+        info.set_halign(Gtk.Align.START)
+        info.set_wrap(True)
+        info.add_css_class("package-info")
+        row.append(info)
+
+        if blocked:
+            reason = Gtk.Label(
+                label=package.get(
+                    "reason",
+                    _("Bloqueado pela política StackOS."),
+                )
+            )
+            reason.set_halign(Gtk.Align.START)
+            reason.add_css_class("blocked")
+            row.append(reason)
+
+        self.packages_box.append(row)
+
+    def on_install_clicked(self, _button):
+        self.set_busy(
+            True,
+            _("Instalando atualizações..."),
+        )
+
+        threading.Thread(
+            target=self.install_updates,
+            daemon=True,
+        ).start()
+
+    def install_updates(self):
+        process = subprocess.Popen(
+            [
+                "pkexec",
+                "/usr/lib/stackos/"
+                "stackos-updater-helper",
+                "install",
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+        )
+
+        final_data = None
+        last_line = ""
+
+        assert process.stdout is not None
+
+        for raw_line in process.stdout:
+            line = raw_line.strip()
+
+            if not line:
+                continue
+
+            if line.startswith(
+                "__STACKOS_RESULT__"
+            ):
+                try:
+                    final_data = json.loads(
+                        line.replace(
+                            "__STACKOS_RESULT__",
+                            "",
+                            1,
+                        )
+                    )
+                except Exception:
+                    final_data = None
+                continue
+
+            if line.startswith(
+                "__STACKOS_PROGRESS__"
+            ):
+                try:
+                    progress_data = json.loads(
+                        line.replace(
+                            "__STACKOS_PROGRESS__",
+                            "",
+                            1,
+                        )
+                    )
+
+                    GLib.idle_add(
+                        self.update_real_progress,
+                        progress_data,
+                    )
+                except Exception:
+                    pass
+
+                continue
+
+            if line.startswith(
+                "__STACKOS_OUTPUT__"
+            ):
+                line = line.replace(
+                    "__STACKOS_OUTPUT__",
+                    "",
+                    1,
+                )
+
+            last_line = line
+
+            GLib.idle_add(
+                self.detail_label.set_text,
+                line,
+            )
+
+        return_code = process.wait()
+
+        GLib.idle_add(
+            self.finish_install,
+            return_code,
+            final_data,
+            last_line,
+        )
+
+    def update_real_progress(self, data):
+        try:
+            percent = float(
+                data.get("percent", 0)
+            )
+        except (TypeError, ValueError):
+            percent = 0.0
+
+        percent = max(
+            0.0,
+            min(percent, 100.0),
+        )
+
+        stage = str(
+            data.get("stage", "")
+        ).strip()
+
+        message = str(
+            data.get("message", "")
+        ).strip()
+
+        package = str(
+            data.get("package", "")
+        ).strip()
+
+        self.progress.set_fraction(
+            percent / 100.0
+        )
+        self.progress.set_text(
+            f"{percent:.0f}%"
+        )
+        self.progress.set_show_text(True)
+
+        details = []
+
+        if stage:
+            details.append(stage)
+
+        if package:
+            details.append(package)
+
+        if message:
+            details.append(message)
+
+        self.detail_label.set_text(
+            " — ".join(details)
+        )
+
+        return False
+
+    def finish_install(
+        self,
+        return_code,
+        final_data,
+        last_line,
+    ):
+        if return_code == 0:
+            self.progress.set_fraction(1.0)
+            self.progress.set_text("100%")
+            self.progress.set_show_text(True)
+        else:
+            self.progress.set_visible(False)
+
+        self.check_button.set_sensitive(True)
+
+        if return_code != 0:
+            self.set_status(
+                "red",
+                _("Falha na atualização"),
+                last_line
+                or _(
+                    "Consulte o log em "
+                    "/var/log/stackos-updater.log"
+                ),
+            )
+            self.install_button.set_sensitive(
+                True
+            )
+            return False
+
+        if final_data is None:
+            final_data = {
+                "status": "green",
+                "packages": [],
+                "blocked": [],
+                "count": 0,
+                "critical_count": 0,
+                "reboot_required": False,
+            }
+
+        self.write_status(final_data)
+        self.apply_data(final_data)
+
+        self.detail_label.set_text(
+            _("Atualização concluída.")
+        )
+
+        return False
+
+    def on_reboot_clicked(self, _button):
+        subprocess.Popen([
+            "sudo",
+            "-n",
+            "/usr/lib/stackos/"
+            "stackos-updater-helper",
+            "reboot",
+        ])
+
+
+if __name__ == "__main__":
+    app = StackOSUpdater()
+    raise SystemExit(app.run())

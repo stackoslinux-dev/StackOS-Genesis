@@ -1,18 +1,6 @@
-# Imagens e artefatos grandes
-*.iso
-*.img
-*.squashfs
-
-# Pacotes/builds
-*.deb
-build/
-dist/
-
-# Python
 __pycache__/
-*.py[cod]
-
-# Temporários e backups
-*.bak
-*.before-*
-*~
+*.pyc
+*.iso
+*.squashfs
+.gnupg/
+*.key

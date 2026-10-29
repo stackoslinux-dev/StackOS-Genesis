@@ -1,0 +1,13 @@
+ac976b062eff934b7925647ec7fb2ab8  usr/lib/stackos/drivers/assets/drivers.svg
+0a4557b94131173ef35a7d40691c3642  usr/lib/stackos/drivers/assets/stackos-symbol.png
+6a52e7ee2ff46ddae413e1e3cc53bcd0  usr/lib/stackos/drivers/catalog.py
+3c08ee81c1b9db003ed0ea5444850495  usr/lib/stackos/drivers/core.py
+72b8df592e5bd976e36727715a94ca56  usr/lib/stackos/drivers/drivers.py
+6fc37b24d449250686f50118ff2e2781  usr/lib/stackos/drivers/gpu_metrics.py
+a1dfd897e7632259ac8ef2ae5d1766a4  usr/lib/stackos/drivers/theme-light.css
+22f45f0cd602e5ebd0070ca8df1d0903  usr/lib/stackos/drivers/theme.css
+b9484bd53b8992db2c61143ee86bc9e6  usr/local/bin/stackos-drivers
+2017676ec07081429113b0b13b6b0f5b  usr/share/applications/stackos-drivers.desktop
+3be5b498cfad92f50dbec2a33d40f4dc  usr/share/doc/stackos-drivers/AUTHORS
+dd96ad3d57551067de301e9e297b07ec  usr/share/icons/hicolor/256x256/apps/org.stackos.Drivers.png
+ac976b062eff934b7925647ec7fb2ab8  usr/share/icons/hicolor/scalable/apps/org.stackos.Drivers.svg

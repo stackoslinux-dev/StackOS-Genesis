@@ -1,0 +1,47 @@
+window.welcome {background:#f2f4f8;color:#17285c;font-family:'Inter','Noto Sans',sans-serif;font-size:14px;}
+.root {background-image:linear-gradient(115deg,rgba(246,248,253,.96),rgba(246,248,253,.95),rgba(246,248,253,.9)),url('__ASSETS__/wallpaper.png');background-size:cover;background-position:center;}
+.chrome {background:#f2f4f8;color:#253c66;min-height:26px;border:none;}
+.chrome button {background:transparent;border:none;min-width:30px;min-height:26px;padding:0;}
+.window-title {color:#344663;font-size:11px;}
+.brand-panel {padding:30px 23px 24px;border-right:1px solid #bdc3db;background-image:linear-gradient(180deg,rgba(246,248,253,.75),rgba(246,248,253,.75) 40%,rgba(246,248,253,.1)),url('__ASSETS__/wallpaper.png');background-size:cover;background-position:9% center;}
+.brand-title {font-size:29px;font-weight:850;color:#17285b;}
+.brand-copy {font-size:20px;color:#223764;}
+.system-version {font-size:11px;color:#1e3d6c;}
+.content {padding:20px 28px;}
+.welcome-badge {border:1px solid #c3bddb;border-radius:22px;background:linear-gradient(100deg,#eef1f6,#f1eff7);color:#1b3c6c;font-size:14px;font-weight:700;padding:7px 20px;}
+.hero-title {font-size:43px;font-weight:850;color:#17325d;}
+.hero-sub {font-size:24px;color:#233a65;}
+.intro-card {border:1px solid #bdc1db;border-radius:17px;background:linear-gradient(120deg,#eff2f7,#f0f1f7 65%,#f1f0f7);padding:16px 22px;}
+.intro-title {color:#17295c;font-size:18px;font-weight:750;}
+.muted {color:#283d62;font-size:13px;}
+button {border:1px solid #bdc8db;border-radius:12px;background:linear-gradient(120deg,#eef1f6,#f0f2f7);color:#1a3667;box-shadow:none;padding:10px 14px;font-weight:650;}
+button:hover {background:#eaeff4;border-color:#3c98ff;}
+button:disabled {opacity:.4;}
+button.nav {background:rgba(246,248,253,.65);font-size:12px;border-color:#bdc6db;padding:11px;}
+button.nav.selected {background:linear-gradient(110deg,#114d9c,#26116c);border-color:#4173df;color:white;}
+.tile {background:linear-gradient(125deg,#eef2f6,#f1f3f8);border-radius:15px;border:1px solid #bdcddb;padding:16px 12px;}
+.tile:hover {background:linear-gradient(125deg,#ebeff5,#edf0f6);border-color:#41cbff;}
+.tile.purple {border-color:#7633cc;background:linear-gradient(120deg,#f0eef6,#f0f1f7);}
+.tile.green {border-color:#b9d5d3;background:linear-gradient(120deg,#eff7f7,#f0f3f7);}
+.tile.gold {border-color:#dbcfbd;background:linear-gradient(120deg,#efeef4,#f0f2f7);}
+.tile-title {font-size:16px;color:#171e5b;font-weight:750;}
+.tile-copy {font-size:12px;color:#233d65;}
+.primary {background:linear-gradient(110deg,#00a9f7,#4165ff,#a521f4);border:1px solid #4f8bff;color:white;border-radius:16px;padding:14px 27px;font-size:17px;}
+.primary:hover {background:linear-gradient(110deg,#13c2ff,#6477ff,#b642ff);}
+.facts {border:1px solid #bdc4db;border-radius:15px;background:rgba(246,248,253,.8);padding:16px;}
+.fact-copy {color:#233a65;font-size:12px;}
+.footer {background:rgba(246,248,253,.94);border-top:1px solid #bdc8db;padding:11px 22px;}
+.footer checkbutton {font-size:12px;color:#1c3863;}
+.footer .secondary {font-size:12px;padding:8px 12px;}
+.status {background:#f2f4f8;color:#2b4165;font-size:11px;padding:6px 22px 10px;}
+.guide-title {font-size:25px;font-weight:800;color:#17315c;}
+.step {background:#f0f3f7;border:1px solid #bdc8db;border-radius:13px;padding:14px 16px;}
+.step-number {font-size:20px;font-weight:800;color:#1d5473;}
+.step-copy {color:#203963;font-size:14px;}
+.screenshot {background:#f1f4f8;border:1px solid #bdc9db;border-radius:14px;padding:12px;}
+.image-caption {color:#2a456c;font-size:11px;}
+.guide-controls {padding:13px 24px;background:#f1f3f8;}
+progressbar trough {background:#eef1f6;min-height:5px;}progressbar progress {background:linear-gradient(90deg,#e0ebef,#e6deee);min-height:5px;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#29426a;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#1d5573;background:transparent;}

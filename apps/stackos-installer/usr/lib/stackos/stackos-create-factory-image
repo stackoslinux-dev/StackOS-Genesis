@@ -1,0 +1,63 @@
+#!/bin/bash
+set -euo pipefail
+
+if [ "$#" -ne 1 ]; then
+    echo "Uso: $0 /caminho/do/sistema-instalado" >&2
+    exit 2
+fi
+
+TARGET="$(readlink -f "$1")"
+
+if [ "$TARGET" = "/" ]; then
+    echo "ERRO: recusando criar imagem do sistema host (/)." >&2
+    exit 3
+fi
+
+if [ ! -d "$TARGET/etc" ] || [ ! -d "$TARGET/usr" ]; then
+    echo "ERRO: destino não parece ser uma instalação Linux válida: $TARGET" >&2
+    exit 4
+fi
+
+RECOVERY_DIR="$TARGET/var/lib/stackos/recovery"
+IMAGE="$RECOVERY_DIR/factory.squashfs"
+HASH="$RECOVERY_DIR/factory.sha256"
+TMP="$RECOVERY_DIR/factory.squashfs.tmp"
+
+mkdir -p "$RECOVERY_DIR"
+rm -f "$TMP"
+
+echo "Criando imagem de fábrica do StackOS..."
+echo "Origem: $TARGET"
+
+mksquashfs "$TARGET" "$TMP" \
+    -comp gzip -Xcompression-level 3 \
+    -processors 2 \
+    -mem 256M \
+    -noappend \
+    -wildcards \
+    -e \
+    "proc/*" \
+    "sys/*" \
+    "dev/*" \
+    "run/*" \
+    "tmp/*" \
+    "mnt/*" \
+    "media/*" \
+    "lost+found" \
+    "boot/efi/*" \
+    "var/lib/stackos/recovery/*"
+
+mv "$TMP" "$IMAGE"
+
+cd "$RECOVERY_DIR"
+sha256sum factory.squashfs > factory.sha256
+
+chmod 600 "$IMAGE" "$HASH"
+
+echo
+echo "Imagem criada:"
+ls -lh "$IMAGE" "$HASH"
+
+echo
+echo "SHA-256:"
+cat "$HASH"

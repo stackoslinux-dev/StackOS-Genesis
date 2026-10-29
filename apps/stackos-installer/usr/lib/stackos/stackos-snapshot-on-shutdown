@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ -f /var/lib/stackos/recovery/factory-reset-requested ]; then
+    logger -t stackos-snapshot \
+        "Factory Reset solicitado; snapshot de desligamento ignorado"
+    exit 0
+fi
+
+/usr/lib/stackos/stackos-health-check || {
+    logger -t stackos-snapshot \
+        "Snapshot ignorado: Health Check falhou"
+    exit 0
+}
+
+/usr/lib/stackos/stackos-create-snapshot || {
+    logger -t stackos-snapshot \
+        "Snapshot falhou; desligamento continuara"
+    exit 0
+}
+
+exit 0

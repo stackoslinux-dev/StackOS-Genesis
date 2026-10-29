@@ -1,0 +1,487 @@
+#!/usr/bin/env python3
+
+import gi
+gi.require_version("Gtk", "4.0")
+
+from gi.repository import Gtk, Gdk, GLib
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+sys.path.insert(0, '/usr/lib/stackos')
+from stackos_i18n import get_translator
+from stackos_window import fit_window
+_ = get_translator("stackos")
+
+
+CSS = b"""
+window {
+    background-color: #05081c;
+}
+
+.title {
+    color: #3d78d8;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+.subtitle {
+    color: #a0b4d8;
+    font-size: 14px;
+}
+
+.card {
+    background-color: #0d1530;
+    border-radius: 14px;
+    border: 1px solid #1e2d5a;
+    padding: 24px;
+}
+
+.label {
+    color: #e0e8ff;
+    font-size: 14px;
+}
+
+.entry {
+    background-color: #0d1530;
+    color: #e0e8ff;
+    border: 1px solid #3d78d8;
+    border-radius: 7px;
+    padding: 10px;
+    font-size: 14px;
+}
+
+.button-primary {
+    background-color: #3d78d8;
+    color: white;
+    border-radius: 8px;
+    padding: 11px 28px;
+    font-size: 14px;
+    font-weight: bold;
+    border: none;
+}
+
+.button-primary:hover {
+    background-color: #5590e8;
+}
+
+.error {
+    color: #ff9d7b;
+    font-size: 13px;
+}
+
+.status {
+    color: #7b2ff7;
+    font-size: 14px;
+    font-weight: bold;
+}
+"""
+
+
+def slug_hostname(text):
+    text = (text or "").strip().lower()
+    text = re.sub(r"[^a-z0-9-]+", "-", text)
+    text = re.sub(r"-+", "-", text)
+    return text.strip("-")
+
+
+class StackOSFirstboot(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="com.stackos.firstboot")
+        self.connect("activate", self.on_activate)
+
+    def on_activate(self, app):
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        self.window = Gtk.ApplicationWindow(application=app)
+        self.window.set_title(_("StackOS — Primeiro acesso"))
+        fit_window(self.window, 700, 650)
+        self.window.set_resizable(True)
+        self.window.connect("close-request", self.prevent_close)
+
+        root = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=18,
+        )
+        root.set_margin_top(38)
+        root.set_margin_bottom(38)
+        root.set_margin_start(70)
+        root.set_margin_end(70)
+
+        title = Gtk.Label(label=_("Bem-vindo ao StackOS Genesis"))
+        title.add_css_class("title")
+        root.append(title)
+
+        subtitle = Gtk.Label(
+            label=_("Crie o usuário principal deste computador.")
+        )
+        subtitle.add_css_class("subtitle")
+        root.append(subtitle)
+
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=10,
+        )
+        card.add_css_class("card")
+        card.set_margin_top(12)
+
+        # ------------------------------------------------------------
+        # STACKOS OEM LOCALE / KEYBOARD
+        # O comprador pode substituir a configuracao provisoria
+        # definida durante a instalacao da imagem.
+        # ------------------------------------------------------------
+
+        self.locales = [
+            ("Português (Brasil)",       "pt_BR.UTF-8"),
+            ("Português (Portugal)",     "pt_PT.UTF-8"),
+            ("English (United States)",  "en_US.UTF-8"),
+            ("English (United Kingdom)", "en_GB.UTF-8"),
+            ("Español (España)",         "es_ES.UTF-8"),
+            ("Español (México)",         "es_MX.UTF-8"),
+            ("Français",                 "fr_FR.UTF-8"),
+            ("Deutsch",                  "de_DE.UTF-8"),
+            ("Italiano",                 "it_IT.UTF-8"),
+            ("Nederlands",               "nl_NL.UTF-8"),
+            ("Polski",                   "pl_PL.UTF-8"),
+            ("Türkçe",                   "tr_TR.UTF-8"),
+            ("Русский",                  "ru_RU.UTF-8"),
+            ("日本語",                    "ja_JP.UTF-8"),
+        ]
+
+        self.keyboards = [
+            ("Português (Brasil) - ABNT2", "br", "abnt2"),
+            ("Português (Brasil)",         "br", ""),
+            ("Português (Portugal)",       "pt", ""),
+            ("English (US)",               "us", ""),
+            ("English (UK)",               "gb", ""),
+            ("Español (España)",           "es", ""),
+            ("Español (Latinoamérica)",    "latam", ""),
+            ("Français",                   "fr", ""),
+            ("Deutsch",                    "de", ""),
+            ("Italiano",                   "it", ""),
+            ("Nederlands",                 "nl", ""),
+            ("Polski",                     "pl", ""),
+            ("Türkçe",                     "tr", ""),
+            ("Русский",                    "ru", ""),
+            ("日本語",                      "jp", ""),
+        ]
+
+        # Mesmo mapeamento validado no Installer.
+        self.locale_keyboard_defaults = {
+            0: 0,
+            1: 2,
+            2: 3,
+            3: 4,
+            4: 5,
+            5: 6,
+            6: 7,
+            7: 8,
+            8: 9,
+            9: 10,
+            10: 11,
+            11: 12,
+            12: 13,
+            13: 14,
+        }
+
+        locale_label = Gtk.Label(label=_("Idioma do sistema"))
+        locale_label.add_css_class("label")
+        locale_label.set_halign(Gtk.Align.START)
+        card.append(locale_label)
+
+        self.locale_combo = Gtk.DropDown.new_from_strings(
+            [item[0] for item in self.locales]
+        )
+
+        current_locale = GLib.getenv("LANG") or "pt_BR.UTF-8"
+        current_locale = current_locale.replace("utf8", "UTF-8")
+
+        locale_index = 0
+        for index, (_label, value) in enumerate(self.locales):
+            if value.lower().replace("-", "") == current_locale.lower().replace("-", ""):
+                locale_index = index
+                break
+
+        self.locale_combo.set_selected(locale_index)
+        card.append(self.locale_combo)
+
+        keyboard_label = Gtk.Label(label=_("Teclado"))
+        keyboard_label.add_css_class("label")
+        keyboard_label.set_halign(Gtk.Align.START)
+        card.append(keyboard_label)
+
+        self.keyboard_combo = Gtk.DropDown.new_from_strings(
+            [item[0] for item in self.keyboards]
+        )
+        self.keyboard_combo.set_selected(
+            self.locale_keyboard_defaults.get(locale_index, 0)
+        )
+        keyboard_file = Path('/etc/default/keyboard')
+        if keyboard_file.exists():
+            values = dict(line.split('=',1) for line in keyboard_file.read_text().splitlines() if '=' in line)
+            chosen = (values.get('XKBLAYOUT','').strip('"'), values.get('XKBVARIANT','').strip('"'))
+            for index, (keyboard_label, layout, variant) in enumerate(self.keyboards):
+                if (layout, variant) == chosen:
+                    self.keyboard_combo.set_selected(index)
+                    break
+        card.append(self.keyboard_combo)
+        test = Gtk.Entry(placeholder_text=_("Digite aqui para testar o teclado"))
+        test.add_css_class('entry')
+        card.append(Gtk.Label(label=_("Teste do teclado"), xalign=0))
+        card.append(test)
+        self.keyboard_combo.connect('notify::selected', self.on_keyboard_selected)
+
+
+        self.locale_combo.connect(
+            "notify::selected",
+            self.on_locale_changed,
+        )
+
+        self.entry_user = self.add_field(
+            card,
+            _("Nome do usuário"),
+            _("exemplo: fabio"),
+        )
+
+        self.entry_password = self.add_field(
+            card,
+            _("Senha"),
+            _("Digite sua senha"),
+            password=True,
+        )
+
+        self.entry_confirm = self.add_field(
+            card,
+            _("Confirmar senha"),
+            _("Digite novamente"),
+            password=True,
+        )
+
+        self.entry_hostname = self.add_field(
+            card,
+            _("Nome do computador"),
+            _("exemplo: stackos-pc"),
+        )
+
+        self.entry_user.connect("changed", self.update_hostname)
+
+        self.error_label = Gtk.Label(label="")
+        self.error_label.add_css_class("error")
+        self.error_label.set_wrap(True)
+        card.append(self.error_label)
+
+        self.status_label = Gtk.Label(label="")
+        self.status_label.add_css_class("status")
+        self.status_label.set_wrap(True)
+        card.append(self.status_label)
+
+        root.append(card)
+
+        self.button = Gtk.Button(label=_("Criar usuário e continuar"))
+        self.button.add_css_class("button-primary")
+        self.button.set_halign(Gtk.Align.END)
+        self.button.connect("clicked", self.on_create)
+        root.append(self.button)
+
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_policy(
+            Gtk.PolicyType.NEVER,
+            Gtk.PolicyType.AUTOMATIC,
+        )
+        scroll.set_propagate_natural_height(False)
+        scroll.set_child(root)
+
+        self.window.set_child(scroll)
+        self.window.present()
+
+    def add_field(self, parent, title, placeholder, password=False):
+        label = Gtk.Label(label=title)
+        label.add_css_class("label")
+        label.set_halign(Gtk.Align.START)
+        parent.append(label)
+
+        entry = Gtk.Entry()
+        entry.add_css_class("entry")
+        entry.set_placeholder_text(placeholder)
+
+        if password:
+            entry.set_visibility(False)
+            entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+
+        parent.append(entry)
+        return entry
+
+    def on_keyboard_selected(self, combo, pspec):
+        index = combo.get_selected()
+        if index >= len(self.keyboards):
+            return
+        keyboard_label, layout, variant = self.keyboards[index]
+        source = layout + ('+' + variant if variant else '')
+        subprocess.run(['gsettings','set','org.gnome.desktop.input-sources','sources',"[('xkb', '"+source+"')]"], capture_output=True)
+
+    def on_locale_changed(self, combo, pspec):
+        index = combo.get_selected()
+
+        keyboard_index = self.locale_keyboard_defaults.get(index)
+
+        if keyboard_index is not None:
+            self.keyboard_combo.set_selected(keyboard_index)
+
+    def prevent_close(self, window):
+        self.error_label.set_text(
+            _("Conclua a criação do usuário para utilizar o sistema.")
+        )
+        return True
+
+    def update_hostname(self, entry):
+        if not self.entry_hostname.get_text().strip():
+            username = entry.get_text().strip()
+            hostname = slug_hostname(username)
+
+            if hostname:
+                self.entry_hostname.set_text(hostname + "-pc")
+
+    def validate(self):
+        username = self.entry_user.get_text().strip().lower()
+        password = self.entry_password.get_text()
+        confirm = self.entry_confirm.get_text()
+        hostname = slug_hostname(
+            self.entry_hostname.get_text()
+        )
+
+        if not re.fullmatch(r"[a-z_][a-z0-9_-]{0,30}", username):
+            return None, _(
+                "O nome do usuário deve começar com uma letra "
+                "e usar apenas letras minúsculas, números, _ ou -."
+            )
+
+        if username in {
+            "root",
+            "stackos",
+            "daemon",
+            "bin",
+            "sys",
+            "sync",
+            "games",
+            "man",
+            "lp",
+            "mail",
+            "news",
+            "uucp",
+            "proxy",
+            "www-data",
+            "backup",
+            "list",
+            "irc",
+            "gnats",
+            "nobody",
+        }:
+            return None, _("Esse nome de usuário é reservado.")
+
+        if password != confirm:
+            return None, _("As senhas não coincidem.")
+
+        if not hostname:
+            return None, _("Informe um nome válido para o computador.")
+
+        if len(hostname) > 63:
+            return None, _("O nome do computador é muito longo.")
+
+        locale_index = self.locale_combo.get_selected()
+        keyboard_index = self.keyboard_combo.get_selected()
+
+        if not (0 <= locale_index < len(self.locales)):
+            return None, _("Selecione um idioma válido.")
+
+        if not (0 <= keyboard_index < len(self.keyboards)):
+            return None, _("Selecione um teclado válido.")
+
+        locale = self.locales[locale_index][1]
+        keyboard_layout = self.keyboards[keyboard_index][1]
+        keyboard_variant = self.keyboards[keyboard_index][2]
+
+        return {
+            "username": username,
+            "password": password,
+            "hostname": hostname,
+            "locale": locale,
+            "keyboard_layout": keyboard_layout,
+            "keyboard_variant": keyboard_variant,
+        }, None
+
+    def on_create(self, button):
+        data, error = self.validate()
+
+        if error:
+            self.error_label.set_text(error)
+            return
+
+        self.error_label.set_text("")
+        self.status_label.set_text(
+            _("Criando usuário e configurando o sistema...")
+        )
+
+        self.button.set_sensitive(False)
+        self.entry_user.set_sensitive(False)
+        self.entry_password.set_sensitive(False)
+        self.entry_confirm.set_sensitive(False)
+        self.entry_hostname.set_sensitive(False)
+        self.locale_combo.set_sensitive(False)
+        self.keyboard_combo.set_sensitive(False)
+
+        GLib.idle_add(self.execute_helper, data)
+
+    def execute_helper(self, data):
+        try:
+            result = subprocess.run(
+                [
+                    "sudo",
+                    "/usr/lib/stackos/stackos-firstboot-helper",
+                ],
+                input=json.dumps(data),
+                text=True,
+                capture_output=True,
+                timeout=120,
+            )
+
+            if result.returncode != 0:
+                message = (
+                    result.stderr.strip()
+                    or result.stdout.strip()
+                    or _("Falha desconhecida.")
+                )
+                raise RuntimeError(message)
+
+            self.status_label.set_text(
+                _("Configuração concluída. Reiniciando...")
+            )
+
+        except Exception as error:
+            self.error_label.set_text(
+                _(
+                    "Não foi possível criar o usuário:\n{error}"
+                ).format(error=error)
+            )
+            self.status_label.set_text("")
+            self.button.set_sensitive(True)
+            self.entry_user.set_sensitive(True)
+            self.entry_password.set_sensitive(True)
+            self.entry_confirm.set_sensitive(True)
+            self.entry_hostname.set_sensitive(True)
+            self.locale_combo.set_sensitive(True)
+            self.keyboard_combo.set_sensitive(True)
+
+        return False
+
+
+if __name__ == "__main__":
+    app = StackOSFirstboot()
+    raise SystemExit(app.run())

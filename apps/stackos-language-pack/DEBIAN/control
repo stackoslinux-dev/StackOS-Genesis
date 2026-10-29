@@ -1,0 +1,6 @@
+Package: stackos-language-pack
+Version: 10.9.2
+Architecture: amd64
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime
+Description: Offline language and keyboard packs for installer, first boot and desktop

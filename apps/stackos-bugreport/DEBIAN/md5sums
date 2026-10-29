@@ -1,0 +1,12 @@
+fe10789f50d9648b9a5a61298a9164bc  usr/lib/stackos/bugreport/assets/bug.svg
+814fbef0ef688126fbb6dc8e3d00dc13  usr/lib/stackos/bugreport/assets/report-art.svg
+0a4557b94131173ef35a7d40691c3642  usr/lib/stackos/bugreport/assets/stackos-symbol.png
+e521bf4f9eb846e208114b69cadccd38  usr/lib/stackos/bugreport/bugreport.py
+05951e80325e4684f32095ed4c91dc3b  usr/lib/stackos/bugreport/engine.py
+31f18f66a7d90f9b96035e50f7cc5b6b  usr/lib/stackos/bugreport/theme-light.css
+9fc8d05b258c3f384f90cffc27947d12  usr/lib/stackos/bugreport/theme.css
+6ee8ceddef8eb64932654745fe9b6268  usr/local/bin/stackos-bugreport
+c1726f118fd63fc1c953ade42a009707  usr/share/applications/stackos-bugreport.desktop
+3be5b498cfad92f50dbec2a33d40f4dc  usr/share/doc/stackos-bugreport/AUTHORS
+954ea98c65c39b0994d61f1e17c5e6cc  usr/share/icons/hicolor/256x256/apps/org.stackos.BugReport.png
+fe10789f50d9648b9a5a61298a9164bc  usr/share/icons/hicolor/scalable/apps/org.stackos.BugReport.svg

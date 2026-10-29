@@ -1,0 +1,65 @@
+window.gpu-modern { background:#030b1b; color:#edf2ff; font-family:'Inter','Noto Sans','DejaVu Sans',sans-serif; font-size:14px; }
+
+.chrome { background-image:linear-gradient(90deg,rgba(1,8,23,.94),rgba(3,8,25,.35),rgba(3,5,16,.98)),url("__ASSETS__/header-mountains.png"); background-size:cover; background-position:center; border-bottom:1px solid #24375b; padding:12px 18px; }
+.brand-title { font-size:24px; font-weight:900; letter-spacing:.6px; color:#fff; }
+.brand-sub { font-size:16px; font-weight:800; color:__ACCENT__; }
+.gpu-name { font-size:24px; font-weight:800; color:#fff; }
+.vendor { color:__ACCENT__; font-size:16px; font-weight:700; }
+.metric { border:1px solid __BORDER__; border-radius:15px; background:linear-gradient(125deg,alpha(__ACCENT__,.12),#050c20 75%); padding:8px 10px; box-shadow:inset 0 0 16px alpha(__ACCENT__,.05); }
+.metric-value { font-size:16px; font-weight:800; color:#fff; }
+.metric-caption { font-size:10px; color:#b9c6e1; }
+.control { color:#c9d4ed; background:transparent; border:none; min-height:32px; min-width:32px; padding:0; border-radius:8px; box-shadow:none; font-size:20px; }
+.control:hover { background:#18243d; }
+.control.close:hover { background:#662c45; }
+.sidebar { background:linear-gradient(150deg,#07172c,#030a18 75%); border-right:1px solid #193658; padding:14px 12px; }
+.navigation { background:linear-gradient(120deg,#09182e,#071125); border:1px solid #1b294b; border-radius:15px; padding:6px 0; }
+.nav-item { background:transparent; border:none; border-radius:12px; padding:12px 10px; color:#b6c9e9; box-shadow:none; }
+.nav-item:hover { background:#102341; }
+.nav-item.selected { background:linear-gradient(105deg,alpha(__ACCENT__,.24),#0b1931); color:__ACCENT__; box-shadow:inset 3px 0 __ACCENT__; }
+.nav-title { color:#f2f6ff; font-size:14px; font-weight:750; }
+.nav-sub { font-weight:400; font-size:12px; color:#8fa6cc; }
+.promo { background:linear-gradient(0deg,#040a1b 5%,rgba(4,10,27,.90) 25%,rgba(4,10,27,.08) 67%),url("__ASSETS__/gpu-chip.png"); background-size:cover; background-position:top center; border:1px solid #1a3964; border-radius:15px; padding:16px; }
+.promo-name { font-size:22px; font-weight:900; color:white; }
+.promo-sub { font-size:16px; color:#0c9bff; font-weight:800; }
+.promo-copy { color:#a3b4d4; font-size:12px; }
+.main-area { background:linear-gradient(130deg,#061429,#02091a 65%); padding:26px 22px 14px; }
+.page-title { font-size:24px; font-weight:800; color:white; }
+.muted { color:#9caecc; font-size:12px; }
+.heading { font-size:14px; font-weight:750; color:#f1f4ff; }
+.category { color:#a0b0d1; font-size:12px; }
+.search { border:1px solid #263e6c; background:linear-gradient(120deg,#102445,#142344); border-radius:12px; padding:4px 12px; min-height:36px; color:#dde7ff; box-shadow:none; }
+.search:focus-within { border-color:__ACCENT__; }
+.search text { color:#e8f1ff; background:transparent; }
+.icon-button { background:#102443; color:#c7dcff; border:1px solid #1c3556; border-radius:12px; min-width:42px; min-height:40px; padding:0; box-shadow:none; }
+.icon-button:hover { background:#1b365b; border-color:__ACCENT__; }
+.tab { background:transparent; color:#a1b2d2; border:none; box-shadow:none; border-radius:12px; padding:9px 12px; font-size:12px; }
+.tab.active { background:linear-gradient(120deg,__ACCENT__,#7138ec); color:white; font-weight:700; }
+.app-card { background:linear-gradient(120deg,alpha(__ACCENT__,.08),#0a1730 25%,#050e21 95%); border:1px solid #263755; border-top-color:alpha(__ACCENT__,.55); border-radius:15px; box-shadow:inset 0 0 22px alpha(__ACCENT__,.025); }
+.app-card:hover { border-color:__ACCENT__; background:linear-gradient(130deg,alpha(__ACCENT__,.16),#0a1934); }
+.app-card > box { padding:14px 12px; }
+.app-card dropdown { background:linear-gradient(120deg,#18344a,#162d51); border:1px solid #243c60; border-radius:10px; color:#eef5ff; box-shadow:none; min-height:35px; padding:0 8px; font-size:12px; font-weight:700; }
+.app-card dropdown button { background:transparent; border:none; box-shadow:none; padding:4px; color:inherit; }
+.app-card.dedicated dropdown { background:linear-gradient(120deg,#452973,#302365); border-color:#53418a; }
+.app-card popover contents { background:#101d34; color:#edf2ff; border:1px solid #32466c; }
+.app-launch { background:linear-gradient(120deg,#104477,__ACCENT__); border:1px solid alpha(__ACCENT__,.5); border-radius:11px; color:white; min-width:42px; min-height:38px; padding:0; box-shadow:inset 0 0 13px alpha(__ACCENT__,.12); }
+.app-launch:hover { background:__ACCENT__; box-shadow:0 0 12px alpha(__ACCENT__,.4); }
+.more-button { background:transparent; color:#9cafcf; border:none; box-shadow:none; min-width:18px; min-height:20px; padding:0; }
+.pager { background:linear-gradient(120deg,#0e2444,#091a32); color:#a9d6ff; border:1px solid #152e50; border-radius:12px; min-width:46px; min-height:38px; padding:0; box-shadow:none; }
+.pager.next { background:linear-gradient(125deg,__ACCENT__,#552eff); color:white; }
+.pager:disabled { opacity:.4; }
+.right-area { background:linear-gradient(160deg,#050c1e,#020817); border-left:1px solid #182943; padding:16px 12px; }
+.panel { background:linear-gradient(135deg,alpha(__ACCENT__,.07),#071329 50%,#050c1b); border:1px solid #23395c; border-top-color:alpha(__ACCENT__,.45); border-radius:15px; padding:14px 12px; }
+.panel-title { font-size:14px; font-weight:750; color:#e6eeff; }
+.field-key { font-size:12px; color:#e0e8f8; }
+.field-value { font-weight:400; font-size:12px; color:#a8b9d6; }
+.section-title { font-size:20px; font-weight:750; color:white; }
+.metric-bar trough { min-height:9px; background:#11213b; border-radius:7px; }
+.metric-bar progress { min-height:9px; background:linear-gradient(90deg,#18bdff,__ACCENT__); border-radius:7px; }
+.metric-bar.purple progress { background:linear-gradient(90deg,#6032d6,#9250ff); }
+.status-line { color:#8fa6cb; font-size:11px; }
+.warning { color:#d4b8ca; background:alpha(__ACCENT__,.06); border:1px solid alpha(__ACCENT__,.15); border-radius:10px; padding:10px; font-size:11px; }
+.gpu-choice { color:#e3edff; background:#101d35; border:1px solid #243e65; border-radius:10px; }
+.settings-button { background:#162b47; color:#e4efff; border:1px solid #2b4262; border-radius:10px; padding:10px 14px; }
+
+.stackos-signature {font-size:10px;font-weight:500;color:#829fce;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#60c8ff;background:transparent;}

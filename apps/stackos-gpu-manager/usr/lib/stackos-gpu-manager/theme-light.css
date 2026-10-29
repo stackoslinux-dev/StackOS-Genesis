@@ -1,0 +1,65 @@
+window.gpu-modern { background:#f3f5f9; color:#172a5d; font-family:'Inter','Noto Sans','DejaVu Sans',sans-serif; font-size:14px; }
+
+.chrome { background-image:linear-gradient(90deg,rgba(246,248,253,.94),rgba(246,248,253,.35),rgba(246,248,253,.98)),url("__ASSETS__/header-mountains.png"); background-size:cover; background-position:center; border-bottom:1px solid #bdc7db; padding:12px 18px; }
+.brand-title { font-size:24px; font-weight:900; letter-spacing:.6px; color:#383838; }
+.brand-sub { font-size:16px; font-weight:800; color:__ACCENT__; }
+.gpu-name { font-size:24px; font-weight:800; color:#383838; }
+.vendor { color:__ACCENT__; font-size:16px; font-weight:700; }
+.metric { border:1px solid __BORDER__; border-radius:15px; background:linear-gradient(125deg,alpha(__ACCENT__,.12),#f2f4f8 75%); padding:8px 10px; box-shadow:inset 0 0 16px alpha(__ACCENT__,.05); }
+.metric-value { font-size:16px; font-weight:800; color:#383838; }
+.metric-caption { font-size:10px; color:#28395d; }
+.control { color:#20335f; background:transparent; border:none; min-height:32px; min-width:32px; padding:0; border-radius:8px; box-shadow:none; font-size:20px; }
+.control:hover { background:#eef1f6; }
+.control.close:hover { background:#f4e9ee; }
+.sidebar { background:linear-gradient(150deg,#f1f4f8,#f3f5f9 75%); border-right:1px solid #bdcbdb; padding:14px 12px; }
+.navigation { background:linear-gradient(120deg,#f1f3f8,#f1f4f8); border:1px solid #bdc6db; border-radius:15px; padding:6px 0; }
+.nav-item { background:transparent; border:none; border-radius:12px; padding:12px 10px; color:#1e3965; box-shadow:none; }
+.nav-item:hover { background:#eef2f6; }
+.nav-item.selected { background:linear-gradient(105deg,alpha(__ACCENT__,.24),#f0f3f7); color:__ACCENT__; box-shadow:inset 3px 0 __ACCENT__; }
+.nav-title { color:#172c5c; font-size:14px; font-weight:750; }
+.nav-sub { font-weight:400; font-size:12px; color:#2d4263; }
+.promo { background:linear-gradient(0deg,#f2f4f9 5%,rgba(246,248,253,.90) 25%,rgba(246,248,253,.08) 67%),url("__ASSETS__/gpu-chip.png"); background-size:cover; background-position:top center; border:1px solid #bdcadb; border-radius:15px; padding:16px; }
+.promo-name { font-size:22px; font-weight:900; color:#17223b; }
+.promo-sub { font-size:16px; color:#0072c2; font-weight:800; }
+.promo-copy { color:#2c3e5f; font-size:12px; }
+.main-area { background:linear-gradient(130deg,#f1f4f8,#f3f4f9 65%); padding:26px 22px 14px; }
+.page-title { font-size:24px; font-weight:800; color:#17223b; }
+.muted { color:#30415e; font-size:12px; }
+.heading { font-size:14px; font-weight:750; color:#17265c; }
+.category { color:#2e3e5f; font-size:12px; }
+.search { border:1px solid #bdc7db; background:linear-gradient(120deg,#eef1f6,#eef1f6); border-radius:12px; padding:4px 12px; min-height:36px; color:#182d5f; box-shadow:none; }
+.search:focus-within { border-color:__ACCENT__; }
+.search text { color:#17335d; background:transparent; }
+.icon-button { background:#eef1f6; color:#193463; border:1px solid #bdcadb; border-radius:12px; min-width:42px; min-height:40px; padding:0; box-shadow:none; }
+.icon-button:hover { background:#ecf0f5; border-color:__ACCENT__; }
+.tab { background:transparent; color:#2d3e5f; border:none; box-shadow:none; border-radius:12px; padding:9px 12px; font-size:12px; }
+.tab.active { background:linear-gradient(120deg,__ACCENT__,#e3deee); color:#17223b; font-weight:700; }
+.app-card { background:linear-gradient(120deg,alpha(__ACCENT__,.08),#f0f3f7 25%,#f2f4f8 95%); border:1px solid #bdc8db; border-top-color:alpha(__ACCENT__,.55); border-radius:15px; box-shadow:inset 0 0 22px alpha(__ACCENT__,.025); }
+.app-card:hover { border-color:__ACCENT__; background:linear-gradient(130deg,alpha(__ACCENT__,.16),#f0f3f7); }
+.app-card > box { padding:14px 12px; }
+.app-card dropdown { background:linear-gradient(120deg,#edf2f6,#edf0f6); border:1px solid #bdc9db; border-radius:10px; color:#17345c; box-shadow:none; min-height:35px; padding:0 8px; font-size:12px; font-weight:700; }
+.app-card dropdown button { background:transparent; border:none; box-shadow:none; padding:4px; color:inherit; }
+.app-card.dedicated dropdown { background:linear-gradient(120deg,#ede9f3,#eceaf4); border-color:#c4bddb; }
+.app-card popover contents { background:#f0f2f7; color:#172a5d; border:1px solid #bdc7db; }
+.app-launch { background:linear-gradient(120deg,#eaeff4,__ACCENT__); border:1px solid alpha(__ACCENT__,.5); border-radius:11px; color:#17223b; min-width:42px; min-height:38px; padding:0; box-shadow:inset 0 0 13px alpha(__ACCENT__,.12); }
+.app-launch:hover { background:__ACCENT__; box-shadow:0 0 12px alpha(__ACCENT__,.4); }
+.more-button { background:transparent; color:#2e415f; border:none; box-shadow:none; min-width:18px; min-height:20px; padding:0; }
+.pager { background:linear-gradient(120deg,#eef2f6,#f0f3f7); color:#1a4368; border:1px solid #bdcadb; border-radius:12px; min-width:46px; min-height:38px; padding:0; box-shadow:none; }
+.pager.next { background:linear-gradient(125deg,__ACCENT__,#e0ddee); color:#17223b; }
+.pager:disabled { opacity:.4; }
+.right-area { background:linear-gradient(160deg,#f2f4f8,#f3f5f9); border-left:1px solid #bdc9db; padding:16px 12px; }
+.panel { background:linear-gradient(135deg,alpha(__ACCENT__,.07),#f1f3f8 50%,#f2f4f8); border:1px solid #bdc9db; border-top-color:alpha(__ACCENT__,.45); border-radius:15px; padding:14px 12px; }
+.panel-title { font-size:14px; font-weight:750; color:#172e5e; }
+.field-key { font-size:12px; color:#183060; }
+.field-value { font-weight:400; font-size:12px; color:#2c3e5e; }
+.section-title { font-size:20px; font-weight:750; color:#17223b; }
+.metric-bar trough { min-height:9px; background:#eff2f7; border-radius:7px; }
+.metric-bar progress { min-height:9px; background:linear-gradient(90deg,#dfeaee,__ACCENT__); border-radius:7px; }
+.metric-bar.purple progress { background:linear-gradient(90deg,#e4e0ef,#9250ff); }
+.status-line { color:#2e4263; font-size:11px; }
+.warning { color:#543348; background:alpha(__ACCENT__,.06); border:1px solid alpha(__ACCENT__,.15); border-radius:10px; padding:10px; font-size:11px; }
+.gpu-choice { color:#18315e; background:#eff2f7; border:1px solid #bdc9db; border-radius:10px; }
+.settings-button { background:#eef1f6; color:#18345e; border:1px solid #bdc9db; border-radius:10px; padding:10px 14px; }
+
+.stackos-signature {font-size:10px;font-weight:500;color:#29426a;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#1d5573;background:transparent;}

@@ -1,0 +1,28 @@
+#!/usr/bin/python3
+import os,subprocess,shutil
+from pathlib import Path
+def command(args):
+ try:return subprocess.run(args,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,timeout=10).returncode==0
+ except (OSError,subprocess.TimeoutExpired):return False
+def main():
+ home=Path.home();wrapper=home/'.local/bin/stackos-gpu-manager';desktop=home/'.local/share/applications/org.stackos.GPUManager.desktop'
+ try:
+  if wrapper.is_file() and str(home/'.local/share/stackos-gpu-manager-modern/stackos_gpu_ui.py') in wrapper.read_text():
+   backup=Path(str(wrapper)+'.before-deb')
+   if not backup.exists():shutil.copy2(wrapper,backup)
+   wrapper.write_text('#!/bin/sh\nexec /usr/bin/stackos-gpu-manager "$@"\n');wrapper.chmod(0o755)
+   if desktop.is_file() and str(wrapper) in desktop.read_text():
+    backup=Path(str(desktop)+'.before-deb')
+    if not backup.exists():shutil.copy2(desktop,backup)
+    desktop.write_text(Path('/usr/share/applications/org.stackos.GPUManager.desktop').read_text())
+ except OSError:pass
+ if 'GNOME' in os.environ.get('XDG_CURRENT_DESKTOP','').upper() and Path('/usr/share/gnome-shell/extensions/ubuntu-appindicators@ubuntu.com').exists():
+  command(['gdbus','call','--session','--dest','org.gnome.Shell.Extensions','--object-path','/org/gnome/Shell/Extensions','--method','org.gnome.Shell.Extensions.EnableExtension','ubuntu-appindicators@ubuntu.com'])
+ command(['systemctl','--user','daemon-reload'])
+ if not command(['systemctl','--user','start','stackos-gpu-indicator.service']):
+  import fcntl
+  lockdir=Path(os.environ.get('XDG_RUNTIME_DIR','/tmp'));lock=(lockdir/('stackos-gpu-indicator-'+str(os.getuid())+'.lock')).open('w')
+  try:fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+  except BlockingIOError:return
+  subprocess.run(['/usr/bin/stackos-gpu-indicator'],pass_fds=(lock.fileno(),),check=False)
+if __name__=='__main__':main()

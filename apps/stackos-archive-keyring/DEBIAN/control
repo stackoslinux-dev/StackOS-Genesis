@@ -1,0 +1,7 @@
+Package: stackos-archive-keyring
+Version: 2026.10.28
+Architecture: all
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Section: misc
+Priority: important
+Description: StackOS C3 archive signing public key

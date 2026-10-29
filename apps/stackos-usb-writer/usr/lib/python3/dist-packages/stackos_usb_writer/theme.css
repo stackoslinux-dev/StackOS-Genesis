@@ -1,0 +1,40 @@
+window.usb {background:#050b1b;color:#eef4ff;font-family:'Inter','Noto Sans',sans-serif;font-size:14px;}
+.root {background:linear-gradient(120deg,#06142c,#050b1b);}
+.chrome {background:#050e21;color:#aac0e2;min-height:26px;border:none;}
+.chrome button {background:transparent;border:none;padding:0;min-width:30px;min-height:26px;}
+.window-title {font-size:12px;color:#9db5da;}
+.sidebar {padding:25px 20px;border-right:1px solid #29416e;background-image:url('__ASSETS__/wave.svg'),linear-gradient(150deg,#0c1d3d,#060d25 60%,#15103e);background-size:100% 250px,cover;background-repeat:no-repeat;background-position:bottom,center;}
+.brand {font-size:29px;font-weight:850;color:white;}
+.muted {color:#a1b8db;font-size:13px;}
+.side-card {border:1px solid #283f70;border-radius:14px;padding:14px;background:rgba(5,14,36,.8);}
+.content {padding:20px 24px;}
+.hero-title {font-size:31px;font-weight:850;color:#f3f6ff;}
+.subtitle {font-size:15px;color:#a2b8dc;}
+.feature-title {font-size:14px;font-weight:750;color:#eff5ff;}
+.caption {font-size:11px;color:#8fa9cf;}
+.section-title {font-size:18px;color:#eef4ff;font-weight:750;}
+button {padding:10px 14px;background:linear-gradient(120deg,#10264b,#0a1732);color:#bfd3f5;border:1px solid #2b497b;border-radius:12px;box-shadow:none;font-weight:650;}
+button:hover {background:#23446b;border-color:#3b9cff;}
+button:disabled {opacity:.4;}
+.nav {background:transparent;border:none;font-size:14px;padding:14px 10px;}
+.nav.selected {background:linear-gradient(110deg,#006dff,#6721f5);color:white;}
+.primary {background:linear-gradient(110deg,#00a1ff,#4b2aff);color:white;border-color:#3885ff;font-size:15px;padding:13px 20px;}
+.primary:hover {background:linear-gradient(110deg,#18c0ff,#753fff);}
+.panel {border:1px solid #2d4477;border-radius:17px;padding:13px;background:linear-gradient(125deg,#0b1e3d,#08142c);}
+.step-number {font-size:19px;font-weight:800;color:white;background:linear-gradient(120deg,#096aff,#7230ed);border-radius:20px;padding:4px 11px;}
+.dropzone {padding:13px;border:1px dashed #375b9a;border-radius:13px;background:#0c2042;}
+.drop-title {font-size:17px;font-weight:750;color:#f1f6ff;}
+.warning {background:#0c2448;border:1px solid #225991;border-radius:12px;padding:13px;color:#b8d6ff;font-size:12px;}
+.info-copy {font-size:15px;color:#b9cdec;}
+.mono {font-family:monospace;color:#97c9ff;font-size:13px;}
+.footer {padding:13px 24px;border-top:1px solid #253e6a;background:#050f24;}
+.link {padding:3px;background:transparent;border:none;color:#39b8ff;}
+entry {background:#0c1e3d;border:1px solid #294879;border-radius:10px;padding:10px;color:#e2eeff;}
+dropdown {background:#102544;border:1px solid #274473;border-radius:12px;padding:6px 9px;color:#e1ebfd;}
+checkbutton {color:#d6e5ff;font-size:13px;}
+progressbar trough {background:#132b4d;min-height:9px;border-radius:6px;}
+progressbar progress {background:linear-gradient(90deg,#05aaff,#852aff);min-height:9px;border-radius:6px;}
+textview,textview text {background:#0a1931;color:#c3d9f5;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#829fce;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#60c8ff;background:transparent;}

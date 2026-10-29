@@ -1,0 +1,28 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+    echo "$PREREQ"
+}
+
+case "$1" in
+    prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+. /usr/share/initramfs-tools/hook-functions
+
+copy_exec /usr/bin/sha256sum /usr/bin
+copy_exec /usr/bin/rsync /usr/bin
+copy_exec /usr/sbin/findfs /usr/sbin
+copy_exec /usr/sbin/blkid /usr/sbin
+copy_exec /usr/sbin/mkfs.ext4 /usr/sbin
+copy_exec /usr/sbin/e2fsck /usr/sbin
+
+copy_exec /usr/bin/openssl /usr/bin
+copy_exec /usr/bin/stty /usr/bin
+copy_exec /usr/bin/tr /usr/bin

@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+# The installed system keeps recovery tools, but has no Live installer frontend.
+if [ -s /var/lib/stackos/firstboot-complete ]; then
+    rm -f /usr/local/bin/stackos-installer /usr/local/bin/stackos-installer-launcher
+    rm -f /usr/share/applications/stackos-installer.desktop
+    rm -f /etc/xdg/autostart/stackos-installer.desktop
+fi
+exit 0

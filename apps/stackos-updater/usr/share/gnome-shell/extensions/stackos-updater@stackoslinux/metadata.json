@@ -1,0 +1,9 @@
+{
+  "uuid": "stackos-updater@stackoslinux",
+  "name": "StackOS Updater Indicator",
+  "description": "Indicador de atualizações do StackOS",
+  "shell-version": [
+    "50"
+  ],
+  "version": 2
+}

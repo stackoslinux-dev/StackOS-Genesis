@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=StackOS FirstBoot
+Exec=/bin/sh -c 'test -f /var/lib/stackos/firstboot-pending && exec /usr/local/bin/stackos-firstboot'
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+OnlyShowIn=GNOME;

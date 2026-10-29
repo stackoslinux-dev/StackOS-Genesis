@@ -1,0 +1,44 @@
+window.store {background:#f3f4f9;color:#172c5c;font-family:'Inter','Noto Sans',sans-serif;font-size:13px;}
+.root {background:linear-gradient(125deg,#f1f4f8,#f3f4f9);}
+.chrome {background:#f3f4f9;color:#293e61;min-height:26px;border:none;}
+.chrome button {background:transparent;border:none;padding:0;min-width:30px;min-height:26px;}
+.window-title {font-size:11px;color:#364762;}
+.header {padding:10px 18px 18px;border-bottom:1px solid #bdcadb;background:linear-gradient(110deg,#f1f4f8,#f2f4f8);}
+.brand-title {font-size:25px;font-weight:850;color:#17223b;}
+.brand-sub {font-size:10px;font-weight:750;letter-spacing:2.6px;color:#4d1e79;}
+searchentry {background:#f0f2f7;border:1px solid #bdc9db;border-radius:25px;padding:9px 14px;color:#182f5f;}
+searchentry text {background:transparent;color:#182f5f;}
+button {background:linear-gradient(115deg,#eef1f6,#f0f3f7);color:#193162;border:1px solid #bdc9db;border-radius:11px;padding:10px 13px;box-shadow:none;font-weight:650;}
+button:hover {background:#ebeff4;border-color:#3689ff;}
+button:disabled {opacity:.45;}
+.sidebar {background:linear-gradient(120deg,#f1f3f8,#f2f4f8);padding:15px 12px;border-right:1px solid #bdcadb;}
+.nav {background:transparent;border:none;padding:12px 10px;color:#253d63;font-size:13px;}
+.nav.selected {background:linear-gradient(110deg,#1458c2,#0a2867);border:1px solid #2467db;color:white;}
+.promo {padding:20px 12px;border:1px solid #bdc4db;border-radius:15px;background:linear-gradient(140deg,#eff0f7,#edebf5);margin-top:18px;}
+.content {padding:18px 22px;}
+.hero {background-image:linear-gradient(90deg,rgba(246,248,253,.95),rgba(246,248,253,.65),rgba(246,248,253,.3)),url('__ASSETS__/mountains.png');background-size:cover;background-position:center;border:1px solid #bdc2db;border-radius:16px;padding:24px;}
+.hero-kicker {color:#381c71;letter-spacing:2px;font-size:11px;font-weight:700;}
+.hero-title {font-size:31px;font-weight:850;color:#172a5c;}
+.hero-copy {color:#213864;font-size:14px;}
+.category {background:#f0f3f7;color:#1a3868;padding:12px 17px;}
+.section-title {font-size:19px;font-weight:750;color:#172c5c;}
+.page-title {font-size:28px;font-weight:800;color:#17223b;}
+.app-card {border:1px solid #bdc9db;border-radius:16px;background:linear-gradient(125deg,#f0f2f7,#f2f4f8);padding:16px;}
+.app-card:hover {border-color:#268cff;background:linear-gradient(125deg,#eef1f6,#f1f3f8);}
+.app-name {font-size:16px;font-weight:750;color:#172a5c;}
+.muted {font-size:12px;color:#284063;}
+.package-label {font-size:10px;color:#1e4e76;}
+.installed {font-size:11px;color:#0db58c;font-weight:700;}
+.vote-caption {font-size:10px;color:#6b6133;}
+.more {padding:0;min-width:24px;border:none;background:transparent;color:#2e4265;}
+.install {background:linear-gradient(110deg,#e9edf4,#ebeff5);border-color:#bdc9db;color:#173c5d;}
+.remove {background:linear-gradient(110deg,#e7e3f1,#ede7f3);border-color:#864bc5;color:#17223b;}
+.online-row {background:#f0f2f7;border:1px solid #bdc9db;border-radius:12px;padding:16px;}
+.description-text {color:#263b5d;font-size:14px;}
+.footer {border-top:1px solid #bdc9db;background:#f2f4f8;padding:10px 18px;}
+progressbar trough {min-height:8px;background:#eef1f6;border-radius:8px;}progressbar progress {min-height:8px;background:linear-gradient(90deg,#dfe6ef,#e6deee);border-radius:8px;}
+textview,textview text {background:#f1f4f8;color:#1c3663;}
+.error {color:#691a2c;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#29426a;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#1d5573;background:transparent;}

@@ -1,0 +1,44 @@
+window.store {background:#050b19;color:#eef3ff;font-family:'Inter','Noto Sans',sans-serif;font-size:13px;}
+.root {background:linear-gradient(125deg,#061127,#040a18);}
+.chrome {background:#050b19;color:#a4b8d9;min-height:26px;border:none;}
+.chrome button {background:transparent;border:none;padding:0;min-width:30px;min-height:26px;}
+.window-title {font-size:11px;color:#7e94b8;}
+.header {padding:10px 18px 18px;border-bottom:1px solid #1c3555;background:linear-gradient(110deg,#07172c,#050b1c);}
+.brand-title {font-size:25px;font-weight:850;color:white;}
+.brand-sub {font-size:10px;font-weight:750;letter-spacing:2.6px;color:#a23dff;}
+searchentry {background:#0d1b35;border:1px solid #284a7c;border-radius:25px;padding:9px 14px;color:#e0eaff;}
+searchentry text {background:transparent;color:#e1ebff;}
+button {background:linear-gradient(115deg,#12294b,#0b1730);color:#c9dbff;border:1px solid #24416d;border-radius:11px;padding:10px 13px;box-shadow:none;font-weight:650;}
+button:hover {background:#203c62;border-color:#3689ff;}
+button:disabled {opacity:.45;}
+.sidebar {background:linear-gradient(120deg,#09162d,#060b1b);padding:15px 12px;border-right:1px solid #193353;}
+.nav {background:transparent;border:none;padding:12px 10px;color:#a8bddf;font-size:13px;}
+.nav.selected {background:linear-gradient(110deg,#1458c2,#0a2867);border:1px solid #2467db;color:white;}
+.promo {padding:20px 12px;border:1px solid #27386d;border-radius:15px;background:linear-gradient(140deg,#11183c,#25116b);margin-top:18px;}
+.content {padding:18px 22px;}
+.hero {background-image:linear-gradient(90deg,rgba(3,10,28,.95),rgba(6,14,41,.65),rgba(32,9,68,.3)),url('__ASSETS__/mountains.png');background-size:cover;background-position:center;border:1px solid #35427e;border-radius:16px;padding:24px;}
+.hero-kicker {color:#9c6cff;letter-spacing:2px;font-size:11px;font-weight:700;}
+.hero-title {font-size:31px;font-weight:850;color:#f4f7ff;}
+.hero-copy {color:#b0c2e5;font-size:14px;}
+.category {background:#0b1b35;color:#b8cced;padding:12px 17px;}
+.section-title {font-size:19px;font-weight:750;color:#f2f6ff;}
+.page-title {font-size:28px;font-weight:800;color:white;}
+.app-card {border:1px solid #25436e;border-radius:16px;background:linear-gradient(125deg,#0c1932,#071023);padding:16px;}
+.app-card:hover {border-color:#268cff;background:linear-gradient(125deg,#102445,#09152e);}
+.app-name {font-size:16px;font-weight:750;color:#f4f7ff;}
+.muted {font-size:12px;color:#9eb5d8;}
+.package-label {font-size:10px;color:#5eadef;}
+.installed {font-size:11px;color:#10dfad;font-weight:700;}
+.vote-caption {font-size:10px;color:#b6a765;}
+.more {padding:0;min-width:24px;border:none;background:transparent;color:#859dc7;}
+.install {background:linear-gradient(110deg,#073d91,#083074);border-color:#1b61c5;color:#e8f4ff;}
+.remove {background:linear-gradient(110deg,#5431ae,#56258a);border-color:#864bc5;color:white;}
+.online-row {background:#0d1c36;border:1px solid #28456f;border-radius:12px;padding:16px;}
+.description-text {color:#bfcee5;font-size:14px;}
+.footer {border-top:1px solid #1c3558;background:#060e1f;padding:10px 18px;}
+progressbar trough {min-height:8px;background:#142641;border-radius:8px;}progressbar progress {min-height:8px;background:linear-gradient(90deg,#147aff,#9328ff);border-radius:8px;}
+textview,textview text {background:#08182d;color:#c6d5ef;}
+.error {color:#ff9eb4;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#829fce;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#60c8ff;background:transparent;}

@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=StackOS GPU Indicator
+Comment=Mostra o uso da GPU na barra superior
+Exec=/usr/bin/stackos-gpu-session
+TryExec=/usr/bin/stackos-gpu-session
+Icon=/usr/share/icons/hicolor/256x256/apps/org.stackos.GPUManager.png
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+Hidden=true

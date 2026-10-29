@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=StackOS USB Writer
+Comment=Grave e verifique imagens ISO/IMG e comprimidas em USBs
+Exec=/usr/bin/stackos-usb-writer
+Icon=org.stackos.UsbWriter
+Terminal=false
+Categories=System;Utility;
+StartupNotify=true
+StartupWMClass=org.stackos.UsbWriter
+Keywords=usb;iso;img;pendrive;gravar;formatar;

@@ -1,0 +1,3922 @@
+#!/usr/bin/env python3
+# [NODUALBOOT-20260916] Candidato sem Dual Boot. Original 2.2 intocado.
+import os as _launcher_os, sys as _launcher_sys
+if _launcher_os.geteuid() == 0 and _launcher_os.environ.get('SUDO_UID') and not _launcher_os.environ.get('STACKOS_INSTALLER_PRIVATE_BUS'):
+    if _launcher_os.access('/usr/bin/dbus-run-session', _launcher_os.X_OK):
+        _installer_environment = _launcher_os.environ.copy()
+        _session_runtime = _installer_environment.get('XDG_RUNTIME_DIR', '')
+        _wayland_socket = _installer_environment.get('WAYLAND_DISPLAY', '')
+        if _wayland_socket and not _launcher_os.path.isabs(_wayland_socket):
+            _installer_environment['WAYLAND_DISPLAY'] = _launcher_os.path.join(_session_runtime, _wayland_socket)
+        _root_runtime = '/run/stackos-installer-root'
+        _launcher_os.makedirs(_root_runtime, mode=0o700, exist_ok=True)
+        if _launcher_os.path.islink(_root_runtime) or _launcher_os.stat(_root_runtime).st_uid != 0:
+            raise RuntimeError('Diretório de sessão administrativa inválido')
+        _launcher_os.chmod(_root_runtime, 0o700)
+        _installer_environment['XDG_RUNTIME_DIR'] = _root_runtime
+        _installer_environment['STACKOS_INSTALLER_PRIVATE_BUS'] = '1'
+        _launcher_os.execve('/usr/bin/dbus-run-session', ['dbus-run-session', '--', '/usr/bin/python3', __file__, *_launcher_sys.argv[1:]], _installer_environment)
+
+import cairo
+from datetime import datetime
+from zoneinfo import ZoneInfo
+import gi
+gi.require_version('Gtk', '4.0')
+gi.require_version('Rsvg', '2.0')
+gi.require_foreign('cairo')
+from gi.repository import Gtk, Gdk, GLib, Pango, Rsvg
+import subprocess, sys, os, time, threading, re, shlex, json, stat, traceback, shutil
+from pathlib import Path
+
+CSS = b'\nwindow { background: #090e1a; color: #eaf0ff; }\nheaderbar { background: #0d1424; color: #eaf0ff; border-bottom: 1px solid #23304a; box-shadow: none; }\n.title { color: #f2f5ff; font-size: 25px; font-weight: 800; }\n.subtitle, .label-blue, .pct { color: #a3b6d7; font-size: 13px; }\n.label-white, .radio, .slide-text { color: #e3ebfb; font-size: 14px; }\n.label-purple { color: #bfa8ff; }\n.card { background: #111c30; border: 1px solid #293c59; border-radius: 18px; padding: 22px; }\nbutton { transition: 140ms ease; }\n.btn-primary, .btn-danger, .btn-secondary { border-radius: 12px; padding: 11px 22px; font-size: 14px; font-weight: 700; box-shadow: none; }\n.btn-primary { background: linear-gradient(110deg, #2377dd, #7354e8); color: white; border: 1px solid #568ee8; }\n.btn-primary:hover { background: linear-gradient(110deg, #348cef, #8966f5); }\n.btn-secondary { background: #18253c; color: #e0eaff; border: 1px solid #344968; }\n.btn-secondary:hover { background: #253854; }\n.btn-danger { background: #a73c46; color: white; border: 1px solid #d1646f; }\n.btn-danger:hover { background: #bf4c58; }\nbutton:disabled { opacity: 0.45; }\nbutton:focus-visible, entry:focus-within, dropdown:focus-within { outline: 2px solid #7caeff; outline-offset: 2px; }\n.entry, dropdown > button { background: #0b1426; color: #eaf0ff; border: 1px solid #385171; border-radius: 10px; padding: 10px; }\npopover contents { background: #17253a; color: #edf3ff; }\ncheckbutton { padding: 8px 4px; }\ncheckbutton check { border-radius: 50%; border: 1px solid #6682b0; }\ncheckbutton check:checked { background: #498bfa; color: white; }\n.progress trough { background: #23314b; border-radius: 20px; min-height: 7px; }\n.progress progress { background: linear-gradient(90deg, #20a9f2, #8c60ee); border-radius: 20px; min-height: 7px; }\n.separator { background: #293954; }\n.slide-card { background: #131d35; border: 1px solid #3b3962; border-radius: 20px; padding: 26px; }\n.slide-icon { font-size: 42px; }\n.slide-title { color: #c1acff; font-size: 21px; font-weight: 800; }\n.dot-on { color: #a58aff; font-size: 14px; }\n.dot-off { color: #3a4c69; font-size: 14px; }\n.warn-erase { color: #ffb2a7; font-size: 13px; font-weight: 700; }\n.warn-dual { color: #80ddbc; font-size: 13px; font-weight: 700; }\n.step-label { color: #9ec4ff; font-size: 12px; font-weight: 700; }\n.step-strip { background: #0d1628; padding: 16px 24px; border-bottom: 1px solid #25334c; }\n.navigation { background: #0d1424; border-top: 1px solid #25334c; padding: 14px 24px; }\n.hero-mark { color: #81c9ff; background: linear-gradient(135deg, #183662, #302354); border-radius: 22px; padding: 18px; }\n'
+
+class CommandError(RuntimeError):
+    pass
+
+def run(cmd, check=True):
+    result = subprocess.run(cmd, shell=isinstance(cmd, str), capture_output=True, text=True)
+    if check and result.returncode != 0:
+        raise CommandError(f"Falha no comando (código {result.returncode}): {cmd}\n{result.stderr[-3000:]}")
+    return result
+
+
+def _slug(s):
+    # transforma texto livre em pedaco valido de hostname:
+    # minusculas, so [a-z0-9-], sem repetir/iniciar/terminar com '-'
+    s = (s or "").strip().lower()
+    s = re.sub(r'[^a-z0-9]+', '-', s)
+    s = re.sub(r'-+', '-', s).strip('-')
+    return s
+
+def hardware_tag():
+    # le marca + modelo do hardware via DMI; devolve algo tipo "gigabyte-b450m"
+    # se nao achar (VM/hardware generico), devolve "pc"
+    def read(path):
+        try:
+            with open(path) as f:
+                return f.read().strip()
+        except Exception:
+            return ""
+    base = "/sys/class/dmi/id/"
+    vendor = read(base + "board_vendor") or read(base + "sys_vendor")
+    model  = read(base + "board_name")   or read(base + "product_name")
+    # palavras inuteis comuns que aparecem no DMI
+    lixo = {"to", "be", "filled", "by", "oem", "o", "e", "m", "default", "string",
+            "system", "manufacturer", "product", "name", "version", "none", "na",
+            "inc", "ltd", "co", "corporation", "computer", "technology", "tech",
+            "international", "group"}
+    def limpa(txt, max_tokens=2):
+        toks = [t for t in _slug(txt).split('-') if t and t not in lixo]
+        return "-".join(toks[:max_tokens])
+    vendor = limpa(vendor, 1)   # so a marca: "gigabyte", "asustek", "dell"
+    model  = limpa(model, 1)    # so o 1o pedaco do modelo: "b450m", "prime"
+    tag = "-".join([p for p in (vendor, model) if p])
+    return tag or "pc"
+
+def hardware_label():
+    # versao "bonita" pra mostrar na tela: ex "Asus PRIME B550M-A"
+    # se nao achar, devolve "" (a tela mostra 'Nao detectado')
+    def read(path):
+        try:
+            with open(path) as f:
+                return f.read().strip()
+        except Exception:
+            return ""
+    base = "/sys/class/dmi/id/"
+    vendor = read(base + "board_vendor") or read(base + "sys_vendor")
+    model  = read(base + "board_name")   or read(base + "product_name")
+    ruins = {"to be filled by o.e.m.", "default string", "system product name",
+             "system manufacturer", "to be filled by oem", "none", "n/a", ""}
+    if vendor.strip().lower() in ruins: vendor = ""
+    if model.strip().lower()  in ruins: model  = ""
+    partes = [p for p in (vendor.strip(), model.strip()) if p]
+    return " ".join(partes)
+
+class StackOSInstaller(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id='com.stackos.installer')
+        self.connect('activate', self.on_activate)
+        self.preview = '--preview' in sys.argv
+        self.installing = False
+        self.install_failed = False
+        self.disk = ""
+        self.mode = ""
+        self.username = ""
+        self.password = ""
+        self.hostname = ""
+        self.locale = "pt_BR.UTF-8"
+        self.timezone = "America/Sao_Paulo"
+        self.keyboard_layout = "br"
+        self.keyboard_variant = "abnt2"
+        self.efi = ""
+        self.root = ""
+        self.recovery = ""
+        self.backups = ""
+
+    def on_activate(self, app):
+        provider = Gtk.CssProvider()
+        provider.load_from_data(CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+        )
+        self.win = Gtk.ApplicationWindow(application=app)
+        self.win.set_title("Instalador StackOS")
+        display = Gdk.Display.get_default()
+        monitors = display.get_monitors()
+        geometry = monitors.get_item(0).get_geometry() if monitors.get_n_items() else None
+        self.win.set_default_size(min(940, geometry.width - 64) if geometry else 940,
+                                  min(720, geometry.height - 96) if geometry else 680)
+        self.win.set_resizable(True)
+        header = Gtk.HeaderBar()
+        header.set_show_title_buttons(True)
+        header.set_decoration_layout(":minimize,maximize,close")
+        brand = Gtk.Label(label="StackOS · Genesis")
+        brand.add_css_class('heading')
+        header.set_title_widget(brand)
+        self.win.set_titlebar(header)
+        self.shell = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.step_strip = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        self.step_strip.add_css_class('step-strip')
+        self.step_label = Gtk.Label(xalign=0)
+        self.step_label.add_css_class('step-label')
+        self.step_label.set_ellipsize(Pango.EllipsizeMode.END)
+        self.step_progress = Gtk.ProgressBar()
+        self.step_progress.add_css_class('progress')
+        self.step_strip.append(self.step_label)
+        self.step_strip.append(self.step_progress)
+        self.shell.append(self.step_strip)
+        self.page_scroll = Gtk.ScrolledWindow(hexpand=True, vexpand=True)
+        self.page_scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        self.shell.append(self.page_scroll)
+        self.navigation = Gtk.Box()
+        self.shell.append(self.navigation)
+        self.win.set_child(self.shell)
+        self.responsive_boxes = []
+        self.last_width = -1
+        self.win.add_tick_callback(self.adapt_layout)
+        self.win.connect('close-request', self.on_close)
+
+        # Idioma inicial da interface.
+        self.ui_lang = "pt_BR"
+
+        self.show_welcome()
+        self.win.present()
+
+    def on_close(self, win):
+        if self.installing:
+            dialog = Gtk.AlertDialog(message="Instalação em andamento", detail="Aguarde o término para fechar o instalador.")
+            dialog.show(self.win)
+            return True
+        dialog = Gtk.AlertDialog()
+        dialog.set_message(self.tr("cancel_install"))
+        dialog.set_detail(self.tr("cancel_detail"))
+        dialog.set_buttons([
+            self.tr("continue"),
+            self.tr("exit")
+        ])
+        dialog.set_default_button(0)
+        dialog.set_cancel_button(0)
+        dialog.choose(self.win, None, self.on_close_response)
+        return True
+
+    def on_close_response(self, dialog, result):
+        btn = dialog.choose_finish(result)
+        if btn == 1:
+            self.quit()
+
+    def clear(self):
+        self.page_scroll.set_child(None)
+        self.page_scroll.get_vadjustment().set_value(0)
+        while self.navigation.get_first_child():
+            self.navigation.remove(self.navigation.get_first_child())
+        self.responsive_boxes = []
+
+    def adapt_layout(self, widget, clock):
+        width = self.win.get_width()
+        if width != self.last_width:
+            self.last_width = width
+            for box, threshold in self.responsive_boxes:
+                box.set_orientation(Gtk.Orientation.VERTICAL if width < threshold else Gtk.Orientation.HORIZONTAL)
+        return True
+
+    def present_page(self, box, page):
+        stages = {
+            'welcome': (0, self.tr('start')),
+            'disk': (1, self.tr('select_disk')),
+            'mode': (1, self.tr('select_disk')),
+            'confirm_erase': (1, self.tr('confirmation')),
+            'dual_size': (1, self.tr('select_disk')),
+            'locale': (2, self.tr('locale_title')),
+            'user': (2, self.tr('configure_user')),
+            'installing': (3, self.tr('installing_title')),
+            'done': (4, self.tr('done_title')),
+        }
+        index, title = stages.get(page, (0, 'StackOS'))
+        self.step_label.set_text(f"{index + 1} / 5  ·  {title}")
+        self.step_progress.set_fraction((index + 1) / 5)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.set_margin_top(24)
+        box.set_margin_bottom(24)
+        last = box.get_last_child()
+        if last and last.has_css_class('page-nav'):
+            box.remove(last)
+            last.set_margin_top(0)
+            last.set_halign(Gtk.Align.FILL)
+            last.set_hexpand(True)
+            self.navigation.append(last)
+            self.navigation.add_css_class('navigation')
+            self.navigation.set_visible(True)
+        else:
+            self.navigation.set_visible(False)
+        def wrap_labels(widget):
+            if isinstance(widget, Gtk.Label) and not widget.has_css_class("no-wrap"):
+                widget.set_wrap(True)
+                widget.set_wrap_mode(Pango.WrapMode.WORD_CHAR)
+            child = widget.get_first_child()
+            while child:
+                wrap_labels(child)
+                child = child.get_next_sibling()
+        wrap_labels(box)
+        self.page_scroll.set_child(box)
+        self.page_scroll.get_vadjustment().set_value(0)
+        self.last_width = -1
+
+    def make_header(self, subtitle=""):
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=4
+        )
+        box.set_margin_bottom(20)
+
+        if subtitle:
+            title = Gtk.Label(label=subtitle)
+            title.add_css_class('title')
+            title.set_halign(Gtk.Align.CENTER)
+            box.append(title)
+
+        sep = Gtk.Separator()
+        sep.add_css_class('separator')
+        sep.set_margin_top(10)
+        box.append(sep)
+
+        return box
+
+    def make_nav(self, back_cb=None, next_label=None, next_cb=None, next_style='btn-primary'):
+        if next_label is None:
+            next_label = self.tr("next")
+
+        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+        box.add_css_class("page-nav")
+        box.set_margin_top(20)
+        box.set_halign(Gtk.Align.END)
+        if back_cb:
+            btn_back = Gtk.Button(
+                label=self.tr("back")
+            )
+            btn_back.add_css_class('btn-secondary')
+            btn_back.connect('clicked', back_cb)
+            box.append(btn_back)
+        btn_next = Gtk.Button(label=next_label)
+        btn_next.add_css_class(next_style)
+        if next_cb:
+            btn_next.connect('clicked', next_cb)
+        spacer = Gtk.Box(hexpand=True)
+        box.append(spacer)
+        box.append(btn_next)
+        return box, btn_next
+
+    UI_LANGUAGES = [
+        ("Português (Brasil)",       "pt_BR"),
+        ("Português (Portugal)",     "pt_PT"),
+        ("English (United States)",  "en_US"),
+        ("English (United Kingdom)", "en_GB"),
+        ("Español (España)",         "es_ES"),
+        ("Español (México)",         "es_MX"),
+        ("Français",                 "fr_FR"),
+        ("Deutsch",                  "de_DE"),
+        ("Italiano",                 "it_IT"),
+        ("Nederlands",               "nl_NL"),
+        ("Polski",                   "pl_PL"),
+        ("Türkçe",                   "tr_TR"),
+        ("Русский",                  "ru_RU"),
+        ("日本語",                    "ja_JP"),
+    ]
+
+    TRANSLATIONS = {
+        "pt_BR": {
+            "welcome": "Bem-vindo ao instalador oficial do StackOS Genesis.",
+            "welcome_body": "Este assistente irá guiá-lo pelo processo de instalação\\ndo sistema no seu computador.",
+            "slogan": "Modular. Leve. Poderoso.",
+            "language": "Idioma:",
+            "start": "Começar",
+            "back": "Voltar",
+            "next": "Próximo",
+            "select_disk": "Selecione o disco de instalação",
+            "install_how": "Como instalar em {disk}",
+            "erase": "Apagar disco inteiro",
+            "erase_desc": "Apaga tudo e instala o StackOS. Recomendado para instalação limpa.",
+            "dual": "Manual",
+            "dual_desc": "Instala ao lado do sistema existente no espaço livre.",
+            "manual": "Particionamento manual",
+            "manual_desc": "Abre o GParted para particionar manualmente.",
+            "confirmation": "Confirmação",
+            "warning": "ATENÇÃO",
+            "erase_warning": "O disco {disk} será completamente apagado.\\nTodos os dados serão perdidos permanentemente.\\n\\nEsta ação não pode ser desfeita.",
+            "confirm_continue": "Confirmar e continuar",
+            "locale_title": "Idioma, região e teclado",
+            "system_language": "Idioma do sistema:",
+            "keyboard": "Teclado:",
+            "country_tz": "País / região e fuso horário:",
+            "select_map": "Selecione no mapa",
+            "install": "Instalar",
+
+            'cancel_detail': 'Tem certeza de que deseja sair do instalador?',
+            'cancel_install': 'Cancelar instalação?',
+            'completed': 'Concluído!',
+            'configure_user': 'Configurar usuário',
+            'configuring_fstab': 'Configurando fstab...',
+            'confirm_password': 'Confirmar senha:',
+            'continue': 'Continuar',
+            'copying_kernel': 'Copiando kernel...',
+            'copying_system': 'Copiando sistema... pode demorar vários minutos.',
+            'done_message': 'O StackOS Genesis foi instalado com sucesso.\n\nRemova o pendrive e reinicie o computador\npara iniciar o sistema instalado.',
+            'done_title': 'Instalação concluída',
+            'dual_partitioning': 'Criando partições para dual boot...',
+            'dual_title': 'Manual — Espaço para StackOS',
+            'exit': 'Sair',
+            'finishing': 'Finalizando...',
+            'free_space': 'Espaço livre disponível: {size} MB\nMínimo recomendado: 15000 MB',
+            'hostname': 'Nome do computador:',
+            'hostname_required': 'Nome do computador obrigatório.',
+            'installing_grub': 'Instalando bootloader GRUB...',
+            'mounting': 'Montando partições...',
+            'no_free_space': 'Não há espaço livre suficiente no disco.\nLibere pelo menos 5 GB antes de continuar.',
+            'partitioning': 'Particionando o disco...',
+            'password': 'Senha (deixe vazio para sem senha):',
+            'password_mismatch': 'As senhas não coincidem.',
+            'preparing_initial': 'Preparando configuração inicial...',
+            'restart_now': 'Reiniciar agora',
+            'stackos_size': 'Tamanho para o StackOS (MB):',
+            'username': 'Nome do usuário:',
+            'username_required': 'Nome de usuário obrigatório.',
+            'username_spaces': 'Nome de usuário não pode ter espaços.',
+
+            'slide1_title': 'Bem-vindo ao StackOS Genesis',
+            'slide1_text': 'Um sistema modular, leve e poderoso,\nfeito para oferecer uma experiência rápida e moderna.',
+            'slide2_title': 'Seu Stack. Suas Regras.',
+            'slide2_text': 'Um visual limpo e consistente, pensado para você\ntrabalhar, criar e jogar do seu jeito.',
+            'slide3_title': 'Tudo já vem pronto',
+            'slide3_text': 'Firefox, suporte gráfico e aplicativos essenciais\npreparados para uso desde o primeiro boot.',
+            'slide4_title': 'Loja StackOS',
+            'slide4_text': 'Instale novos programas com poucos cliques\ndiretamente pela Loja StackOS.',
+            'slide5_title': 'Comunidade aberta',
+            'slide5_text': 'Reporte bugs, participe e ajude a construir\no futuro do StackOS.',
+
+            'keyboard_test': 'Teste o teclado:',
+            'keyboard_test_placeholder': 'Digite aqui para testar o layout...',
+
+            'installing_title': 'Instalando StackOS Genesis...',
+            'starting': 'Iniciando...',
+
+            'username_placeholder': 'ex: usuario',
+            'password_placeholder': 'senha',
+            'confirm_password_placeholder': 'confirmar senha',
+            'hostname_placeholder': 'ex: meu-computador',
+            'erase_disk_short_warning': '⚠ O disco {disk} será APAGADO por completo ao continuar.',
+        },
+
+        "en_US": {
+            "welcome": "Welcome to the official StackOS Genesis installer.",
+            "welcome_body": "This assistant will guide you through the installation\\nprocess on your computer.",
+            "slogan": "Modular. Lightweight. Powerful.",
+            "language": "Language:",
+            "start": "Start",
+            "back": "Back",
+            "next": "Next",
+            "select_disk": "Select the installation disk",
+            "install_how": "How do you want to install on {disk}?",
+            "erase": "Erase entire disk",
+            "erase_desc": "Erase everything and install StackOS. Recommended for a clean installation.",
+            "dual": "Manual",
+            "dual_desc": "Install alongside the existing system using available free space.",
+            "manual": "Manual partitioning",
+            "manual_desc": "Open GParted to partition the disk manually.",
+            "confirmation": "Confirmation",
+            "warning": "WARNING",
+            "erase_warning": "Disk {disk} will be completely erased.\\nAll data will be permanently lost.\\n\\nThis action cannot be undone.",
+            "confirm_continue": "Confirm and continue",
+            "locale_title": "Language, region and keyboard",
+            "system_language": "System language:",
+            "keyboard": "Keyboard:",
+            "country_tz": "Country / region and time zone:",
+            "select_map": "Select on the map",
+            "install": "Install",
+
+            'cancel_detail': 'Are you sure you want to exit the installer?',
+            'cancel_install': 'Cancel installation?',
+            'completed': 'Completed!',
+            'configure_user': 'Configure user',
+            'configuring_fstab': 'Configuring fstab...',
+            'confirm_password': 'Confirm password:',
+            'continue': 'Continue',
+            'copying_kernel': 'Copying kernel...',
+            'copying_system': 'Copying system... this may take several minutes.',
+            'done_message': 'StackOS Genesis was installed successfully.\n\nRemove the installation media and restart the computer\nto start the installed system.',
+            'done_title': 'Installation complete',
+            'dual_partitioning': 'Creating partitions for dual boot...',
+            'dual_title': 'Manual — Space for StackOS',
+            'exit': 'Exit',
+            'finishing': 'Finishing...',
+            'free_space': 'Available free space: {size} MB\nRecommended minimum: 15000 MB',
+            'hostname': 'Computer name:',
+            'hostname_required': 'Computer name is required.',
+            'installing_grub': 'Installing GRUB bootloader...',
+            'mounting': 'Mounting partitions...',
+            'no_free_space': 'There is not enough free space on the disk.\nFree at least 5 GB before continuing.',
+            'partitioning': 'Partitioning disk...',
+            'password': 'Password (leave empty for no password):',
+            'password_mismatch': 'Passwords do not match.',
+            'preparing_initial': 'Preparing initial configuration...',
+            'restart_now': 'Restart now',
+            'stackos_size': 'Space for StackOS (MB):',
+            'username': 'Username:',
+            'username_required': 'Username is required.',
+            'username_spaces': 'Username cannot contain spaces.',
+
+            'slide1_title': 'Welcome to StackOS Genesis',
+            'slide1_text': 'A modular, lightweight and powerful system,\ndesigned for a fast and modern experience.',
+            'slide2_title': 'Your Stack. Your Rules.',
+            'slide2_text': 'A clean and consistent interface designed so you can\nwork, create and play your way.',
+            'slide3_title': 'Ready from the start',
+            'slide3_text': 'Firefox, graphics support and essential applications\nare ready from the first boot.',
+            'slide4_title': 'StackOS Store',
+            'slide4_text': 'Install new applications with just a few clicks\ndirectly from the StackOS Store.',
+            'slide5_title': 'Open community',
+            'slide5_text': 'Report bugs, participate and help build\nthe future of StackOS.',
+
+            'keyboard_test': 'Test the keyboard:',
+            'keyboard_test_placeholder': 'Type here to test the layout...',
+
+            'installing_title': 'Installing StackOS Genesis...',
+            'starting': 'Starting...',
+
+            'username_placeholder': 'e.g. user',
+            'password_placeholder': 'password',
+            'confirm_password_placeholder': 'confirm password',
+            'hostname_placeholder': 'e.g. my-computer',
+            'erase_disk_short_warning': '⚠ Disk {disk} will be completely ERASED when you continue.',
+        },
+
+        "en_GB": {
+            'welcome': 'Welcome to the official StackOS Genesis installer.',
+            'welcome_body': 'This assistant will guide you through the installation\nprocess on your computer.',
+            'slogan': 'Modular. Lightweight. Powerful.',
+            'language': 'Language:',
+            'start': 'Start',
+            'back': 'Back',
+            'next': 'Next',
+            'select_disk': 'Select the installation disk',
+            'install_how': 'How do you want to install on {disk}?',
+            'erase': 'Erase entire disk',
+            'erase_desc': 'Erase everything and install StackOS. Recommended for a clean installation.',
+            'dual': 'Manual',
+            'dual_desc': 'Install alongside the existing system using available free space.',
+            'manual': 'Manual partitioning',
+            'manual_desc': 'Open GParted to partition the disk manually.',
+            'confirmation': 'Confirmation',
+            'warning': 'WARNING',
+            'erase_warning': 'Disk {disk} will be completely erased.\nAll data will be permanently lost.\n\nThis action cannot be undone.',
+            'confirm_continue': 'Confirm and continue',
+            'locale_title': 'Language, region and keyboard',
+            'system_language': 'System language:',
+            'keyboard': 'Keyboard:',
+            'country_tz': 'Country / region and time zone:',
+            'select_map': 'Select on the map',
+            'install': 'Install',
+            'cancel_detail': 'Are you sure you want to exit the installer?',
+            'cancel_install': 'Cancel installation?',
+            'completed': 'Completed!',
+            'configure_user': 'Configure user',
+            'configuring_fstab': 'Configuring fstab...',
+            'confirm_password': 'Confirm password:',
+            'continue': 'Continue',
+            'copying_kernel': 'Copying kernel...',
+            'copying_system': 'Copying system... this may take several minutes.',
+            'done_message': 'StackOS Genesis was installed successfully.\n\nRemove the installation media and restart the computer\nto start the installed system.',
+            'done_title': 'Installation complete',
+            'dual_partitioning': 'Creating partitions for dual boot...',
+            'dual_title': 'Manual — Space for StackOS',
+            'exit': 'Exit',
+            'finishing': 'Finishing...',
+            'free_space': 'Available free space: {size} MB\nRecommended minimum: 15000 MB',
+            'hostname': 'Computer name:',
+            'hostname_required': 'Computer name is required.',
+            'installing_grub': 'Installing GRUB bootloader...',
+            'mounting': 'Mounting partitions...',
+            'no_free_space': 'There is not enough free space on the disk.\nFree at least 5 GB before continuing.',
+            'partitioning': 'Partitioning disk...',
+            'password': 'Password (leave empty for no password):',
+            'password_mismatch': 'Passwords do not match.',
+            'preparing_initial': 'Preparing initial configuration...',
+            'restart_now': 'Restart now',
+            'stackos_size': 'Space for StackOS (MB):',
+            'username': 'Username:',
+            'username_required': 'Username is required.',
+            'username_spaces': 'Username cannot contain spaces.',
+
+            'slide1_title': 'Welcome to StackOS Genesis',
+            'slide1_text': 'A modular, lightweight and powerful system,\ndesigned for a fast and modern experience.',
+            'slide2_title': 'Your Stack. Your Rules.',
+            'slide2_text': 'A clean and consistent interface designed so you can\nwork, create and play your way.',
+            'slide3_title': 'Ready from the start',
+            'slide3_text': 'Firefox, graphics support and essential applications\nare ready from the first boot.',
+            'slide4_title': 'StackOS Store',
+            'slide4_text': 'Install new applications with just a few clicks\ndirectly from the StackOS Store.',
+            'slide5_title': 'Open community',
+            'slide5_text': 'Report bugs, participate and help build\nthe future of StackOS.',
+
+            'keyboard_test': 'Test the keyboard:',
+            'keyboard_test_placeholder': 'Type here to test the layout...',
+
+            'installing_title': 'Installing StackOS Genesis...',
+            'starting': 'Starting...',
+
+            'username_placeholder': 'e.g. user',
+            'password_placeholder': 'password',
+            'confirm_password_placeholder': 'confirm password',
+            'hostname_placeholder': 'e.g. my-computer',
+            'erase_disk_short_warning': '⚠ Disk {disk} will be completely ERASED when you continue.',
+        },
+        "pt_PT": {
+            'welcome': 'Bem-vindo ao instalador oficial do StackOS Genesis.',
+            'welcome_body': 'Este assistente irá guiá-lo durante o processo de instalação\ndo sistema no seu computador.',
+            'slogan': 'Modular. Leve. Poderoso.',
+            'language': 'Idioma:',
+            'start': 'Começar',
+            'back': 'Voltar',
+            'next': 'Seguinte',
+            'select_disk': 'Selecione o disco de instalação',
+            'install_how': 'Como instalar em {disk}',
+            'erase': 'Apagar o disco inteiro',
+            'erase_desc': 'Apaga tudo e instala o StackOS. Recomendado para uma instalação limpa.',
+            'dual': 'Manual',
+            'dual_desc': 'Instala ao lado do sistema existente utilizando o espaço livre.',
+            'manual': 'Particionamento manual',
+            'manual_desc': 'Abre o GParted para particionar manualmente o disco.',
+            'confirmation': 'Confirmação',
+            'warning': 'ATENÇÃO',
+            'erase_warning': 'O disco {disk} será completamente apagado.\nTodos os dados serão perdidos permanentemente.\n\nEsta ação não pode ser desfeita.',
+            'confirm_continue': 'Confirmar e continuar',
+            'locale_title': 'Idioma, região e teclado',
+            'system_language': 'Idioma do sistema:',
+            'keyboard': 'Teclado:',
+            'country_tz': 'País / região e fuso horário:',
+            'select_map': 'Selecione no mapa',
+            'install': 'Instalar',
+            'cancel_detail': 'Tem a certeza de que pretende sair do instalador?',
+            'cancel_install': 'Cancelar a instalação?',
+            'completed': 'Concluído!',
+            'configure_user': 'Configurar utilizador',
+            'configuring_fstab': 'A configurar fstab...',
+            'confirm_password': 'Confirmar palavra-passe:',
+            'continue': 'Continuar',
+            'copying_kernel': 'A copiar kernel...',
+            'copying_system': 'A copiar o sistema... poderá demorar vários minutos.',
+            'done_message': 'O StackOS Genesis foi instalado com sucesso.\n\nRemova o suporte de instalação e reinicie o computador\npara iniciar o sistema instalado.',
+            'done_title': 'Instalação concluída',
+            'dual_partitioning': 'A criar partições para dual boot...',
+            'dual_title': 'Manual — Espaço para StackOS',
+            'exit': 'Sair',
+            'finishing': 'A finalizar...',
+            'free_space': 'Espaço livre disponível: {size} MB\nMínimo recomendado: 15000 MB',
+            'hostname': 'Nome do computador:',
+            'hostname_required': 'O nome do computador é obrigatório.',
+            'installing_grub': 'A instalar o gestor de arranque GRUB...',
+            'mounting': 'A montar partições...',
+            'no_free_space': 'Não existe espaço livre suficiente no disco.\nLiberte pelo menos 5 GB antes de continuar.',
+            'partitioning': 'A particionar o disco...',
+            'password': 'Palavra-passe (deixe vazio para não utilizar palavra-passe):',
+            'password_mismatch': 'As palavras-passe não coincidem.',
+            'preparing_initial': 'A preparar a configuração inicial...',
+            'restart_now': 'Reiniciar agora',
+            'stackos_size': 'Tamanho para o StackOS (MB):',
+            'username': 'Nome de utilizador:',
+            'username_required': 'O nome de utilizador é obrigatório.',
+            'username_spaces': 'O nome de utilizador não pode conter espaços.',
+
+            'slide1_title': 'Bem-vindo ao StackOS Genesis',
+            'slide1_text': 'Um sistema modular, leve e poderoso,\nconcebido para oferecer uma experiência rápida e moderna.',
+            'slide2_title': 'O seu Stack. As suas regras.',
+            'slide2_text': 'Uma interface limpa e consistente, pensada para poder\ntrabalhar, criar e jogar à sua maneira.',
+            'slide3_title': 'Tudo pronto desde o início',
+            'slide3_text': 'Firefox, suporte gráfico e aplicações essenciais\npreparados desde o primeiro arranque.',
+            'slide4_title': 'Loja StackOS',
+            'slide4_text': 'Instale novas aplicações com poucos cliques\ndiretamente através da Loja StackOS.',
+            'slide5_title': 'Comunidade aberta',
+            'slide5_text': 'Reporte erros, participe e ajude a construir\no futuro do StackOS.',
+
+            'keyboard_test': 'Teste o teclado:',
+            'keyboard_test_placeholder': 'Escreva aqui para testar a disposição...',
+
+            'installing_title': 'A instalar StackOS Genesis...',
+            'starting': 'A iniciar...',
+
+            'username_placeholder': 'ex: utilizador',
+            'password_placeholder': 'palavra-passe',
+            'confirm_password_placeholder': 'confirmar palavra-passe',
+            'hostname_placeholder': 'ex: meu-computador',
+            'erase_disk_short_warning': '⚠ O disco {disk} será APAGADO por completo ao continuar.',
+        },
+
+        "es_ES": {
+            "welcome": "Bienvenido al instalador oficial de StackOS Genesis.",
+            "welcome_body": "Este asistente le guiará durante el proceso de instalación\\ndel sistema en su ordenador.",
+            "slogan": "Modular. Ligero. Potente.",
+            "language": "Idioma:",
+            "start": "Comenzar",
+            "back": "Atrás",
+            "next": "Siguiente",
+            "select_disk": "Seleccione el disco de instalación",
+            "install_how": "Cómo instalar en {disk}",
+            "erase": "Borrar todo el disco",
+            "erase_desc": "Borra todo e instala StackOS. Recomendado para una instalación limpia.",
+            "dual": "Manual",
+            "dual_desc": "Instala junto al sistema existente usando el espacio libre.",
+            "manual": "Particionado manual",
+            "manual_desc": "Abre GParted para particionar manualmente.",
+            "confirmation": "Confirmación",
+            "warning": "ATENCIÓN",
+            "erase_warning": "El disco {disk} se borrará completamente.\\nTodos los datos se perderán permanentemente.\\n\\nEsta acción no se puede deshacer.",
+            "confirm_continue": "Confirmar y continuar",
+            "locale_title": "Idioma, región y teclado",
+            "system_language": "Idioma del sistema:",
+            "keyboard": "Teclado:",
+            "country_tz": "País / región y zona horaria:",
+            "select_map": "Seleccione en el mapa",
+            "install": "Instalar",
+
+            'cancel_detail': '¿Está seguro de que desea salir del instalador?',
+            'cancel_install': '¿Cancelar la instalación?',
+            'completed': '¡Completado!',
+            'configure_user': 'Configurar usuario',
+            'configuring_fstab': 'Configurando fstab...',
+            'confirm_password': 'Confirmar contraseña:',
+            'continue': 'Continuar',
+            'copying_kernel': 'Copiando el kernel...',
+            'copying_system': 'Copiando el sistema... puede tardar varios minutos.',
+            'done_message': 'StackOS Genesis se ha instalado correctamente.\n\nRetire el medio de instalación y reinicie el ordenador\npara iniciar el sistema instalado.',
+            'done_title': 'Instalación completada',
+            'dual_partitioning': 'Creando particiones para arranque dual...',
+            'dual_title': 'Arranque dual — Espacio para StackOS',
+            'exit': 'Salir',
+            'finishing': 'Finalizando...',
+            'free_space': 'Espacio libre disponible: {size} MB\nMínimo recomendado: 15000 MB',
+            'hostname': 'Nombre del equipo:',
+            'hostname_required': 'El nombre del equipo es obligatorio.',
+            'installing_grub': 'Instalando el gestor de arranque GRUB...',
+            'mounting': 'Montando particiones...',
+            'no_free_space': 'No hay suficiente espacio libre en el disco.\nLibere al menos 5 GB antes de continuar.',
+            'partitioning': 'Particionando el disco...',
+            'password': 'Contraseña (déjela vacía para no usar contraseña):',
+            'password_mismatch': 'Las contraseñas no coinciden.',
+            'preparing_initial': 'Preparando la configuración inicial...',
+            'restart_now': 'Reiniciar ahora',
+            'stackos_size': 'Tamaño para StackOS (MB):',
+            'username': 'Nombre de usuario:',
+            'username_required': 'El nombre de usuario es obligatorio.',
+            'username_spaces': 'El nombre de usuario no puede contener espacios.',
+
+            'slide1_title': 'Bienvenido a StackOS Genesis',
+            'slide1_text': 'Un sistema modular, ligero y potente,\ndiseñado para ofrecer una experiencia rápida y moderna.',
+            'slide2_title': 'Tu Stack. Tus reglas.',
+            'slide2_text': 'Una interfaz limpia y coherente, diseñada para que puedas\ntrabajar, crear y jugar a tu manera.',
+            'slide3_title': 'Todo listo desde el inicio',
+            'slide3_text': 'Firefox, soporte gráfico y aplicaciones esenciales\npreparados desde el primer arranque.',
+            'slide4_title': 'Tienda StackOS',
+            'slide4_text': 'Instala nuevas aplicaciones con unos pocos clics\ndirectamente desde la Tienda StackOS.',
+            'slide5_title': 'Comunidad abierta',
+            'slide5_text': 'Reporta errores, participa y ayuda a construir\nel futuro de StackOS.',
+
+            'keyboard_test': 'Pruebe el teclado:',
+            'keyboard_test_placeholder': 'Escriba aquí para probar la distribución...',
+
+            'installing_title': 'Instalando StackOS Genesis...',
+            'starting': 'Iniciando...',
+
+            'username_placeholder': 'ej: usuario',
+            'password_placeholder': 'contraseña',
+            'confirm_password_placeholder': 'confirmar contraseña',
+            'hostname_placeholder': 'ej: mi-equipo',
+            'erase_disk_short_warning': '⚠ El disco {disk} se BORRARÁ por completo al continuar.',
+        },
+
+        "es_MX": {
+            'welcome': 'Bienvenido al instalador oficial de StackOS Genesis.',
+            'welcome_body': 'Este asistente le guiará durante el proceso de instalación\ndel sistema en su computadora.',
+            'slogan': 'Modular. Ligero. Potente.',
+            'language': 'Idioma:',
+            'start': 'Comenzar',
+            'back': 'Atrás',
+            'next': 'Siguiente',
+            'select_disk': 'Seleccione el disco de instalación',
+            'install_how': 'Cómo instalar en {disk}',
+            'erase': 'Borrar todo el disco',
+            'erase_desc': 'Borra todo e instala StackOS. Recomendado para una instalación limpia.',
+            'dual': 'Manual',
+            'dual_desc': 'Instala junto al sistema existente usando el espacio libre.',
+            'manual': 'Particionado manual',
+            'manual_desc': 'Abre GParted para particionar manualmente.',
+            'confirmation': 'Confirmación',
+            'warning': 'ATENCIÓN',
+            'erase_warning': 'El disco {disk} se borrará completamente.\nTodos los datos se perderán permanentemente.\n\nEsta acción no se puede deshacer.',
+            'confirm_continue': 'Confirmar y continuar',
+            'locale_title': 'Idioma, región y teclado',
+            'system_language': 'Idioma del sistema:',
+            'keyboard': 'Teclado:',
+            'country_tz': 'País / región y zona horaria:',
+            'select_map': 'Seleccione en el mapa',
+            'install': 'Instalar',
+            'cancel_detail': '¿Está seguro de que desea salir del instalador?',
+            'cancel_install': '¿Cancelar la instalación?',
+            'completed': '¡Completado!',
+            'configure_user': 'Configurar usuario',
+            'configuring_fstab': 'Configurando fstab...',
+            'confirm_password': 'Confirmar contraseña:',
+            'continue': 'Continuar',
+            'copying_kernel': 'Copiando el kernel...',
+            'copying_system': 'Copiando el sistema... puede tardar varios minutos.',
+            'done_message': 'StackOS Genesis se instaló correctamente.\n\nRetire el medio de instalación y reinicie la computadora\npara iniciar el sistema instalado.',
+            'done_title': 'Instalación completada',
+            'dual_partitioning': 'Creando particiones para arranque dual...',
+            'dual_title': 'Arranque dual — Espacio para StackOS',
+            'exit': 'Salir',
+            'finishing': 'Finalizando...',
+            'free_space': 'Espacio libre disponible: {size} MB\nMínimo recomendado: 15000 MB',
+            'hostname': 'Nombre de la computadora:',
+            'hostname_required': 'El nombre de la computadora es obligatorio.',
+            'installing_grub': 'Instalando el gestor de arranque GRUB...',
+            'mounting': 'Montando particiones...',
+            'no_free_space': 'No hay suficiente espacio libre en el disco.\nLibere al menos 5 GB antes de continuar.',
+            'partitioning': 'Particionando el disco...',
+            'password': 'Contraseña (déjela vacía para no usar contraseña):',
+            'password_mismatch': 'Las contraseñas no coinciden.',
+            'preparing_initial': 'Preparando la configuración inicial...',
+            'restart_now': 'Reiniciar ahora',
+            'stackos_size': 'Tamaño para StackOS (MB):',
+            'username': 'Nombre de usuario:',
+            'username_required': 'El nombre de usuario es obligatorio.',
+            'username_spaces': 'El nombre de usuario no puede contener espacios.',
+
+            'slide1_title': 'Bienvenido a StackOS Genesis',
+            'slide1_text': 'Un sistema modular, ligero y potente,\ndiseñado para ofrecer una experiencia rápida y moderna.',
+            'slide2_title': 'Tu Stack. Tus reglas.',
+            'slide2_text': 'Una interfaz limpia y consistente para que puedas\ntrabajar, crear y jugar a tu manera.',
+            'slide3_title': 'Todo listo desde el inicio',
+            'slide3_text': 'Firefox, soporte gráfico y aplicaciones esenciales\npreparados desde el primer arranque.',
+            'slide4_title': 'Tienda StackOS',
+            'slide4_text': 'Instala nuevas aplicaciones con unos pocos clics\ndirectamente desde la Tienda StackOS.',
+            'slide5_title': 'Comunidad abierta',
+            'slide5_text': 'Reporta errores, participa y ayuda a construir\nel futuro de StackOS.',
+
+            'keyboard_test': 'Pruebe el teclado:',
+            'keyboard_test_placeholder': 'Escriba aquí para probar la distribución...',
+
+            'installing_title': 'Instalando StackOS Genesis...',
+            'starting': 'Iniciando...',
+
+            'username_placeholder': 'ej: usuario',
+            'password_placeholder': 'contraseña',
+            'confirm_password_placeholder': 'confirmar contraseña',
+            'hostname_placeholder': 'ej: mi-equipo',
+            'erase_disk_short_warning': '⚠ El disco {disk} se BORRARÁ por completo al continuar.',
+        },
+        "fr_FR": {
+            'welcome': 'Bienvenue dans le programme d’installation officiel de StackOS Genesis.',
+            'welcome_body': 'Cet assistant vous guidera pendant le processus d’installation\ndu système sur votre ordinateur.',
+            'slogan': 'Modulaire. Léger. Puissant.',
+            'language': 'Langue :',
+            'start': 'Commencer',
+            'back': 'Retour',
+            'next': 'Suivant',
+            'select_disk': 'Sélectionnez le disque d’installation',
+            'install_how': 'Comment installer sur {disk} ?',
+            'erase': 'Effacer tout le disque',
+            'erase_desc': 'Efface tout et installe StackOS. Recommandé pour une installation propre.',
+            'dual': 'Manual',
+            'dual_desc': 'Installe StackOS à côté du système existant dans l’espace libre.',
+            'manual': 'Partitionnement manuel',
+            'manual_desc': 'Ouvre GParted pour partitionner manuellement le disque.',
+            'confirmation': 'Confirmation',
+            'warning': 'ATTENTION',
+            'erase_warning': 'Le disque {disk} sera entièrement effacé.\nToutes les données seront définitivement perdues.\n\nCette action est irréversible.',
+            'confirm_continue': 'Confirmer et continuer',
+            'locale_title': 'Langue, région et clavier',
+            'system_language': 'Langue du système :',
+            'keyboard': 'Clavier :',
+            'country_tz': 'Pays / région et fuseau horaire :',
+            'select_map': 'Sélectionnez sur la carte',
+            'install': 'Installer',
+            'cancel_detail': 'Voulez-vous vraiment quitter le programme d’installation ?',
+            'cancel_install': 'Annuler l’installation ?',
+            'completed': 'Terminé !',
+            'configure_user': 'Configurer l’utilisateur',
+            'configuring_fstab': 'Configuration de fstab...',
+            'confirm_password': 'Confirmer le mot de passe :',
+            'continue': 'Continuer',
+            'copying_kernel': 'Copie du noyau...',
+            'copying_system': 'Copie du système... cela peut prendre plusieurs minutes.',
+            'done_message': 'StackOS Genesis a été installé avec succès.\n\nRetirez le support d’installation et redémarrez l’ordinateur\npour démarrer le système installé.',
+            'done_title': 'Installation terminée',
+            'dual_partitioning': 'Création des partitions pour le double démarrage...',
+            'dual_title': 'Double démarrage — Espace pour StackOS',
+            'exit': 'Quitter',
+            'finishing': 'Finalisation...',
+            'free_space': 'Espace libre disponible : {size} MB\nMinimum recommandé : 15000 MB',
+            'hostname': 'Nom de l’ordinateur :',
+            'hostname_required': 'Le nom de l’ordinateur est obligatoire.',
+            'installing_grub': 'Installation du chargeur d’amorçage GRUB...',
+            'mounting': 'Montage des partitions...',
+            'no_free_space': 'Il n’y a pas assez d’espace libre sur le disque.\nLibérez au moins 5 Go avant de continuer.',
+            'partitioning': 'Partitionnement du disque...',
+            'password': 'Mot de passe (laissez vide pour ne pas utiliser de mot de passe) :',
+            'password_mismatch': 'Les mots de passe ne correspondent pas.',
+            'preparing_initial': 'Préparation de la configuration initiale...',
+            'restart_now': 'Redémarrer maintenant',
+            'stackos_size': 'Espace pour StackOS (MB) :',
+            'username': 'Nom d’utilisateur :',
+            'username_required': 'Le nom d’utilisateur est obligatoire.',
+            'username_spaces': 'Le nom d’utilisateur ne peut pas contenir d’espaces.',
+
+            'slide1_title': 'Bienvenue dans StackOS Genesis',
+            'slide1_text': 'Un système modulaire, léger et puissant,\nconçu pour une expérience rapide et moderne.',
+            'slide2_title': 'Votre Stack. Vos règles.',
+            'slide2_text': 'Une interface propre et cohérente conçue pour vous permettre\nde travailler, créer et jouer à votre manière.',
+            'slide3_title': 'Prêt dès le départ',
+            'slide3_text': 'Firefox, le support graphique et les applications essentielles\nsont prêts dès le premier démarrage.',
+            'slide4_title': 'Boutique StackOS',
+            'slide4_text': 'Installez de nouvelles applications en quelques clics\ndirectement depuis la Boutique StackOS.',
+            'slide5_title': 'Communauté ouverte',
+            'slide5_text': 'Signalez des bugs, participez et aidez à construire\nl’avenir de StackOS.',
+
+            'keyboard_test': 'Tester le clavier :',
+            'keyboard_test_placeholder': 'Tapez ici pour tester la disposition...',
+
+            'installing_title': 'Installation de StackOS Genesis...',
+            'starting': 'Démarrage...',
+
+            'username_placeholder': 'ex : utilisateur',
+            'password_placeholder': 'mot de passe',
+            'confirm_password_placeholder': 'confirmer le mot de passe',
+            'hostname_placeholder': 'ex : mon-ordinateur',
+            'erase_disk_short_warning': '⚠ Le disque {disk} sera complètement EFFACÉ en continuant.',
+        },
+        "de_DE": {
+            'welcome': 'Willkommen beim offiziellen StackOS-Genesis-Installationsprogramm.',
+            'welcome_body': 'Dieser Assistent führt Sie durch die Installation\ndes Systems auf Ihrem Computer.',
+            'slogan': 'Modular. Leicht. Leistungsstark.',
+            'language': 'Sprache:',
+            'start': 'Starten',
+            'back': 'Zurück',
+            'next': 'Weiter',
+            'select_disk': 'Installationslaufwerk auswählen',
+            'install_how': 'Wie soll auf {disk} installiert werden?',
+            'erase': 'Gesamtes Laufwerk löschen',
+            'erase_desc': 'Löscht alles und installiert StackOS. Empfohlen für eine Neuinstallation.',
+            'dual': 'Manual',
+            'dual_desc': 'Installiert StackOS neben dem vorhandenen System im freien Speicherplatz.',
+            'manual': 'Manuelle Partitionierung',
+            'manual_desc': 'Öffnet GParted zur manuellen Partitionierung.',
+            'confirmation': 'Bestätigung',
+            'warning': 'WARNUNG',
+            'erase_warning': 'Das Laufwerk {disk} wird vollständig gelöscht.\nAlle Daten gehen dauerhaft verloren.\n\nDiese Aktion kann nicht rückgängig gemacht werden.',
+            'confirm_continue': 'Bestätigen und fortfahren',
+            'locale_title': 'Sprache, Region und Tastatur',
+            'system_language': 'Systemsprache:',
+            'keyboard': 'Tastatur:',
+            'country_tz': 'Land / Region und Zeitzone:',
+            'select_map': 'Auf der Karte auswählen',
+            'install': 'Installieren',
+            'cancel_detail': 'Möchten Sie das Installationsprogramm wirklich beenden?',
+            'cancel_install': 'Installation abbrechen?',
+            'completed': 'Abgeschlossen!',
+            'configure_user': 'Benutzer konfigurieren',
+            'configuring_fstab': 'fstab wird konfiguriert...',
+            'confirm_password': 'Passwort bestätigen:',
+            'continue': 'Fortfahren',
+            'copying_kernel': 'Kernel wird kopiert...',
+            'copying_system': 'System wird kopiert... dies kann mehrere Minuten dauern.',
+            'done_message': 'StackOS Genesis wurde erfolgreich installiert.\n\nEntfernen Sie das Installationsmedium und starten Sie den Computer neu,\num das installierte System zu starten.',
+            'done_title': 'Installation abgeschlossen',
+            'dual_partitioning': 'Partitionen für Manual werden erstellt...',
+            'dual_title': 'Manual — Speicherplatz für StackOS',
+            'exit': 'Beenden',
+            'finishing': 'Abschluss...',
+            'free_space': 'Verfügbarer freier Speicher: {size} MB\nEmpfohlenes Minimum: 15000 MB',
+            'hostname': 'Computername:',
+            'hostname_required': 'Ein Computername ist erforderlich.',
+            'installing_grub': 'GRUB-Bootloader wird installiert...',
+            'mounting': 'Partitionen werden eingehängt...',
+            'no_free_space': 'Auf dem Laufwerk ist nicht genügend freier Speicher vorhanden.\nGeben Sie mindestens 5 GB frei.',
+            'partitioning': 'Laufwerk wird partitioniert...',
+            'password': 'Passwort (leer lassen für kein Passwort):',
+            'password_mismatch': 'Die Passwörter stimmen nicht überein.',
+            'preparing_initial': 'Erstkonfiguration wird vorbereitet...',
+            'restart_now': 'Jetzt neu starten',
+            'stackos_size': 'Speicherplatz für StackOS (MB):',
+            'username': 'Benutzername:',
+            'username_required': 'Ein Benutzername ist erforderlich.',
+            'username_spaces': 'Der Benutzername darf keine Leerzeichen enthalten.',
+
+            'slide1_title': 'Willkommen bei StackOS Genesis',
+            'slide1_text': 'Ein modulares, leichtgewichtiges und leistungsstarkes System\nfür eine schnelle und moderne Erfahrung.',
+            'slide2_title': 'Ihr Stack. Ihre Regeln.',
+            'slide2_text': 'Eine klare und konsistente Oberfläche, mit der Sie\narbeiten, kreativ sein und spielen können.',
+            'slide3_title': 'Von Anfang an bereit',
+            'slide3_text': 'Firefox, Grafikunterstützung und wichtige Anwendungen\nstehen bereits beim ersten Start bereit.',
+            'slide4_title': 'StackOS Store',
+            'slide4_text': 'Installieren Sie neue Anwendungen mit wenigen Klicks\ndirekt aus dem StackOS Store.',
+            'slide5_title': 'Offene Community',
+            'slide5_text': 'Melden Sie Fehler, beteiligen Sie sich und gestalten Sie\ndie Zukunft von StackOS mit.',
+
+            'keyboard_test': 'Tastatur testen:',
+            'keyboard_test_placeholder': 'Hier tippen, um das Layout zu testen...',
+
+            'installing_title': 'StackOS Genesis wird installiert...',
+            'starting': 'Wird gestartet...',
+
+            'username_placeholder': 'z. B. benutzer',
+            'password_placeholder': 'Passwort',
+            'confirm_password_placeholder': 'Passwort bestätigen',
+            'hostname_placeholder': 'z. B. mein-computer',
+            'erase_disk_short_warning': '⚠ Datenträger {disk} wird beim Fortfahren vollständig GELÖSCHT.',
+        },
+        "it_IT": {
+            'welcome': 'Benvenuto nel programma di installazione ufficiale di StackOS Genesis.',
+            'welcome_body': 'Questa procedura guidata ti accompagnerà durante\nl’installazione del sistema sul computer.',
+            'slogan': 'Modulare. Leggero. Potente.',
+            'language': 'Lingua:',
+            'start': 'Inizia',
+            'back': 'Indietro',
+            'next': 'Avanti',
+            'select_disk': 'Seleziona il disco di installazione',
+            'install_how': 'Come installare su {disk}?',
+            'erase': 'Cancella l’intero disco',
+            'erase_desc': 'Cancella tutto e installa StackOS. Consigliato per un’installazione pulita.',
+            'dual': 'Manual',
+            'dual_desc': 'Installa StackOS accanto al sistema esistente nello spazio libero.',
+            'manual': 'Partizionamento manuale',
+            'manual_desc': 'Apre GParted per partizionare manualmente il disco.',
+            'confirmation': 'Conferma',
+            'warning': 'ATTENZIONE',
+            'erase_warning': 'Il disco {disk} verrà completamente cancellato.\nTutti i dati andranno persi definitivamente.\n\nQuesta azione non può essere annullata.',
+            'confirm_continue': 'Conferma e continua',
+            'locale_title': 'Lingua, regione e tastiera',
+            'system_language': 'Lingua del sistema:',
+            'keyboard': 'Tastiera:',
+            'country_tz': 'Paese / regione e fuso orario:',
+            'select_map': 'Seleziona sulla mappa',
+            'install': 'Installa',
+            'cancel_detail': 'Vuoi davvero uscire dal programma di installazione?',
+            'cancel_install': 'Annullare l’installazione?',
+            'completed': 'Completato!',
+            'configure_user': 'Configura utente',
+            'configuring_fstab': 'Configurazione di fstab...',
+            'confirm_password': 'Conferma password:',
+            'continue': 'Continua',
+            'copying_kernel': 'Copia del kernel...',
+            'copying_system': 'Copia del sistema... potrebbe richiedere alcuni minuti.',
+            'done_message': 'StackOS Genesis è stato installato correttamente.\n\nRimuovi il supporto di installazione e riavvia il computer\nper avviare il sistema installato.',
+            'done_title': 'Installazione completata',
+            'dual_partitioning': 'Creazione delle partizioni per dual boot...',
+            'dual_title': 'Manual — Spazio per StackOS',
+            'exit': 'Esci',
+            'finishing': 'Finalizzazione...',
+            'free_space': 'Spazio libero disponibile: {size} MB\nMinimo consigliato: 15000 MB',
+            'hostname': 'Nome del computer:',
+            'hostname_required': 'Il nome del computer è obbligatorio.',
+            'installing_grub': 'Installazione del bootloader GRUB...',
+            'mounting': 'Montaggio delle partizioni...',
+            'no_free_space': 'Spazio libero insufficiente sul disco.\nLiberare almeno 5 GB prima di continuare.',
+            'partitioning': 'Partizionamento del disco...',
+            'password': 'Password (lascia vuoto per non usare una password):',
+            'password_mismatch': 'Le password non coincidono.',
+            'preparing_initial': 'Preparazione della configurazione iniziale...',
+            'restart_now': 'Riavvia ora',
+            'stackos_size': 'Spazio per StackOS (MB):',
+            'username': 'Nome utente:',
+            'username_required': 'Il nome utente è obbligatorio.',
+            'username_spaces': 'Il nome utente non può contenere spazi.',
+
+            'slide1_title': 'Benvenuto in StackOS Genesis',
+            'slide1_text': 'Un sistema modulare, leggero e potente,\nprogettato per un’esperienza rapida e moderna.',
+            'slide2_title': 'Il tuo Stack. Le tue regole.',
+            'slide2_text': 'Un’interfaccia pulita e coerente pensata per permetterti di\nlavorare, creare e giocare a modo tuo.',
+            'slide3_title': 'Pronto fin dall’inizio',
+            'slide3_text': 'Firefox, supporto grafico e applicazioni essenziali\nsono pronti fin dal primo avvio.',
+            'slide4_title': 'Store StackOS',
+            'slide4_text': 'Installa nuove applicazioni con pochi clic\ndirettamente dallo Store StackOS.',
+            'slide5_title': 'Comunità aperta',
+            'slide5_text': 'Segnala bug, partecipa e aiuta a costruire\nil futuro di StackOS.',
+
+            'keyboard_test': 'Prova la tastiera:',
+            'keyboard_test_placeholder': 'Digita qui per provare la disposizione...',
+
+            'installing_title': 'Installazione di StackOS Genesis...',
+            'starting': 'Avvio...',
+
+            'username_placeholder': 'es: utente',
+            'password_placeholder': 'password',
+            'confirm_password_placeholder': 'conferma password',
+            'hostname_placeholder': 'es: mio-computer',
+            'erase_disk_short_warning': '⚠ Il disco {disk} verrà completamente CANCELLATO continuando.',
+        },
+        "nl_NL": {
+            'welcome': 'Welkom bij het officiële StackOS Genesis-installatieprogramma.',
+            'welcome_body': 'Deze assistent begeleidt u tijdens de installatie\nvan het systeem op uw computer.',
+            'slogan': 'Modulair. Licht. Krachtig.',
+            'language': 'Taal:',
+            'start': 'Starten',
+            'back': 'Terug',
+            'next': 'Volgende',
+            'select_disk': 'Selecteer de installatieschijf',
+            'install_how': 'Hoe wilt u installeren op {disk}?',
+            'erase': 'Hele schijf wissen',
+            'erase_desc': 'Wist alles en installeert StackOS. Aanbevolen voor een schone installatie.',
+            'dual': 'Manual',
+            'dual_desc': 'Installeert StackOS naast het bestaande systeem in de vrije ruimte.',
+            'manual': 'Handmatig partitioneren',
+            'manual_desc': 'Opent GParted voor handmatige partitionering.',
+            'confirmation': 'Bevestiging',
+            'warning': 'WAARSCHUWING',
+            'erase_warning': 'Schijf {disk} wordt volledig gewist.\nAlle gegevens gaan permanent verloren.\n\nDeze actie kan niet ongedaan worden gemaakt.',
+            'confirm_continue': 'Bevestigen en doorgaan',
+            'locale_title': 'Taal, regio en toetsenbord',
+            'system_language': 'Systeemtaal:',
+            'keyboard': 'Toetsenbord:',
+            'country_tz': 'Land / regio en tijdzone:',
+            'select_map': 'Selecteer op de kaart',
+            'install': 'Installeren',
+            'cancel_detail': 'Weet u zeker dat u het installatieprogramma wilt afsluiten?',
+            'cancel_install': 'Installatie annuleren?',
+            'completed': 'Voltooid!',
+            'configure_user': 'Gebruiker configureren',
+            'configuring_fstab': 'fstab configureren...',
+            'confirm_password': 'Wachtwoord bevestigen:',
+            'continue': 'Doorgaan',
+            'copying_kernel': 'Kernel kopiëren...',
+            'copying_system': 'Systeem kopiëren... dit kan enkele minuten duren.',
+            'done_message': 'StackOS Genesis is succesvol geïnstalleerd.\n\nVerwijder het installatiemedium en start de computer opnieuw op\nom het geïnstalleerde systeem te starten.',
+            'done_title': 'Installatie voltooid',
+            'dual_partitioning': 'Partities voor dual boot maken...',
+            'dual_title': 'Manual — Ruimte voor StackOS',
+            'exit': 'Afsluiten',
+            'finishing': 'Afronden...',
+            'free_space': 'Beschikbare vrije ruimte: {size} MB\nAanbevolen minimum: 15000 MB',
+            'hostname': 'Computernaam:',
+            'hostname_required': 'Computernaam is verplicht.',
+            'installing_grub': 'GRUB-bootloader installeren...',
+            'mounting': 'Partities aankoppelen...',
+            'no_free_space': 'Er is onvoldoende vrije ruimte op de schijf.\nMaak minimaal 5 GB vrij voordat u doorgaat.',
+            'partitioning': 'Schijf partitioneren...',
+            'password': 'Wachtwoord (leeg laten voor geen wachtwoord):',
+            'password_mismatch': 'De wachtwoorden komen niet overeen.',
+            'preparing_initial': 'Initiële configuratie voorbereiden...',
+            'restart_now': 'Nu opnieuw opstarten',
+            'stackos_size': 'Ruimte voor StackOS (MB):',
+            'username': 'Gebruikersnaam:',
+            'username_required': 'Gebruikersnaam is verplicht.',
+            'username_spaces': 'De gebruikersnaam mag geen spaties bevatten.',
+
+            'slide1_title': 'Welkom bij StackOS Genesis',
+            'slide1_text': 'Een modulair, licht en krachtig systeem,\nontworpen voor een snelle en moderne ervaring.',
+            'slide2_title': 'Uw Stack. Uw regels.',
+            'slide2_text': 'Een heldere en consistente interface waarmee u\nop uw eigen manier kunt werken, creëren en spelen.',
+            'slide3_title': 'Direct klaar voor gebruik',
+            'slide3_text': 'Firefox, grafische ondersteuning en essentiële toepassingen\nzijn vanaf de eerste start gereed.',
+            'slide4_title': 'StackOS Store',
+            'slide4_text': 'Installeer nieuwe toepassingen met slechts enkele klikken\ndirect vanuit de StackOS Store.',
+            'slide5_title': 'Open gemeenschap',
+            'slide5_text': 'Meld bugs, doe mee en help bouwen aan\nde toekomst van StackOS.',
+
+            'keyboard_test': 'Toetsenbord testen:',
+            'keyboard_test_placeholder': 'Typ hier om de indeling te testen...',
+
+            'installing_title': 'StackOS Genesis installeren...',
+            'starting': 'Starten...',
+
+            'username_placeholder': 'bijv. gebruiker',
+            'password_placeholder': 'wachtwoord',
+            'confirm_password_placeholder': 'bevestig wachtwoord',
+            'hostname_placeholder': 'bijv. mijn-computer',
+            'erase_disk_short_warning': '⚠ Schijf {disk} wordt volledig GEWIST wanneer u doorgaat.',
+        },
+        "pl_PL": {
+            'welcome': 'Witamy w oficjalnym instalatorze StackOS Genesis.',
+            'welcome_body': 'Ten kreator przeprowadzi Cię przez instalację\nsystemu na komputerze.',
+            'slogan': 'Modułowy. Lekki. Wydajny.',
+            'language': 'Język:',
+            'start': 'Rozpocznij',
+            'back': 'Wstecz',
+            'next': 'Dalej',
+            'select_disk': 'Wybierz dysk instalacyjny',
+            'install_how': 'Jak zainstalować na {disk}?',
+            'erase': 'Wymaż cały dysk',
+            'erase_desc': 'Usuwa wszystko i instaluje StackOS. Zalecane dla czystej instalacji.',
+            'dual': 'Manual',
+            'dual_desc': 'Instaluje StackOS obok istniejącego systemu w wolnym miejscu.',
+            'manual': 'Ręczne partycjonowanie',
+            'manual_desc': 'Otwiera GParted do ręcznego partycjonowania.',
+            'confirmation': 'Potwierdzenie',
+            'warning': 'OSTRZEŻENIE',
+            'erase_warning': 'Dysk {disk} zostanie całkowicie wymazany.\nWszystkie dane zostaną trwale utracone.\n\nTej operacji nie można cofnąć.',
+            'confirm_continue': 'Potwierdź i kontynuuj',
+            'locale_title': 'Język, region i klawiatura',
+            'system_language': 'Język systemu:',
+            'keyboard': 'Klawiatura:',
+            'country_tz': 'Kraj / region i strefa czasowa:',
+            'select_map': 'Wybierz na mapie',
+            'install': 'Zainstaluj',
+            'cancel_detail': 'Czy na pewno chcesz zamknąć instalator?',
+            'cancel_install': 'Anulować instalację?',
+            'completed': 'Zakończono!',
+            'configure_user': 'Konfiguracja użytkownika',
+            'configuring_fstab': 'Konfigurowanie fstab...',
+            'confirm_password': 'Potwierdź hasło:',
+            'continue': 'Kontynuuj',
+            'copying_kernel': 'Kopiowanie jądra...',
+            'copying_system': 'Kopiowanie systemu... może to potrwać kilka minut.',
+            'done_message': 'StackOS Genesis został pomyślnie zainstalowany.\n\nUsuń nośnik instalacyjny i uruchom komputer ponownie,\naby uruchomić zainstalowany system.',
+            'done_title': 'Instalacja zakończona',
+            'dual_partitioning': 'Tworzenie partycji dla podwójnego rozruchu...',
+            'dual_title': 'Podwójny rozruch — Miejsce dla StackOS',
+            'exit': 'Wyjdź',
+            'finishing': 'Kończenie...',
+            'free_space': 'Dostępne wolne miejsce: {size} MB\nZalecane minimum: 15000 MB',
+            'hostname': 'Nazwa komputera:',
+            'hostname_required': 'Nazwa komputera jest wymagana.',
+            'installing_grub': 'Instalowanie programu rozruchowego GRUB...',
+            'mounting': 'Montowanie partycji...',
+            'no_free_space': 'Na dysku nie ma wystarczającej ilości wolnego miejsca.\nZwolnij co najmniej 5 GB.',
+            'partitioning': 'Partycjonowanie dysku...',
+            'password': 'Hasło (pozostaw puste, aby nie używać hasła):',
+            'password_mismatch': 'Hasła nie są zgodne.',
+            'preparing_initial': 'Przygotowywanie konfiguracji początkowej...',
+            'restart_now': 'Uruchom ponownie',
+            'stackos_size': 'Miejsce dla StackOS (MB):',
+            'username': 'Nazwa użytkownika:',
+            'username_required': 'Nazwa użytkownika jest wymagana.',
+            'username_spaces': 'Nazwa użytkownika nie może zawierać spacji.',
+
+            'slide1_title': 'Witamy w StackOS Genesis',
+            'slide1_text': 'Modułowy, lekki i wydajny system,\nzaprojektowany z myślą o szybkim i nowoczesnym działaniu.',
+            'slide2_title': 'Twój Stack. Twoje zasady.',
+            'slide2_text': 'Przejrzysty i spójny interfejs pozwalający\npracować, tworzyć i grać po swojemu.',
+            'slide3_title': 'Gotowy od pierwszego uruchomienia',
+            'slide3_text': 'Firefox, obsługa grafiki i najważniejsze aplikacje\nsą gotowe od pierwszego uruchomienia.',
+            'slide4_title': 'Sklep StackOS',
+            'slide4_text': 'Instaluj nowe aplikacje kilkoma kliknięciami\nbezpośrednio ze Sklepu StackOS.',
+            'slide5_title': 'Otwarta społeczność',
+            'slide5_text': 'Zgłaszaj błędy, uczestnicz i pomagaj tworzyć\nprzyszłość StackOS.',
+
+            'keyboard_test': 'Test klawiatury:',
+            'keyboard_test_placeholder': 'Wpisz tutaj, aby przetestować układ...',
+
+            'installing_title': 'Instalowanie StackOS Genesis...',
+            'starting': 'Uruchamianie...',
+
+            'username_placeholder': 'np. uzytkownik',
+            'password_placeholder': 'hasło',
+            'confirm_password_placeholder': 'potwierdź hasło',
+            'hostname_placeholder': 'np. moj-komputer',
+            'erase_disk_short_warning': '⚠ Dysk {disk} zostanie całkowicie WYCZYSZCZONY po kontynuowaniu.',
+        },
+        "tr_TR": {
+            'welcome': 'Resmî StackOS Genesis yükleyicisine hoş geldiniz.',
+            'welcome_body': 'Bu yardımcı, sistemi bilgisayarınıza kurma\nsürecinde size rehberlik edecektir.',
+            'slogan': 'Modüler. Hafif. Güçlü.',
+            'language': 'Dil:',
+            'start': 'Başlat',
+            'back': 'Geri',
+            'next': 'İleri',
+            'select_disk': 'Kurulum diskini seçin',
+            'install_how': '{disk} üzerine nasıl kurulsun?',
+            'erase': 'Tüm diski sil',
+            'erase_desc': "Her şeyi siler ve StackOS'u kurar. Temiz kurulum için önerilir.",
+            'dual': 'Manual',
+            'dual_desc': "StackOS'u mevcut sistemin yanına boş alana kurar.",
+            'manual': 'Elle bölümleme',
+            'manual_desc': "Diski elle bölümlemek için GParted'ı açar.",
+            'confirmation': 'Onay',
+            'warning': 'UYARI',
+            'erase_warning': '{disk} diski tamamen silinecek.\nTüm veriler kalıcı olarak kaybolacak.\n\nBu işlem geri alınamaz.',
+            'confirm_continue': 'Onayla ve devam et',
+            'locale_title': 'Dil, bölge ve klavye',
+            'system_language': 'Sistem dili:',
+            'keyboard': 'Klavye:',
+            'country_tz': 'Ülke / bölge ve saat dilimi:',
+            'select_map': 'Haritadan seçin',
+            'install': 'Kur',
+            'cancel_detail': 'Yükleyiciden çıkmak istediğinizden emin misiniz?',
+            'cancel_install': 'Kurulum iptal edilsin mi?',
+            'completed': 'Tamamlandı!',
+            'configure_user': 'Kullanıcı yapılandırması',
+            'configuring_fstab': 'fstab yapılandırılıyor...',
+            'confirm_password': 'Parolayı doğrula:',
+            'continue': 'Devam et',
+            'copying_kernel': 'Çekirdek kopyalanıyor...',
+            'copying_system': 'Sistem kopyalanıyor... bu işlem birkaç dakika sürebilir.',
+            'done_message': 'StackOS Genesis başarıyla kuruldu.\n\nKurulum ortamını çıkarın ve kurulu sistemi başlatmak için\nbilgisayarı yeniden başlatın.',
+            'done_title': 'Kurulum tamamlandı',
+            'dual_partitioning': 'Çift önyükleme bölümleri oluşturuluyor...',
+            'dual_title': 'Çift Önyükleme — StackOS için alan',
+            'exit': 'Çık',
+            'finishing': 'Tamamlanıyor...',
+            'free_space': 'Kullanılabilir boş alan: {size} MB\nÖnerilen minimum: 15000 MB',
+            'hostname': 'Bilgisayar adı:',
+            'hostname_required': 'Bilgisayar adı gerekli.',
+            'installing_grub': 'GRUB önyükleyicisi kuruluyor...',
+            'mounting': 'Bölümler bağlanıyor...',
+            'no_free_space': 'Diskte yeterli boş alan yok.\nDevam etmeden önce en az 5 GB boş alan açın.',
+            'partitioning': 'Disk bölümleniyor...',
+            'password': 'Parola (parola kullanmamak için boş bırakın):',
+            'password_mismatch': 'Parolalar eşleşmiyor.',
+            'preparing_initial': 'İlk yapılandırma hazırlanıyor...',
+            'restart_now': 'Şimdi yeniden başlat',
+            'stackos_size': 'StackOS için alan (MB):',
+            'username': 'Kullanıcı adı:',
+            'username_required': 'Kullanıcı adı gerekli.',
+            'username_spaces': 'Kullanıcı adı boşluk içeremez.',
+
+            'slide1_title': 'StackOS Genesis’e hoş geldiniz',
+            'slide1_text': 'Hızlı ve modern bir deneyim için tasarlanmış\nmodüler, hafif ve güçlü bir sistem.',
+            'slide2_title': 'Sizin Stack’iniz. Sizin kurallarınız.',
+            'slide2_text': 'Çalışmanızı, üretmenizi ve istediğiniz gibi oynamanızı sağlayan\ntemiz ve tutarlı bir arayüz.',
+            'slide3_title': 'İlk açılıştan itibaren hazır',
+            'slide3_text': 'Firefox, grafik desteği ve temel uygulamalar\nilk açılıştan itibaren hazırdır.',
+            'slide4_title': 'StackOS Mağazası',
+            'slide4_text': 'Yeni uygulamaları birkaç tıklamayla\ndoğrudan StackOS Mağazasından kurun.',
+            'slide5_title': 'Açık topluluk',
+            'slide5_text': 'Hataları bildirin, katılın ve StackOS’un\ngeleceğini oluşturmaya yardımcı olun.',
+
+            'keyboard_test': 'Klavyeyi test et:',
+            'keyboard_test_placeholder': 'Düzeni test etmek için buraya yazın...',
+
+            'installing_title': 'StackOS Genesis kuruluyor...',
+            'starting': 'Başlatılıyor...',
+
+            'username_placeholder': 'örn. kullanici',
+            'password_placeholder': 'parola',
+            'confirm_password_placeholder': 'parolayı doğrula',
+            'hostname_placeholder': 'örn. bilgisayarim',
+            'erase_disk_short_warning': '⚠ Devam ederseniz {disk} diski tamamen SİLİNECEK.',
+        },
+        "ru_RU": {
+            'welcome': 'Добро пожаловать в официальный установщик StackOS Genesis.',
+            'welcome_body': 'Этот мастер проведёт вас через процесс установки\nсистемы на компьютер.',
+            'slogan': 'Модульный. Лёгкий. Мощный.',
+            'language': 'Язык:',
+            'start': 'Начать',
+            'back': 'Назад',
+            'next': 'Далее',
+            'select_disk': 'Выберите диск для установки',
+            'install_how': 'Как установить на {disk}?',
+            'erase': 'Стереть весь диск',
+            'erase_desc': 'Удаляет всё и устанавливает StackOS. Рекомендуется для чистой установки.',
+            'dual': 'Manual',
+            'dual_desc': 'Устанавливает StackOS рядом с существующей системой в свободное место.',
+            'manual': 'Ручная разметка',
+            'manual_desc': 'Открывает GParted для ручной разметки диска.',
+            'confirmation': 'Подтверждение',
+            'warning': 'ВНИМАНИЕ',
+            'erase_warning': 'Диск {disk} будет полностью очищен.\nВсе данные будут безвозвратно потеряны.\n\nЭто действие нельзя отменить.',
+            'confirm_continue': 'Подтвердить и продолжить',
+            'locale_title': 'Язык, регион и клавиатура',
+            'system_language': 'Язык системы:',
+            'keyboard': 'Клавиатура:',
+            'country_tz': 'Страна / регион и часовой пояс:',
+            'select_map': 'Выберите на карте',
+            'install': 'Установить',
+            'cancel_detail': 'Вы действительно хотите выйти из установщика?',
+            'cancel_install': 'Отменить установку?',
+            'completed': 'Готово!',
+            'configure_user': 'Настройка пользователя',
+            'configuring_fstab': 'Настройка fstab...',
+            'confirm_password': 'Подтвердите пароль:',
+            'continue': 'Продолжить',
+            'copying_kernel': 'Копирование ядра...',
+            'copying_system': 'Копирование системы... это может занять несколько минут.',
+            'done_message': 'StackOS Genesis успешно установлен.\n\nИзвлеките установочный носитель и перезагрузите компьютер,\nчтобы запустить установленную систему.',
+            'done_title': 'Установка завершена',
+            'dual_partitioning': 'Создание разделов для двойной загрузки...',
+            'dual_title': 'Двойная загрузка — Место для StackOS',
+            'exit': 'Выйти',
+            'finishing': 'Завершение...',
+            'free_space': 'Доступное свободное место: {size} MB\nРекомендуемый минимум: 15000 MB',
+            'hostname': 'Имя компьютера:',
+            'hostname_required': 'Имя компьютера обязательно.',
+            'installing_grub': 'Установка загрузчика GRUB...',
+            'mounting': 'Монтирование разделов...',
+            'no_free_space': 'На диске недостаточно свободного места.\nОсвободите не менее 5 ГБ перед продолжением.',
+            'partitioning': 'Разметка диска...',
+            'password': 'Пароль (оставьте пустым, чтобы не использовать пароль):',
+            'password_mismatch': 'Пароли не совпадают.',
+            'preparing_initial': 'Подготовка начальной конфигурации...',
+            'restart_now': 'Перезагрузить сейчас',
+            'stackos_size': 'Место для StackOS (MB):',
+            'username': 'Имя пользователя:',
+            'username_required': 'Имя пользователя обязательно.',
+            'username_spaces': 'Имя пользователя не может содержать пробелы.',
+
+            'slide1_title': 'Добро пожаловать в StackOS Genesis',
+            'slide1_text': 'Модульная, лёгкая и мощная система,\nсозданная для быстрой и современной работы.',
+            'slide2_title': 'Ваш Stack. Ваши правила.',
+            'slide2_text': 'Чистый и последовательный интерфейс для работы,\nтворчества и игр по вашим правилам.',
+            'slide3_title': 'Готово с первого запуска',
+            'slide3_text': 'Firefox, поддержка графики и основные приложения\nготовы к работе с первого запуска.',
+            'slide4_title': 'Магазин StackOS',
+            'slide4_text': 'Устанавливайте новые приложения в несколько кликов\nпрямо из магазина StackOS.',
+            'slide5_title': 'Открытое сообщество',
+            'slide5_text': 'Сообщайте об ошибках, участвуйте и помогайте создавать\nбудущее StackOS.',
+
+            'keyboard_test': 'Проверка клавиатуры:',
+            'keyboard_test_placeholder': 'Введите текст для проверки раскладки...',
+
+            'installing_title': 'Установка StackOS Genesis...',
+            'starting': 'Запуск...',
+
+            'username_placeholder': 'напр. user',
+            'password_placeholder': 'пароль',
+            'confirm_password_placeholder': 'подтвердите пароль',
+            'hostname_placeholder': 'напр. my-computer',
+            'erase_disk_short_warning': '⚠ При продолжении диск {disk} будет полностью ОЧИЩЕН.',
+        },
+        "ja_JP": {
+            'welcome': 'StackOS Genesis 公式インストーラーへようこそ。',
+            'welcome_body': 'このアシスタントがコンピューターへの\nシステムインストールを案内します。',
+            'slogan': 'モジュール式。軽量。パワフル。',
+            'language': '言語:',
+            'start': '開始',
+            'back': '戻る',
+            'next': '次へ',
+            'select_disk': 'インストール先ディスクを選択',
+            'install_how': '{disk} へのインストール方法',
+            'erase': 'ディスク全体を消去',
+            'erase_desc': 'すべてを消去して StackOS をインストールします。クリーンインストールに推奨。',
+            'dual': 'Manual',
+            'dual_desc': '既存のシステムを残し、空き領域に StackOS をインストールします。',
+            'manual': '手動パーティション設定',
+            'manual_desc': 'GParted を開いて手動でパーティションを設定します。',
+            'confirmation': '確認',
+            'warning': '警告',
+            'erase_warning': 'ディスク {disk} は完全に消去されます。\nすべてのデータが完全に失われます。\n\nこの操作は元に戻せません。',
+            'confirm_continue': '確認して続行',
+            'locale_title': '言語、地域、キーボード',
+            'system_language': 'システム言語:',
+            'keyboard': 'キーボード:',
+            'country_tz': '国 / 地域とタイムゾーン:',
+            'select_map': '地図から選択',
+            'install': 'インストール',
+            'cancel_detail': 'インストーラーを終了してもよろしいですか？',
+            'cancel_install': 'インストールを中止しますか？',
+            'completed': '完了しました！',
+            'configure_user': 'ユーザー設定',
+            'configuring_fstab': 'fstab を設定しています...',
+            'confirm_password': 'パスワードの確認:',
+            'continue': '続行',
+            'copying_kernel': 'カーネルをコピーしています...',
+            'copying_system': 'システムをコピーしています... 数分かかる場合があります。',
+            'done_message': 'StackOS Genesis のインストールが完了しました。\n\nインストールメディアを取り外してコンピューターを再起動し、\nインストール済みのシステムを起動してください。',
+            'done_title': 'インストール完了',
+            'dual_partitioning': 'デュアルブート用パーティションを作成しています...',
+            'dual_title': 'デュアルブート — StackOS の領域',
+            'exit': '終了',
+            'finishing': '完了処理中...',
+            'free_space': '利用可能な空き領域: {size} MB\n推奨最小容量: 15000 MB',
+            'hostname': 'コンピューター名:',
+            'hostname_required': 'コンピューター名を入力してください。',
+            'installing_grub': 'GRUB ブートローダーをインストールしています...',
+            'mounting': 'パーティションをマウントしています...',
+            'no_free_space': 'ディスクに十分な空き領域がありません。\n続行する前に少なくとも 5 GB を確保してください。',
+            'partitioning': 'ディスクをパーティション分割しています...',
+            'password': 'パスワード（パスワードなしの場合は空欄）:',
+            'password_mismatch': 'パスワードが一致しません。',
+            'preparing_initial': '初期設定を準備しています...',
+            'restart_now': '今すぐ再起動',
+            'stackos_size': 'StackOS のサイズ (MB):',
+            'username': 'ユーザー名:',
+            'username_required': 'ユーザー名を入力してください。',
+            'username_spaces': 'ユーザー名に空白は使用できません。',
+
+            'slide1_title': 'StackOS Genesis へようこそ',
+            'slide1_text': '高速でモダンな体験のために設計された、\nモジュール式で軽量かつ強力なシステムです。',
+            'slide2_title': 'あなたの Stack。あなたのルール。',
+            'slide2_text': '仕事、創作、ゲームを自分らしく楽しめるよう設計された、\nシンプルで一貫性のあるインターフェースです。',
+            'slide3_title': '最初からすぐに使えます',
+            'slide3_text': 'Firefox、グラフィックサポート、主要アプリケーションが\n最初の起動から利用できます。',
+            'slide4_title': 'StackOS ストア',
+            'slide4_text': 'StackOS ストアから数回のクリックで\n新しいアプリケーションをインストールできます。',
+            'slide5_title': 'オープンコミュニティ',
+            'slide5_text': 'バグを報告し、参加して、StackOS の\n未来づくりに協力してください。',
+
+            'keyboard_test': 'キーボードのテスト:',
+            'keyboard_test_placeholder': 'ここに入力して配列を確認...',
+
+            'installing_title': 'StackOS Genesis をインストールしています...',
+            'starting': '開始しています...',
+
+            'username_placeholder': '例: user',
+            'password_placeholder': 'パスワード',
+            'confirm_password_placeholder': 'パスワードを確認',
+            'hostname_placeholder': '例: my-computer',
+            'erase_disk_short_warning': '⚠ 続行するとディスク {disk} の内容はすべて消去されます。',
+        },
+    }
+
+    def tr(self, key, **kwargs):
+        lang = getattr(self, "ui_lang", "pt_BR")
+
+        # Variantes que compartilham traducao.
+        fallback_lang = {
+            "pt_PT": "pt_BR",
+            "en_GB": "en_US",
+            "es_MX": "es_ES",
+        }.get(lang, lang)
+
+        table = self.TRANSLATIONS.get(lang, {})
+
+        value = table.get(key)
+
+        if value is None:
+            value = self.TRANSLATIONS.get(
+                fallback_lang,
+                {}
+            ).get(key)
+
+        if value is None:
+            value = self.TRANSLATIONS["en_US"].get(
+                key,
+                self.TRANSLATIONS["pt_BR"].get(key, key)
+            )
+
+        if kwargs:
+            try:
+                value = value.format(**kwargs)
+            except Exception:
+                pass
+
+        return value.replace("\\n", "\n")
+
+
+    def on_welcome_language_changed(self, combo, pspec):
+        index = combo.get_selected()
+
+        if index < 0 or index >= len(self.UI_LANGUAGES):
+            return
+
+        lang = self.UI_LANGUAGES[index][1]
+
+        if lang == self.ui_lang:
+            return
+
+        self.ui_lang = lang
+        self.locale = lang + '.UTF-8'
+        os.environ['LANG'] = self.locale
+        os.environ['LANGUAGE'] = lang + ':' + lang.split('_')[0]
+        if not self.preview:
+            result = subprocess.run(['/usr/lib/stackos/stackos-set-language', lang], capture_output=True, text=True)
+            if result.returncode:
+                Gtk.AlertDialog(message='Idioma indisponível', detail=result.stderr).show(self.win)
+
+        # Redesenha imediatamente a primeira tela.
+        self.show_welcome()
+
+
+    def show_welcome(self):
+        self.clear()
+
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=0
+        )
+
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+
+        logo_path = Path('/usr/share/stackos-installer/stackos-symbol.png')
+        if self.preview:
+            logo_path = Path(__file__).resolve().parents[2] / 'share/stackos-installer/stackos-symbol.png'
+        emblem = Gtk.Image.new_from_file(str(logo_path))
+        emblem.set_pixel_size(88)
+        emblem.set_margin_bottom(12)
+        box.append(emblem)
+        logo = Gtk.Label(label="StackOS Genesis")
+        logo.add_css_class('title')
+        logo.set_margin_bottom(6)
+        box.append(logo)
+
+        gen = Gtk.Label(label="Instalador oficial" if self.ui_lang.startswith("pt") else "Official installer")
+        gen.add_css_class('label-blue')
+        gen.set_margin_bottom(24)
+        box.append(gen)
+
+        # Idioma da interface.
+        lang_box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=12
+        )
+        lang_box.set_halign(Gtk.Align.CENTER)
+        self.responsive_boxes.append((lang_box, 650))
+        lang_box.set_margin_bottom(18)
+
+        lang_label = Gtk.Label(
+            label=self.tr("language")
+        )
+        lang_label.add_css_class('label-blue')
+        lang_label.add_css_class('no-wrap')
+
+        self.welcome_language_combo = (
+            Gtk.DropDown.new_from_strings(
+                [x[0] for x in self.UI_LANGUAGES]
+            )
+        )
+
+        current_index = 0
+
+        for i, (_, code) in enumerate(self.UI_LANGUAGES):
+            if code == self.ui_lang:
+                current_index = i
+                break
+
+        self.welcome_language_combo.set_selected(
+            current_index
+        )
+
+        self.welcome_language_combo.set_size_request(
+            280,
+            -1
+        )
+
+        lang_box.append(lang_label)
+        lang_box.append(self.welcome_language_combo)
+
+        box.append(lang_box)
+
+        card = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=12
+        )
+
+        card.add_css_class('card')
+        card.set_margin_bottom(30)
+
+        msg = Gtk.Label(
+            label=(
+                self.tr("welcome") +
+                "\n\n" +
+                self.tr("welcome_body") +
+                "\n\n" +
+                self.tr("slogan")
+            )
+        )
+
+        msg.add_css_class('label-white')
+        msg.set_justify(Gtk.Justification.CENTER)
+        msg.set_wrap(True)
+
+        card.append(msg)
+        box.append(card)
+
+        nav, btn = self.make_nav(
+            next_label=self.tr("start"),
+            next_cb=lambda b: self.show_disk()
+        )
+
+        box.append(nav)
+
+        self.present_page(box, 'welcome')
+
+        self.welcome_language_combo.connect(
+            "notify::selected",
+            self.on_welcome_language_changed
+        )
+
+
+    def show_disk(self):
+        self.clear()
+        r = subprocess.CompletedProcess([], 0, 'demo disk 128G 0\n') if self.preview else subprocess.run(['lsblk','-rno','NAME,TYPE,SIZE,RM'], capture_output=True, text=True)
+        disks = []
+        for line in r.stdout.splitlines():
+            p = line.split()
+            if len(p) >= 4 and p[1] == 'disk' and p[3] == '0':
+                disks.append((p[0], p[2]))
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(18)
+        box.set_margin_bottom(18)
+        box.set_margin_start(24)
+        box.set_margin_end(24)
+        box.append(
+            self.make_header(
+                self.tr("select_disk")
+            )
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
+        card.add_css_class('card')
+        card.set_margin_bottom(20)
+
+        self.disk_radios = []
+        group = None
+        for name, size in disks:
+            rb = Gtk.CheckButton(label=f"/dev/{name}  \u2014  {size}")
+            rb.add_css_class('radio')
+            if group is None:
+                group = rb
+            else:
+                rb.set_group(group)
+            rb.disk = f"/dev/{name}"
+            self.disk_radios.append(rb)
+            card.append(rb)
+
+        if self.disk_radios:
+            self.disk_radios[0].set_active(True)
+
+        box.append(card)
+        nav, btn = self.make_nav(
+            back_cb=lambda b: self.show_welcome(),
+            next_label=self.tr("next"),
+            next_cb=lambda b: self.on_disk_next()
+        )
+        btn.set_sensitive(bool(self.disk_radios))
+        if not self.disk_radios:
+            card.append(Gtk.Label(label="Nenhum disco disponível. Conecte um disco e tente novamente.", wrap=True))
+        box.append(nav)
+        self.present_page(box, 'disk')
+
+    def on_disk_next(self):
+        for rb in self.disk_radios:
+            if rb.get_active():
+                self.disk = rb.disk
+                break
+        if not self.disk:
+            return
+        self.show_mode()
+
+    def show_mode(self):
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+        box.append(
+            self.make_header(
+                self.tr(
+                    "install_how",
+                    disk=self.disk
+                )
+            )
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+        card.add_css_class('card')
+        card.set_margin_bottom(20)
+
+        self.rb_erase = Gtk.CheckButton(
+            label=self.tr("erase")
+        )
+        self.rb_erase.add_css_class('radio')
+        self.rb_erase.set_active(True)
+        card.append(self.rb_erase)
+
+        desc_erase = Gtk.Label(
+            label="  " + self.tr("erase_desc")
+        )
+        desc_erase.add_css_class('label-blue')
+        desc_erase.set_halign(Gtk.Align.START)
+        card.append(desc_erase)
+
+        self.rb_dual = Gtk.CheckButton(
+            label=self.tr("dual")
+        )
+        self.rb_dual.add_css_class('radio')
+        self.rb_dual.set_group(self.rb_erase)
+        pass  # dual boot button removed (NODUALBOOT-20260916)
+
+        desc_dual = Gtk.Label(
+            label="  " + self.tr("dual_desc")
+        )
+        desc_dual.add_css_class('label-blue')
+        desc_dual.set_halign(Gtk.Align.START)
+        desc_dual.set_visible(False)
+        card.append(desc_dual)
+
+        self.rb_manual = Gtk.CheckButton(
+            label=self.tr("manual")
+        )
+        self.rb_manual.add_css_class('radio')
+        self.rb_manual.set_group(self.rb_erase)
+        card.append(self.rb_manual)
+
+        desc_manual = Gtk.Label(
+            label="  " + self.tr("manual_desc")
+        )
+        desc_manual.add_css_class('label-blue')
+        desc_manual.set_halign(Gtk.Align.START)
+        card.append(desc_manual)
+
+        box.append(card)
+        nav, btn = self.make_nav(
+            back_cb=lambda b: self.show_disk(),
+            next_label=self.tr("next"),
+            next_cb=lambda b: self.on_mode_next()
+        )
+        box.append(nav)
+        self.present_page(box, 'mode')
+
+    def on_mode_next(self):
+        if self.rb_erase.get_active():
+            self.mode = 'erase'
+            self.show_confirm_erase()
+        elif False:  # dual boot branch disabled (NODUALBOOT-20260916)
+            self.mode = 'dual'
+            self.show_dual_size()
+        else:
+            self.mode = 'manual'
+            if not self.preview:
+                subprocess.Popen(['gparted', self.disk] if shutil.which('gparted') else ['gnome-disks', '--block-device', self.disk])
+
+    def show_confirm_erase(self):
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+        box.append(
+            self.make_header(
+                self.tr("confirmation")
+            )
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        card.add_css_class('card')
+        card.set_margin_bottom(20)
+
+        warn = Gtk.Label(
+            label=(
+                self.tr("warning") +
+                "\n\n" +
+                self.tr(
+                    "erase_warning",
+                    disk=self.disk
+                )
+            )
+        )
+        warn.add_css_class('label-white')
+        warn.set_justify(Gtk.Justification.CENTER)
+        warn.set_wrap(True)
+        card.append(warn)
+        box.append(card)
+
+        nav, btn = self.make_nav(
+            back_cb=lambda b: self.show_mode(),
+            next_label=self.tr("confirm_continue"),
+            next_cb=lambda b: self.show_locale(),
+            next_style='btn-danger'
+        )
+        box.append(nav)
+        self.present_page(box, 'confirm_erase')
+
+    def show_dual_size(self):
+        self.clear()
+        parted_out = subprocess.run(['parted','-s',self.disk,'unit','MiB','print','free'], capture_output=True, text=True)
+        free_spaces = []
+        for line in parted_out.stdout.splitlines():
+            if 'Free Space' in line:
+                m = re.findall(r'([\d]+(?:[.,]\d+)?)MiB', line)
+                if len(m) >= 3:
+                    s = float(m[0].replace(',','.'))
+                    e = float(m[1].replace(',','.'))
+                    size = float(m[2].replace(',','.'))
+                    if size > 5000:
+                        free_spaces.append((s, e, size))
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+        box.append(
+            self.make_header(
+                self.tr("dual_title")
+            )
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        card.add_css_class('card')
+        card.set_margin_bottom(20)
+
+        if not free_spaces:
+            msg = Gtk.Label(
+                label=self.tr("no_free_space")
+            )
+            msg.add_css_class('label-white')
+            card.append(msg)
+            box.append(card)
+            nav, _ = self.make_nav(back_cb=lambda b: self.show_mode())
+            box.append(nav)
+            self.present_page(box, 'dual_size')
+            return
+
+        self.dual_start, self.dual_end, free_size = max(free_spaces, key=lambda x: x[2])
+        suggest = int(free_size * 0.8)
+
+        msg = Gtk.Label(
+            label=self.tr(
+                "free_space",
+                size=int(free_size)
+            )
+        )
+        msg.add_css_class('label-white')
+        msg.set_justify(Gtk.Justification.CENTER)
+        card.append(msg)
+
+        lbl = Gtk.Label(
+            label=self.tr("stackos_size")
+        )
+        lbl.add_css_class('label-blue')
+        lbl.set_halign(Gtk.Align.START)
+        lbl.set_margin_top(10)
+        card.append(lbl)
+
+        self.size_scale = Gtk.Scale.new_with_range(Gtk.Orientation.HORIZONTAL, 10000, int(free_size), 1024)
+        self.size_scale.set_value(suggest)
+        self.size_scale.set_draw_value(True)
+        self.size_scale.set_hexpand(True)
+        card.append(self.size_scale)
+
+        box.append(card)
+        nav, btn = self.make_nav(
+            back_cb=lambda b: self.show_mode(),
+            next_label=self.tr("next"),
+            next_cb=lambda b: self.on_dual_next()
+        )
+        box.append(nav)
+        self.present_page(box, 'dual_size')
+
+    def on_dual_next(self):
+        self.dual_size = int(self.size_scale.get_value())
+        self.show_locale()
+
+    def show_user(self):
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+        box.append(
+            self.make_header(
+                self.tr("configure_user")
+            )
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10)
+        card.add_css_class('card')
+        card.set_margin_bottom(20)
+
+        # --- aviso do disco (muda conforme o modo escolhido) ---
+        if self.mode == 'erase':
+            aviso = Gtk.Label(label=self.tr("erase_disk_short_warning").format(disk=self.disk))
+            aviso.add_css_class('warn-erase')
+        else:
+            aviso = Gtk.Label(label=f"\u2713  O StackOS sera instalado ao lado do sistema atual, sem apagar seus dados.")
+            aviso.add_css_class('warn-dual')
+        aviso.set_wrap(True)
+        aviso.set_justify(Gtk.Justification.CENTER)
+        aviso.set_margin_bottom(6)
+        card.append(aviso)
+
+        lbl_user = Gtk.Label(
+            label=self.tr("username")
+        )
+        lbl_user.add_css_class('label-blue')
+        lbl_user.set_halign(Gtk.Align.START)
+        card.append(lbl_user)
+
+        self.entry_user = Gtk.Entry()
+        self.entry_user.add_css_class('entry')
+        self.entry_user.set_placeholder_text(self.tr("username_placeholder"))
+        if self.username:
+            self.entry_user.set_text(self.username)
+        card.append(self.entry_user)
+
+        lbl_pass = Gtk.Label(
+            label=self.tr("password")
+        )
+        lbl_pass.add_css_class('label-blue')
+        lbl_pass.set_halign(Gtk.Align.START)
+        lbl_pass.set_margin_top(8)
+        card.append(lbl_pass)
+
+        self.entry_pass = Gtk.Entry()
+        self.entry_pass.add_css_class('entry')
+        self.entry_pass.set_visibility(False)
+        self.entry_pass.set_placeholder_text(self.tr("password_placeholder"))
+        card.append(self.entry_pass)
+
+        lbl_conf = Gtk.Label(
+            label=self.tr("confirm_password")
+        )
+        lbl_conf.add_css_class('label-blue')
+        lbl_conf.set_halign(Gtk.Align.START)
+        lbl_conf.set_margin_top(4)
+        card.append(lbl_conf)
+
+        self.entry_conf = Gtk.Entry()
+        self.entry_conf.add_css_class('entry')
+        self.entry_conf.set_visibility(False)
+        self.entry_conf.set_placeholder_text(self.tr("confirm_password_placeholder"))
+        card.append(self.entry_conf)
+
+        # --- campo editavel: nome do computador (vem sugerido como usuario-marca-modelo) ---
+        if not hasattr(self, '_hw_tag'):
+            self._hw_tag = hardware_tag()
+
+        lbl_host = Gtk.Label(
+            label=self.tr("hostname")
+        )
+        lbl_host.add_css_class('label-blue')
+        lbl_host.set_halign(Gtk.Align.START)
+        lbl_host.set_margin_top(8)
+        card.append(lbl_host)
+
+        self.entry_host = Gtk.Entry()
+        self.entry_host.add_css_class('entry')
+        self.entry_host.set_placeholder_text(self.tr("hostname_placeholder"))
+        if self.hostname:
+            self.entry_host.set_text(self.hostname)
+        card.append(self.entry_host)
+
+        # enquanto o usuario nao editar o nome do PC manualmente,
+        # ele segue o nome de usuario automaticamente (usuario-marca-modelo)
+        self._host_auto = not bool(self.hostname)
+
+        def on_user_changed(entry):
+            if not self._host_auto:
+                return
+            u = _slug(entry.get_text())
+            suggestion = f"{u}-{self._hw_tag}" if u else ""
+            self._host_setting_auto = True
+            self.entry_host.set_text(suggestion)
+            self._host_setting_auto = False
+
+        def on_host_changed(entry):
+            if not getattr(self, '_host_setting_auto', False):
+                self._host_auto = False
+
+        self.entry_user.connect('changed', on_user_changed)
+        self.entry_host.connect('changed', on_host_changed)
+
+        self.lbl_error = Gtk.Label(label="")
+        self.lbl_error.add_css_class('label-blue')
+        card.append(self.lbl_error)
+
+        box.append(card)
+        back_cb = lambda b: self.show_confirm_erase() if self.mode == 'erase' else self.show_dual_size()
+        nav, btn = self.make_nav(
+            back_cb=back_cb,
+            next_label=self.tr("next"),
+            next_cb=lambda b: self.on_user_next()
+        )
+        box.append(nav)
+        self.present_page(box, 'user')
+
+    def on_user_next(self):
+        user = self.entry_user.get_text().strip()
+        passwd = self.entry_pass.get_text()
+        conf = self.entry_conf.get_text()
+        host = self.entry_host.get_text().strip()
+
+        if not user:
+            self.lbl_error.set_text(self.tr("username_required"))
+            return
+        if ' ' in user:
+            self.lbl_error.set_text(self.tr("username_spaces"))
+            return
+        if passwd != conf:
+            self.lbl_error.set_text(self.tr("password_mismatch"))
+            return
+        if not host:
+            self.lbl_error.set_text(self.tr("hostname_required"))
+            return
+
+        self.username = user
+        self.password = passwd
+        self.hostname = _slug(host) or host
+        self.show_locale()
+
+    # ------------------------------------------------------------------
+    # MAPA MUNDIAL / LOCALIZACAO
+    # ------------------------------------------------------------------
+
+    MAP_LOCATIONS = [
+        # nome, timezone, x, y
+        ("Sao Paulo",     "America/Sao_Paulo",              0.3705, 0.6307),
+        ("Manaus",        "America/Manaus",                  0.3333, 0.5173),
+        ("New York",      "America/New_York",                0.2944, 0.2738),
+        ("Chicago",       "America/Chicago",                 0.2566, 0.2678),
+        ("Denver",        "America/Denver",                  0.2084, 0.2783),
+        ("Los Angeles",   "America/Los_Angeles",             0.1716, 0.3118),
+        ("Mexico City",   "America/Mexico_City",             0.2246, 0.3924),
+        ("Bogota",        "America/Bogota",                  0.2943, 0.4748),
+        ("Buenos Aires",  "America/Argentina/Buenos_Aires", 0.3378, 0.6925),
+        ("Santiago",      "America/Santiago",                0.3037, 0.6853),
+
+        ("Lisboa",        "Europe/Lisbon",                   0.4746, 0.2856),
+        ("London",        "Europe/London",                   0.4996, 0.2149),
+        ("Madrid",        "Europe/Madrid",                   0.4897, 0.2753),
+        ("Paris",         "Europe/Paris",                    0.5065, 0.2286),
+        ("Amsterdam",     "Europe/Amsterdam",                0.5136, 0.2184),
+        ("Berlin",        "Europe/Berlin",                   0.5372, 0.2081),
+        ("Warsaw",        "Europe/Warsaw",                   0.5584, 0.2107),
+        ("Rome",          "Europe/Rome",                     0.5347, 0.2678),
+        ("Istanbul",      "Europe/Istanbul",                 0.5805, 0.2724),
+        ("Moscow",        "Europe/Moscow",                   0.6045, 0.1892),
+
+        ("Tokyo",         "Asia/Tokyo",                      0.8880, 0.3018),
+    ]
+
+    def get_world_map_handle(self):
+        if hasattr(self, "_world_map_handle"):
+            return self._world_map_handle
+
+        path = "/usr/share/stackos-installer/world-map.svg"
+        if self.preview:
+            path = str(Path(__file__).resolve().parents[2] / "share/stackos-installer/world-map.svg")
+
+        try:
+            handle = Rsvg.Handle.new_from_file(path)
+
+            # Visual StackOS aplicado ao mapa vetorial.
+            try:
+                handle.set_stylesheet(b"""
+                    path {
+                        fill: #0b2b59 !important;
+                        fill-opacity: 1.0 !important;
+
+                        stroke: #1682ff !important;
+                        stroke-width: 0.28 !important;
+                        stroke-opacity: 0.72 !important;
+
+                        stroke-linejoin: round !important;
+                        stroke-linecap: round !important;
+                    }
+
+                    text {
+                        display: none !important;
+                    }
+                """)
+            except Exception as e:
+                print("Aviso CSS mapa:", e)
+
+            self._world_map_handle = handle
+            return handle
+
+        except Exception as e:
+            print("ERRO AO CARREGAR MAPA STACKOS:", e)
+            self._world_map_handle = None
+            return None
+
+
+    def get_world_map_glow_handle(self):
+        if hasattr(self, "_world_map_glow_handle"):
+            return self._world_map_glow_handle
+
+        path = "/usr/share/stackos-installer/world-map.svg"
+        if self.preview:
+            path = str(Path(__file__).resolve().parents[2] / "share/stackos-installer/world-map.svg")
+
+        try:
+            handle = Rsvg.Handle.new_from_file(path)
+
+            try:
+                handle.set_stylesheet(b"""
+                    path {
+                        fill: #1261bd !important;
+                        fill-opacity: 0.72 !important;
+
+                        stroke: #1787ff !important;
+                        stroke-width: 0.38 !important;
+                        stroke-opacity: 0.78 !important;
+                    }
+
+                    text {
+                        display: none !important;
+                    }
+                """)
+            except Exception as e:
+                print("Aviso CSS glow mapa:", e)
+
+            self._world_map_glow_handle = handle
+            return handle
+
+        except Exception as e:
+            print("ERRO AO CARREGAR GLOW DO MAPA:", e)
+            self._world_map_glow_handle = None
+            return None
+
+
+    def draw_world_map(self, area, cr, width, height):
+        import math
+
+        # ============================================================
+        # FUNDO
+        # ============================================================
+
+        cr.set_source_rgb(0.012, 0.025, 0.065)
+        cr.rectangle(0, 0, width, height)
+        cr.fill()
+
+        # Grade fina no estilo StackOS.
+        cr.set_line_width(0.55)
+        cr.set_source_rgba(0.18, 0.40, 0.80, 0.10)
+
+        cols = 16
+        rows = 8
+
+        for i in range(1, cols):
+            x = width * i / cols
+            cr.move_to(x, 0)
+            cr.line_to(x, height)
+
+        for i in range(1, rows):
+            y = height * i / rows
+            cr.move_to(0, y)
+            cr.line_to(width, y)
+
+        cr.stroke()
+
+        # Linha do Equador um pouco mais visivel.
+        cr.set_source_rgba(0.24, 0.47, 0.85, 0.16)
+        cr.set_line_width(0.7)
+        cr.move_to(0, height * 0.5)
+        cr.line_to(width, height * 0.5)
+        cr.stroke()
+
+        # ============================================================
+        # MAPA VETORIAL
+        # ============================================================
+
+        glow_handle = self.get_world_map_glow_handle()
+
+        if glow_handle is not None:
+            try:
+                visible_height = height * 0.82
+
+                # Renderizamos o proprio mapa varias vezes com
+                # pequenos deslocamentos e baixa opacidade.
+                # Isso cria um halo que segue os continentes.
+                cr.save()
+
+                cr.rectangle(
+                    0,
+                    0,
+                    width,
+                    visible_height
+                )
+                cr.clip()
+
+                cr.push_group()
+
+                glow_offsets = (
+                    (-2.0,  0.0),
+                    ( 2.0,  0.0),
+                    ( 0.0, -2.0),
+                    ( 0.0,  2.0),
+                    (-1.4, -1.4),
+                    ( 1.4, -1.4),
+                    (-1.4,  1.4),
+                    ( 1.4,  1.4),
+                )
+
+                for dx, dy in glow_offsets:
+                    cr.save()
+
+                    viewport = Rsvg.Rectangle()
+                    viewport.x = dx
+                    viewport.y = dy
+                    viewport.width = width
+                    viewport.height = height
+
+                    glow_handle.render_document(
+                        cr,
+                        viewport
+                    )
+
+                    cr.restore()
+
+                glow_pattern = cr.pop_group()
+
+                cr.set_source(glow_pattern)
+                cr.paint_with_alpha(0.16)
+
+                cr.restore()
+
+            except Exception as e:
+                print("ERRO AO RENDERIZAR GLOW DO MAPA:", e)
+
+        # Camada principal, nitida.
+        handle = self.get_world_map_handle()
+
+        if handle is not None:
+            try:
+                # Oculta apenas a faixa da Antartida.
+                # O SVG NAO e deslocado nem redimensionado,
+                # preservando o alinhamento exato das cidades.
+                cr.save()
+
+                visible_height = height * 0.82
+
+                cr.rectangle(
+                    0,
+                    0,
+                    width,
+                    visible_height
+                )
+                cr.clip()
+
+                viewport = Rsvg.Rectangle()
+                viewport.x = 0
+                viewport.y = 0
+                viewport.width = width
+                viewport.height = height
+
+                handle.render_document(cr, viewport)
+
+                cr.restore()
+
+            except Exception as e:
+                print("ERRO AO RENDERIZAR MAPA:", e)
+
+        selected_tz = getattr(
+            self,
+            "map_selected_timezone",
+            self.timezone
+        )
+
+        # ============================================================
+        # AJUSTES DE LABEL
+        #
+        # dx, dy permitem evitar sobreposicao principalmente na Europa.
+        # ============================================================
+
+        label_offsets = {
+            "Sao Paulo":    (8, 4),
+            "Manaus":       (8, -7),
+            "New York":     (7, 11),
+            "Chicago":      (-4, -8),
+            "Denver":       (-4, -8),
+            "Los Angeles":  (-58, 3),
+            "Mexico City":  (-51, 14),
+            "Bogota":       (7, 12),
+            "Buenos Aires": (7, 13),
+            "Santiago":     (-49, 3),
+
+            "Lisboa":       (-39, 14),
+            "London":       (-33, -9),
+            "Madrid":       (-34, 15),
+            "Paris":        (-31, 3),
+            "Amsterdam":    (-18, -16),
+            "Berlin":       (7, -8),
+            "Warsaw":       (7, -9),
+            "Rome":         (7, 13),
+            "Istanbul":     (7, 12),
+            "Moscow":       (7, -8),
+
+            "Tokyo":        (8, 4),
+        }
+
+        # ============================================================
+        # CIDADES
+        # ============================================================
+
+        for name, timezone, x, y in self.MAP_LOCATIONS:
+            px = x * width
+            py = y * height
+
+            selected = timezone == selected_tz
+
+            if selected:
+                # Halo externo.
+                cr.set_source_rgba(0.48, 0.18, 0.97, 0.10)
+                cr.arc(px, py, 22, 0, math.tau)
+                cr.fill()
+
+                # Halo intermediario.
+                cr.set_source_rgba(0.48, 0.18, 0.97, 0.22)
+                cr.arc(px, py, 15, 0, math.tau)
+                cr.fill()
+
+                # Anel.
+                cr.set_source_rgba(0.55, 0.20, 1.0, 0.92)
+                cr.set_line_width(2.2)
+                cr.arc(px, py, 9, 0, math.tau)
+                cr.stroke()
+
+                # Centro.
+                cr.set_source_rgb(0.55, 0.20, 1.0)
+                cr.arc(px, py, 6.2, 0, math.tau)
+                cr.fill()
+
+                cr.set_source_rgb(1.0, 1.0, 1.0)
+                cr.arc(px, py, 2.1, 0, math.tau)
+                cr.fill()
+
+            else:
+                # Pequeno halo azul.
+                cr.set_source_rgba(0.24, 0.47, 0.85, 0.16)
+                cr.arc(px, py, 6.5, 0, math.tau)
+                cr.fill()
+
+                cr.set_source_rgb(0.22, 0.52, 1.0)
+                cr.arc(px, py, 3.3, 0, math.tau)
+                cr.fill()
+
+            # ========================================================
+            # NOMES DAS CIDADES
+            # ========================================================
+
+            if selected:
+                dx, dy = label_offsets.get(name, (7, 4))
+
+                cr.set_source_rgba(1.0, 1.0, 1.0, 1.0)
+                cr.set_font_size(11.5)
+
+                cr.move_to(px + dx, py + dy)
+                cr.show_text(name)
+
+    def on_map_click(self, gesture, n_press, x, y):
+        area = gesture.get_widget()
+        width = area.get_width()
+        height = area.get_height()
+
+        if width <= 0 or height <= 0:
+            return
+
+        nearest = None
+        nearest_distance = 999999
+
+        for name, timezone, px, py in self.MAP_LOCATIONS:
+            mx = px * width
+            my = py * height
+
+            distance = ((x - mx) ** 2 + (y - my) ** 2) ** 0.5
+
+            if distance < nearest_distance:
+                nearest_distance = distance
+                nearest = (name, timezone)
+
+        # Qualquer clique valido no mapa seleciona
+        # automaticamente a regiao suportada mais proxima.
+        if nearest is None:
+            return
+
+        name, timezone = nearest
+
+        try:
+            index = self.tz_values.index(timezone)
+        except ValueError:
+            return
+
+        self.tz_combo.set_selected(index)
+        self.map_selected_timezone = timezone
+
+        try:
+            region = self.tz_names[index]
+        except Exception:
+            region = name
+
+        self.update_map_info(region, timezone)
+
+        self.world_map.queue_draw()
+
+    def update_map_info(self, region, timezone):
+        if hasattr(self, "map_region_label"):
+            self.map_region_label.set_text(region)
+
+        if hasattr(self, "map_timezone_label"):
+            self.map_timezone_label.set_text(timezone)
+
+        if hasattr(self, "map_utc_label"):
+            try:
+                now = datetime.now(ZoneInfo(timezone))
+                offset = now.utcoffset()
+
+                if offset is None:
+                    utc_text = "UTC"
+                else:
+                    total = int(offset.total_seconds() // 60)
+                    sign = "+" if total >= 0 else "-"
+                    total = abs(total)
+
+                    hours = total // 60
+                    minutes = total % 60
+
+                    utc_text = f"UTC{sign}{hours:02d}:{minutes:02d}"
+
+                self.map_utc_label.set_text(utc_text)
+
+            except Exception:
+                self.map_utc_label.set_text("UTC")
+
+
+    def on_timezone_changed(self, combo, pspec):
+        index = combo.get_selected()
+
+        if index < 0 or index >= len(self.tz_values):
+            return
+
+        self.map_selected_timezone = self.tz_values[index]
+
+        label = self.tz_names[index]
+
+        self.update_map_info(
+            label,
+            self.map_selected_timezone
+        )
+
+        if hasattr(self, "world_map"):
+            self.world_map.queue_draw()
+
+    def show_locale(self):
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+        box.append(
+            self.make_header(
+                self.tr("locale_title")
+            )
+        )
+
+        card = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=18)
+        card.add_css_class('card')
+        card.set_margin_bottom(16)
+
+        left = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=8
+        )
+        left.set_hexpand(True)
+        self.responsive_boxes.append((card, 850))
+
+        right = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=8
+        )
+        right.set_hexpand(True)
+
+        lbl_loc = Gtk.Label(
+            label=self.tr("system_language")
+        )
+        lbl_loc.add_css_class('label-blue')
+        lbl_loc.set_halign(Gtk.Align.START)
+        left.append(lbl_loc)
+
+        locales = [
+            ('Portugues (Brasil)',       'pt_BR.UTF-8'),
+            ('Portugues (Portugal)',     'pt_PT.UTF-8'),
+            ('English (United States)',  'en_US.UTF-8'),
+            ('English (United Kingdom)', 'en_GB.UTF-8'),
+            ('Espanol (Espana)',         'es_ES.UTF-8'),
+            ('Espanol (Mexico)',         'es_MX.UTF-8'),
+            ('Francais (France)',        'fr_FR.UTF-8'),
+            ('Deutsch (Deutschland)',    'de_DE.UTF-8'),
+            ('Italiano (Italia)',        'it_IT.UTF-8'),
+            ('Nederlands',               'nl_NL.UTF-8'),
+            ('Polski',                   'pl_PL.UTF-8'),
+            ('Turkce',                   'tr_TR.UTF-8'),
+            ('Русский',                  'ru_RU.UTF-8'),
+            ('日本語',                    'ja_JP.UTF-8'),
+        ]
+
+        self.locale_combo = Gtk.DropDown.new_from_strings(
+            [l[0] for l in locales]
+        )
+        ui_locale_index = {
+            "pt_BR": 0,
+            "pt_PT": 1,
+            "en_US": 2,
+            "en_GB": 3,
+            "es_ES": 4,
+            "es_MX": 5,
+            "fr_FR": 6,
+            "de_DE": 7,
+            "it_IT": 8,
+            "nl_NL": 9,
+            "pl_PL": 10,
+            "tr_TR": 11,
+            "ru_RU": 12,
+            "ja_JP": 13,
+        }.get(self.ui_lang, 0)
+
+        self.locale_combo.set_selected(
+            ui_locale_index
+        )
+
+        self.locale_values = [l[1] for l in locales]
+        left.append(self.locale_combo)
+
+        lbl_kbd = Gtk.Label(
+            label=self.tr("keyboard")
+        )
+        lbl_kbd.add_css_class('label-blue')
+        lbl_kbd.set_halign(Gtk.Align.START)
+        lbl_kbd.set_margin_top(10)
+        left.append(lbl_kbd)
+
+        keyboards = [
+            ('Portugues (Brasil) - ABNT2', 'br', 'abnt2'),
+            ('Portugues (Brasil)',         'br', ''),
+            ('Portugues (Portugal)',       'pt', ''),
+            ('English (US)',               'us', ''),
+            ('English (UK)',               'gb', ''),
+            ('Espanol (Espana)',           'es', ''),
+            ('Espanol (Latinoamerica)',    'latam', ''),
+            ('Francais',                   'fr', ''),
+            ('Deutsch',                    'de', ''),
+            ('Italiano',                   'it', ''),
+            ('Nederlands',                 'nl', ''),
+            ('Polski',                     'pl', ''),
+            ('Turkce',                     'tr', ''),
+            ('Русский',                    'ru', ''),
+            ('日本語',                      'jp', ''),
+        ]
+
+        self.keyboard_combo = Gtk.DropDown.new_from_strings(
+            [k[0] for k in keyboards]
+        )
+        self.keyboard_combo.set_selected(0)
+        self.keyboard_values = [
+            (k[1], k[2]) for k in keyboards
+        ]
+        left.append(self.keyboard_combo)
+
+        lbl_keyboard_test = Gtk.Label(
+            label=self.tr("keyboard_test")
+        )
+        lbl_keyboard_test.add_css_class(
+            'label-blue'
+        )
+        lbl_keyboard_test.set_halign(
+            Gtk.Align.START
+        )
+        lbl_keyboard_test.set_margin_top(8)
+        left.append(lbl_keyboard_test)
+
+        self.keyboard_test_entry = Gtk.Entry()
+        self.keyboard_test_entry.set_placeholder_text(
+            self.tr("keyboard_test_placeholder")
+        )
+        left.append(self.keyboard_test_entry)
+
+        lbl_tz = Gtk.Label(
+            label=self.tr("country_tz")
+        )
+        lbl_tz.add_css_class('label-blue')
+        lbl_tz.set_halign(Gtk.Align.START)
+        lbl_tz.set_margin_top(10)
+        left.append(lbl_tz)
+
+        timezones = [
+            ('Brasil - Sao Paulo',        'America/Sao_Paulo'),
+            ('Brasil - Brasilia',         'America/Sao_Paulo'),
+            ('Brasil - Manaus',           'America/Manaus'),
+            ('Brasil - Belem',            'America/Belem'),
+            ('Brasil - Fortaleza',        'America/Fortaleza'),
+            ('Brasil - Recife',           'America/Recife'),
+            ('Brasil - Bahia',            'America/Bahia'),
+            ('Brasil - Cuiaba',           'America/Cuiaba'),
+            ('Brasil - Campo Grande',     'America/Campo_Grande'),
+            ('Brasil - Rio Branco',       'America/Rio_Branco'),
+            ('Portugal - Lisboa',         'Europe/Lisbon'),
+            ('Reino Unido - London',      'Europe/London'),
+            ('Espanha - Madrid',          'Europe/Madrid'),
+            ('Franca - Paris',            'Europe/Paris'),
+            ('Alemanha - Berlin',         'Europe/Berlin'),
+            ('Italia - Rome',             'Europe/Rome'),
+            ('Paises Baixos - Amsterdam', 'Europe/Amsterdam'),
+            ('Polonia - Warsaw',          'Europe/Warsaw'),
+            ('Turquia - Istanbul',        'Europe/Istanbul'),
+            ('Estados Unidos - New York', 'America/New_York'),
+            ('Estados Unidos - Chicago',  'America/Chicago'),
+            ('Estados Unidos - Denver',   'America/Denver'),
+            ('Estados Unidos - Los Angeles', 'America/Los_Angeles'),
+            ('Mexico - Mexico City',      'America/Mexico_City'),
+            ('Argentina - Buenos Aires',  'America/Argentina/Buenos_Aires'),
+            ('Colombia - Bogota',         'America/Bogota'),
+            ('Chile - Santiago',          'America/Santiago'),
+            ('Japao - Tokyo',             'Asia/Tokyo'),
+            ('Russia - Moscow',           'Europe/Moscow'),
+            ('UTC',                       'UTC'),
+        ]
+
+        self.tz_combo = Gtk.DropDown.new_from_strings(
+            [t[0] for t in timezones]
+        )
+        self.tz_combo.set_selected(0)
+        self.tz_values = [t[1] for t in timezones]
+        self.tz_names = [t[0] for t in timezones]
+        left.append(self.tz_combo)
+
+        map_title = Gtk.Label(
+            label=self.tr("select_map")
+        )
+        map_title.add_css_class('label-blue')
+        map_title.set_halign(Gtk.Align.START)
+        right.append(map_title)
+
+        self.world_map = Gtk.DrawingArea()
+        self.world_map.set_content_width(240)
+        self.world_map.set_content_height(250)
+        self.world_map.set_hexpand(True)
+        self.world_map.set_vexpand(True)
+        self.world_map.set_draw_func(self.draw_world_map)
+
+        click = Gtk.GestureClick()
+        click.connect("pressed", self.on_map_click)
+        self.world_map.add_controller(click)
+
+        right.append(self.world_map)
+
+        self.map_selected_timezone = self.timezone
+
+        # Barra inferior do mapa.
+        map_info = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=18
+        )
+        map_info.add_css_class('map-info')
+        map_info.set_margin_top(4)
+
+        self.map_region_label = Gtk.Label(
+            label="Brasil - Sao Paulo"
+        )
+        self.map_region_label.add_css_class('label-white')
+        self.map_region_label.set_halign(Gtk.Align.START)
+        self.map_region_label.set_hexpand(True)
+
+        self.map_timezone_label = Gtk.Label(
+            label="America/Sao_Paulo"
+        )
+        self.map_timezone_label.add_css_class('label-white')
+        self.map_timezone_label.set_halign(Gtk.Align.CENTER)
+        self.map_timezone_label.set_hexpand(True)
+
+        self.map_utc_label = Gtk.Label(
+            label="UTC-03:00"
+        )
+        self.map_utc_label.add_css_class('label-purple')
+        self.map_utc_label.set_halign(Gtk.Align.END)
+        self.map_utc_label.set_hexpand(True)
+
+        map_info.append(self.map_region_label)
+        map_info.append(self.map_timezone_label)
+        map_info.append(self.map_utc_label)
+
+        right.append(map_info)
+
+        card.append(left)
+        card.append(right)
+
+        # Pre-selecao automatica baseada no idioma.
+        self.locale_defaults = {
+            0:  (0, 0),    # pt_BR -> ABNT2 / Sao Paulo
+            1:  (2, 10),   # pt_PT -> PT / Lisboa
+            2:  (3, 19),   # en_US -> US / New York
+            3:  (4, 11),   # en_GB -> UK / London
+            4:  (5, 12),   # es_ES -> ES / Madrid
+            5:  (6, 23),   # es_MX -> LATAM / Mexico City
+            6:  (7, 13),   # fr_FR -> FR / Paris
+            7:  (8, 14),   # de_DE -> DE / Berlin
+            8:  (9, 15),   # it_IT -> IT / Rome
+            9:  (10, 16),  # nl_NL -> NL / Amsterdam
+            10: (11, 17),  # pl_PL -> PL / Warsaw
+            11: (12, 18),  # tr_TR -> TR / Istanbul
+            12: (13, 28),  # ru_RU -> RU / Moscow
+            13: (14, 27),  # ja_JP -> JP / Tokyo
+        }
+
+        # Aplica teclado e fuso correspondentes ao idioma
+        # escolhido logo na primeira tela.
+        current_locale_index = self.locale_combo.get_selected()
+
+        if current_locale_index in self.locale_defaults:
+            keyboard_index, timezone_index = (
+                self.locale_defaults[current_locale_index]
+            )
+
+            self.keyboard_combo.set_selected(
+                keyboard_index
+            )
+
+            self.tz_combo.set_selected(
+                timezone_index
+            )
+
+        self.locale_combo.connect(
+            "notify::selected",
+            self.on_locale_changed
+        )
+
+        self.keyboard_combo.connect(
+            "notify::selected",
+            self.on_keyboard_changed
+        )
+
+        self.tz_combo.connect(
+            "notify::selected",
+            self.on_timezone_changed
+        )
+
+        # Sincroniza explicitamente o mapa com o timezone
+        # que foi pre-selecionado antes dos sinais existirem.
+        # Aplica tambem o teclado pre-selecionado
+        # automaticamente pelo idioma.
+        self.on_keyboard_changed(
+            self.keyboard_combo,
+            None
+        )
+
+        current_tz_index = self.tz_combo.get_selected()
+
+        if 0 <= current_tz_index < len(self.tz_values):
+            self.map_selected_timezone = self.tz_values[current_tz_index]
+
+            self.update_map_info(
+                self.tz_names[current_tz_index],
+                self.map_selected_timezone
+            )
+
+            self.world_map.queue_draw()
+
+        box.append(card)
+        nav, btn = self.make_nav(
+            back_cb=lambda b: self.show_confirm_erase() if self.mode == "erase" else self.show_dual_size(),
+            next_label=self.tr("install"),
+            next_cb=lambda b: self.on_locale_next(),
+            next_style='btn-danger'
+        )
+        box.append(nav)
+        self.present_page(box, 'locale')
+
+    def apply_keyboard_preview(self, layout, variant):
+        if self.preview:
+            return
+        source = layout + ('+' + variant if variant else '')
+        command = ['gsettings','set','org.gnome.desktop.input-sources','sources',"[('xkb', '"+source+"')]"]
+        if os.geteuid() == 0:
+            import pwd
+            username = os.environ.get('SUDO_USER', 'stackos')
+            if username == 'root':
+                username = 'stackos'
+            uid = pwd.getpwnam(username).pw_uid
+            command = ['sudo','-H','-u',username,'env','XDG_RUNTIME_DIR=/run/user/'+str(uid),'DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/'+str(uid)+'/bus'] + command
+        result = subprocess.run(command, capture_output=True, text=True, timeout=15)
+        if result.returncode:
+            Gtk.AlertDialog(message='Não foi possível aplicar o teclado', detail=result.stderr).show(self.win)
+
+    def on_keyboard_changed(self, combo, pspec):
+        index = combo.get_selected()
+
+        if (
+            index < 0 or
+            index >= len(self.keyboard_values)
+        ):
+            return
+
+        layout, variant = (
+            self.keyboard_values[index]
+        )
+
+        self.apply_keyboard_preview(
+            layout,
+            variant
+        )
+
+    def on_locale_changed(self, combo, pspec):
+        index = combo.get_selected()
+
+        if index not in self.locale_defaults:
+            return
+
+        keyboard_index, timezone_index = self.locale_defaults[index]
+
+        self.keyboard_combo.set_selected(keyboard_index)
+        self.tz_combo.set_selected(timezone_index)
+
+        # Atualiza imediatamente o estado visual do mapa.
+        if 0 <= timezone_index < len(self.tz_values):
+            self.map_selected_timezone = self.tz_values[timezone_index]
+
+            self.update_map_info(
+                self.tz_names[timezone_index],
+                self.map_selected_timezone
+            )
+
+            self.world_map.queue_draw()
+
+    def on_locale_next(self):
+        self.locale = self.locale_values[self.locale_combo.get_selected()]
+        self.timezone = self.tz_values[self.tz_combo.get_selected()]
+
+        keyboard = self.keyboard_values[
+            self.keyboard_combo.get_selected()
+        ]
+        self.keyboard_layout = keyboard[0]
+        self.keyboard_variant = keyboard[1]
+
+        self.ui_lang = self.locale.split('.')[0]
+        os.environ['LANG'] = self.locale
+        os.environ['LANGUAGE'] = self.ui_lang + ':' + self.ui_lang.split('_')[0]
+        self.show_installing()
+
+    # ------------------------------------------------------------------
+    # TELA DE INSTALACAO  (refinada: carrossel de slides + barra real)
+    # ------------------------------------------------------------------
+    SLIDE_ICONS = [
+        "⚡",
+        "🎨",
+        "📦",
+        "🛒",
+        "💬",
+    ]
+
+    def show_installing(self):
+        if self.installing:
+            return
+        if not self.preview:
+            try:
+                self.validate_install_target()
+            except Exception as error:
+                Gtk.AlertDialog(message="Não foi possível iniciar a instalação", detail=str(error)).show(self.win)
+                return
+        self.installing = not self.preview
+        self.install_failed = False
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(30)
+        box.set_margin_bottom(30)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+        box.append(self.make_header(self.tr("installing_title")))
+
+        # --- carrossel de slides ---
+        self.SLIDES = [
+            (
+                self.SLIDE_ICONS[0],
+                self.tr("slide1_title"),
+                self.tr("slide1_text"),
+            ),
+            (
+                self.SLIDE_ICONS[1],
+                self.tr("slide2_title"),
+                self.tr("slide2_text"),
+            ),
+            (
+                self.SLIDE_ICONS[2],
+                self.tr("slide3_title"),
+                self.tr("slide3_text"),
+            ),
+            (
+                self.SLIDE_ICONS[3],
+                self.tr("slide4_title"),
+                self.tr("slide4_text"),
+            ),
+            (
+                self.SLIDE_ICONS[4],
+                self.tr("slide5_title"),
+                self.tr("slide5_text"),
+            ),
+        ]
+
+        self.slide_stack = Gtk.Stack()
+        self.slide_stack.set_transition_type(Gtk.StackTransitionType.SLIDE_LEFT_RIGHT)
+        self.slide_stack.set_transition_duration(450)
+        self.slide_stack.set_vexpand(True)
+        self.slide_stack.set_hexpand(True)
+
+        for i, (icon, title, text) in enumerate(self.SLIDES):
+            sc = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=14)
+            sc.add_css_class('slide-card')
+            sc.set_valign(Gtk.Align.CENTER)
+            sc.set_halign(Gtk.Align.FILL)
+
+            l_icon = Gtk.Image.new_from_file('/usr/share/stackos-installer/stackos-symbol.png')
+            l_icon.set_pixel_size(56)
+            l_icon.add_css_class('slide-icon')
+            sc.append(l_icon)
+
+            l_title = Gtk.Label(label=title)
+            l_title.add_css_class('slide-title')
+            l_title.set_justify(Gtk.Justification.CENTER)
+            sc.append(l_title)
+
+            l_text = Gtk.Label(label=text)
+            l_text.add_css_class('slide-text')
+            l_text.set_justify(Gtk.Justification.CENTER)
+            l_text.set_wrap(True)
+            sc.append(l_text)
+
+            self.slide_stack.add_named(sc, f"slide{i}")
+
+        box.append(self.slide_stack)
+
+        # --- pontinhos indicadores ---
+        self.dots_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        self.dots_box.set_halign(Gtk.Align.CENTER)
+        self.dots_box.set_margin_top(14)
+        self.dots = []
+        for i in range(len(self.SLIDES)):
+            d = Gtk.Label(label="\u25cf")
+            d.add_css_class('dot-on' if i == 0 else 'dot-off')
+            self.dots.append(d)
+            self.dots_box.append(d)
+        box.append(self.dots_box)
+
+        # --- status + barra + percentual ---
+        self.lbl_status = Gtk.Label(label=self.tr("starting"))
+        self.lbl_status.add_css_class('label-white')
+        self.lbl_status.set_justify(Gtk.Justification.CENTER)
+        self.lbl_status.set_margin_top(18)
+        box.append(self.lbl_status)
+
+        self.progress = Gtk.ProgressBar()
+        self.progress.add_css_class('progress')
+        self.progress.set_fraction(0.0)
+        self.progress.set_margin_top(8)
+        box.append(self.progress)
+
+        self.lbl_pct = Gtk.Label(label="0%")
+        self.lbl_pct.add_css_class('pct')
+        self.lbl_pct.set_halign(Gtk.Align.END)
+        self.lbl_pct.set_margin_top(4)
+        box.append(self.lbl_pct)
+
+        self.present_page(box, 'installing')
+
+        # estado do carrossel e da animacao da barra
+        self.slide_idx = 0
+        self.target_fraction = 0.0
+        self.shown_fraction = 0.0
+
+        self.install_thread = threading.Thread(target=self.install_worker, daemon=True)
+        self.install_thread.start()
+
+        # troca de slide a cada 7s; anima a barra suavemente a cada 50ms
+        self.slide_timer = GLib.timeout_add_seconds(7, self.next_slide)
+        GLib.timeout_add(50, self.animate_bar)
+
+    def next_slide(self):
+        if not self.install_thread.is_alive():
+            return False
+        self.dots[self.slide_idx].remove_css_class('dot-on')
+        self.dots[self.slide_idx].add_css_class('dot-off')
+        self.slide_idx = (self.slide_idx + 1) % len(self.SLIDES)
+        self.slide_stack.set_visible_child_name(f"slide{self.slide_idx}")
+        self.dots[self.slide_idx].remove_css_class('dot-off')
+        self.dots[self.slide_idx].add_css_class('dot-on')
+        return True
+
+    def animate_bar(self):
+        # aproxima suavemente a barra mostrada do alvo definido por set_progress
+        if self.shown_fraction < self.target_fraction:
+            self.shown_fraction = min(self.target_fraction, self.shown_fraction + 0.004)
+            self.progress.set_fraction(self.shown_fraction)
+            self.lbl_pct.set_text(f"{int(self.shown_fraction*100)}%")
+        if self.install_failed or (not self.install_thread.is_alive() and self.shown_fraction >= 0.999):
+            return False
+        return True
+
+    def set_progress(self, fraction, msg):
+        # chamado de dentro da thread de instalacao; agenda update na UI thread
+        def apply():
+            self.target_fraction = fraction
+            self.lbl_status.set_text(msg)
+            return False
+        GLib.idle_add(apply)
+
+    # mantido por compatibilidade: redireciona texto antigo pra barra
+    def set_status(self, msg):
+        GLib.idle_add(self.lbl_status.set_text, msg)
+
+    def validate_install_target(self):
+        if os.geteuid() != 0:
+            raise RuntimeError("Abra o instalador pelo atalho administrativo do StackOS.")
+        if not re.fullmatch(r'/dev/[a-zA-Z0-9._-]+', self.disk) or not stat.S_ISBLK(os.stat(self.disk).st_mode):
+            raise RuntimeError("Selecione um disco de instalação válido.")
+        data = json.loads(run(['lsblk', '--json', '--bytes', '--output', 'PATH,TYPE,SIZE,MOUNTPOINTS', self.disk]).stdout)
+        target = data['blockdevices'][0]
+        if target['type'] != 'disk':
+            raise RuntimeError("O destino deve ser um disco inteiro.")
+        if self.mode == 'erase' and int(target['size']) < 40 * 1024**3:
+            raise RuntimeError("Este esquema com sistema, recuperação e backups precisa de um disco de pelo menos 40 GiB.")
+        def check_mounts(device):
+            if any(device.get('mountpoints') or []):
+                raise RuntimeError("O disco selecionado está em uso. Desmonte suas partições antes de instalar.")
+            for child in device.get('children', []):
+                check_mounts(child)
+        check_mounts(target)
+        if os.path.ismount('/mnt/stackos-install'):
+            raise RuntimeError("Já existe uma instalação montada em /mnt/stackos-install.")
+        if not Path('/sys/firmware/efi').is_dir():
+            raise RuntimeError("Esta versão do instalador prepara GRUB UEFI. Reinicie a mídia em modo UEFI antes de instalar.")
+        if self.mode not in ('erase', 'dual'):
+            raise RuntimeError("Conclua a seleção do modo de instalação.")
+        media = [Path('/cdrom/casper'), Path('/cdrom/live'), Path('/run/live/medium/live')]
+        self.live_source = next((base for base in media if (base/'filesystem.squashfs').is_file() and (base/'vmlinuz').is_file()), None)
+        if self.live_source is None:
+            raise RuntimeError("A mídia live não contém filesystem.squashfs e vmlinuz. Nenhum disco foi alterado.")
+        for command in ('wipefs', 'parted', 'partprobe', 'mkfs.fat', 'mkfs.ext4', 'unsquashfs', 'mount', 'chroot'):
+            if shutil.which(command) is None:
+                raise RuntimeError("Ferramenta necessária não encontrada: " + command)
+
+    def install_worker(self):
+        try:
+            self.do_install()
+        except Exception as error:
+            detail = str(error)
+            log = Path('/var/log/stackos-installer.log')
+            try:
+                log.write_text(traceback.format_exc())
+            except OSError:
+                pass
+            GLib.idle_add(self.show_install_error, detail)
+
+    def show_install_error(self, detail):
+        self.installing = False
+        self.install_failed = True
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
+        box.append(self.make_header('A instalação foi interrompida'))
+        message = Gtk.Label(label=detail, wrap=True, selectable=True, xalign=0)
+        message.add_css_class('warn-erase')
+        box.append(message)
+        box.append(Gtk.Label(label='Não reinicie supondo que a instalação terminou. O disco pode estar parcialmente alterado. Detalhes em /var/log/stackos-installer.log.', wrap=True, xalign=0))
+        button = Gtk.Button(label='Fechar instalador')
+        button.add_css_class('btn-secondary')
+        button.connect('clicked', lambda b: self.quit())
+        box.append(button)
+        self.present_page(box, 'installing')
+        self.step_label.set_text('Instalação interrompida')
+        return False
+
+    def copy_live_system(self):
+        command = ['unsquashfs','-percentage','-processors','2','-f','-d','/mnt/stackos-install',str(self.live_source/'filesystem.squashfs')]
+        with subprocess.Popen(command,stdout=subprocess.PIPE,stderr=subprocess.STDOUT) as process:
+            history = b''
+            last = -1
+            while True:
+                chunk = process.stdout.read(128)
+                if not chunk:
+                    break
+                history = (history + chunk)[-8000:]
+                percentages = re.findall(rb'(\d+(?:\.\d+)?)%', history)
+                if percentages:
+                    value = min(100, int(float(percentages[-1])))
+                    if value > last:
+                        last = value
+                        self.set_progress(0.25 + 0.40 * value / 100, self.tr('copying_system') + f' {value}%')
+            result = process.wait()
+            if result:
+                raise CommandError('Não foi possível copiar o sistema: ' + history.decode(errors='replace'))
+
+    def do_install(self):
+        if self.preview:
+            self.set_progress(0, "Prévia visual — nenhuma alteração nos discos.")
+            return
+        disk = self.disk
+
+        if self.mode == 'erase':
+            self.set_progress(0.05, self.tr("partitioning"))
+
+            if "nvme" in disk or "mmcblk" in disk:
+                self.efi = disk + "p1"
+                self.root = disk + "p2"
+                self.recovery = disk + "p3"
+                self.backups = disk + "p4"
+            else:
+                self.efi = disk + "1"
+                self.root = disk + "2"
+                self.recovery = disk + "3"
+                self.backups = disk + "4"
+
+            # StackOS GPT:
+            # p1 = EFI 300 MiB
+            # p2 = sistema
+            # p3 = Recovery protegido, últimos 6 GiB.
+            run("wipefs -af " + disk)
+            run(['parted', '-s', disk, 'mklabel', 'gpt'])
+            size = int(run(['blockdev', '--getsize64', disk]).stdout)
+            end_mib = size // 1024**2
+            root_end = end_mib - 22 * 1024
+            recovery_end = root_end + 6 * 1024
+            run(['parted', '-s', disk, 'unit', 'MiB', 'mkpart', 'EFI', 'fat32', '1', '301'])
+            run(['parted', '-s', disk, 'set', '1', 'esp', 'on'])
+            run(['parted', '-s', disk, 'unit', 'MiB', 'mkpart', 'ROOT', 'ext4', '301', str(root_end)])
+            run(['parted', '-s', disk, 'unit', 'MiB', 'mkpart', 'STACKOS_RECOVERY', 'ext4', str(root_end), str(recovery_end)])
+            run(['parted', '-s', disk, 'unit', 'MiB', 'mkpart', 'STACKOS_BACKUPS', 'ext4', str(recovery_end), '100%'])
+
+            run("partprobe " + disk)
+            time.sleep(2)
+
+            run("mkfs.fat -F32 " + self.efi)
+            run("mkfs.ext4 -F " + self.root)
+            run("mkfs.ext4 -F -L STACKOS_RECOVERY " + self.recovery)
+            run("mkfs.ext4 -F -L STACKOS_BACKUPS " + self.backups)
+
+        elif self.mode == 'dual':
+            self.set_progress(0.05, self.tr("dual_partitioning"))
+            efi_start = self.dual_start
+            efi_end = self.dual_start + 300
+            root_start = efi_end
+            root_end = root_start + self.dual_size
+            run(f"parted -s -a optimal {disk} mkpart primary fat32 {efi_start}MiB {efi_end}MiB")
+            run(f"parted -s -a optimal {disk} mkpart primary ext4 {root_start}MiB {root_end}MiB")
+            run(f"partprobe {disk}")
+            time.sleep(2)
+            lsblk2 = subprocess.run(['lsblk','-rno','NAME,FSTYPE,MOUNTPOINT'], capture_output=True, text=True)
+            disk_base = disk.replace('/dev/','')
+            new_parts = []
+            for line in lsblk2.stdout.splitlines():
+                parts = line.strip().split()
+                name = parts[0] if parts else ''
+                fstype = parts[1] if len(parts) > 1 else ''
+                mountpoint = parts[2] if len(parts) > 2 else ''
+                if disk_base in name and name != disk_base and fstype in ['','vfat','ext4'] and mountpoint == '':
+                    new_parts.append(f'/dev/{name}')
+            self.efi = new_parts[-2]
+            self.root = new_parts[-1]
+            run(f"mkfs.fat -F32 {self.efi}")
+            run(f"mkfs.ext4 -F {self.root}")
+
+        self.set_progress(0.15, self.tr("mounting"))
+        run("mkdir -p /mnt/stackos-install")
+        run("mount " + self.root + " /mnt/stackos-install")
+        run("mkdir -p /mnt/stackos-install/boot/efi")
+        run("mount " + self.efi + " /mnt/stackos-install/boot/efi")
+
+        if self.mode == 'erase' and self.recovery:
+            run("mkdir -p /mnt/stackos-recovery")
+            run("mount " + self.recovery + " /mnt/stackos-recovery")
+            run("mkdir -p /mnt/stackos-recovery/factory")
+            run("mkdir -p /mnt/stackos-recovery/boot/grub")
+
+        if self.mode == 'erase' and self.backups:
+            run("mkdir -p /mnt/stackos-backups")
+            run("mount " + self.backups + " /mnt/stackos-backups")
+            run("mkdir -p /mnt/stackos-backups/snapshots")
+            run("chmod 700 /mnt/stackos-backups/snapshots")
+
+        self.set_progress(0.25, self.tr("copying_system"))
+        self.copy_live_system()
+
+        self.set_progress(0.68, self.tr("copying_kernel"))
+
+        module_root = "/mnt/stackos-install/usr/lib/modules"
+
+        kernel_versions = sorted(
+            [
+                name
+                for name in os.listdir(module_root)
+                if os.path.isdir(
+                    os.path.join(module_root, name)
+                )
+            ]
+        )
+
+        if not kernel_versions:
+            raise RuntimeError(
+                "Kernel instalado nao encontrado"
+            )
+
+        kernel_version = kernel_versions[-1]
+
+        run(
+            "cp -a " + shlex.quote(str(self.live_source / "vmlinuz")) + " "
+            "/mnt/stackos-install/boot/vmlinuz-" +
+            kernel_version
+        )
+
+        run(
+            "ln -sfn vmlinuz-" +
+            kernel_version +
+            " /mnt/stackos-install/boot/vmlinuz"
+        )
+
+        self.set_progress(0.74, self.tr("preparing_initial"))
+
+        #
+        # StackOS FirstBoot
+        #
+        # O pacote stackos-firstboot mantém templates permanentes em:
+        #
+        #   /usr/lib/stackos/firstboot/
+        #
+        # O instalador cria somente as cópias temporárias usadas no
+        # primeiro boot do sistema instalado.
+        #
+
+        firstboot_template_root = (
+            "/mnt/stackos-install/usr/lib/stackos/firstboot"
+        )
+
+        firstboot_frontend_template = os.path.join(
+            firstboot_template_root,
+            "stackos-firstboot"
+        )
+
+        firstboot_helper_template = os.path.join(
+            firstboot_template_root,
+            "stackos-firstboot-helper"
+        )
+
+        firstboot_cleanup_template = os.path.join(
+            firstboot_template_root,
+            "stackos-firstboot-cleanup"
+        )
+
+        firstboot_desktop_template = os.path.join(
+            firstboot_template_root,
+            "stackos-firstboot.desktop"
+        )
+
+        required_firstboot_templates = [
+            firstboot_frontend_template,
+            firstboot_helper_template,
+            firstboot_cleanup_template,
+            firstboot_desktop_template,
+        ]
+
+        for template in required_firstboot_templates:
+            if not os.path.isfile(template):
+                raise RuntimeError(
+                    "Template FirstBoot ausente: " + template
+                )
+
+        os.makedirs(
+            "/mnt/stackos-install/usr/local/bin",
+            exist_ok=True
+        )
+
+        os.makedirs(
+            "/mnt/stackos-install/usr/lib/stackos",
+            exist_ok=True
+        )
+
+        os.makedirs(
+            "/mnt/stackos-install/etc/xdg/autostart",
+            exist_ok=True
+        )
+
+        os.makedirs(
+            "/mnt/stackos-install/usr/share/applications",
+            exist_ok=True
+        )
+
+        os.makedirs(
+            "/mnt/stackos-install/etc/sudoers.d",
+            exist_ok=True
+        )
+
+        os.makedirs(
+            "/mnt/stackos-install/etc/gdm",
+            exist_ok=True
+        )
+
+        os.makedirs(
+            "/mnt/stackos-install/var/lib/stackos",
+            exist_ok=True
+        )
+
+        run(
+            "install -m 755 "
+            + firstboot_frontend_template
+            + " /mnt/stackos-install/usr/local/bin/stackos-firstboot"
+        )
+
+        run(
+            "install -m 755 "
+            + firstboot_helper_template
+            + " /mnt/stackos-install/usr/lib/stackos/"
+            "stackos-firstboot-helper"
+        )
+
+        run(
+            "install -m 755 "
+            + firstboot_cleanup_template
+            + " /mnt/stackos-install/usr/lib/stackos/"
+            "stackos-firstboot-cleanup"
+        )
+
+        run(
+            "install -m 644 "
+            + firstboot_desktop_template
+            + " /mnt/stackos-install/etc/xdg/autostart/"
+            "stackos-firstboot.desktop"
+        )
+
+        run(
+            "install -m 644 "
+            + firstboot_desktop_template
+            + " /mnt/stackos-install/usr/share/applications/"
+            "stackos-firstboot.desktop"
+        )
+
+        with open(
+            "/mnt/stackos-install/etc/sudoers.d/stackos-firstboot",
+            "w"
+        ) as f:
+            f.write(
+                "stackos ALL=(root) NOPASSWD: "
+                "/usr/lib/stackos/stackos-firstboot-helper\n"
+            )
+
+        os.chmod(
+            "/mnt/stackos-install/etc/sudoers.d/stackos-firstboot",
+            0o440
+        )
+
+        with open(
+            "/mnt/stackos-install/etc/gdm/custom.conf",
+            "w"
+        ) as f:
+            f.write(
+                "[daemon]\n"
+                "AutomaticLoginEnable=true\n"
+                "AutomaticLogin=stackos\n"
+                "\n"
+                "[security]\n"
+                "AllowRoot=false\n"
+            )
+
+        with open(
+            "/mnt/stackos-install/var/lib/stackos/firstboot-pending",
+            "w"
+        ) as f:
+            f.write("pending\n")
+
+        run(
+            "chroot /mnt/stackos-install "
+            "sh -c 'id stackos >/dev/null 2>&1 || "
+            "useradd -m -s /bin/bash -G "
+            "sudo,adm,audio,video,plugdev,netdev,lpadmin stackos'"
+        )
+
+        run(
+            "chroot /mnt/stackos-install "
+            "sh -c \"echo stackos:stackos | chpasswd\""
+        )
+
+        run(
+            "chroot /mnt/stackos-install "
+            "chown -R stackos:stackos /home/stackos",
+            check=False
+        )
+
+        required_firstboot_runtime = [
+            "/mnt/stackos-install/usr/local/bin/stackos-firstboot",
+            "/mnt/stackos-install/usr/lib/stackos/"
+            "stackos-firstboot-helper",
+            "/mnt/stackos-install/usr/lib/stackos/"
+            "stackos-firstboot-cleanup",
+            "/mnt/stackos-install/etc/xdg/autostart/"
+            "stackos-firstboot.desktop",
+            "/mnt/stackos-install/usr/share/applications/"
+            "stackos-firstboot.desktop",
+        ]
+
+        for runtime_file in required_firstboot_runtime:
+            if not os.path.isfile(runtime_file):
+                raise RuntimeError(
+                    "FirstBoot runtime nao preparado: "
+                    + runtime_file
+                )
+
+        run(
+            "chroot /mnt/stackos-install ln -sf "
+            "/usr/share/zoneinfo/" + self.timezone +
+            " /etc/localtime",
+            check=False
+        )
+
+        # Locale escolhido
+        locale_gen = "/mnt/stackos-install/etc/locale.gen"
+
+        try:
+            with open(locale_gen, "r") as f:
+                locale_lines = f.readlines()
+        except Exception:
+            locale_lines = []
+
+        wanted = self.locale + " UTF-8"
+
+        if not any(
+            line.strip().lstrip("#").strip() == wanted
+            for line in locale_lines
+        ):
+            locale_lines.append(wanted + "\n")
+        else:
+            locale_lines = [
+                (
+                    wanted + "\n"
+                    if line.strip().lstrip("#").strip() == wanted
+                    else line
+                )
+                for line in locale_lines
+            ]
+
+        with open(locale_gen, "w") as f:
+            f.writelines(locale_lines)
+
+        run(
+            "chroot /mnt/stackos-install /usr/lib/stackos/stackos-set-language " + shlex.quote(self.locale.split(".")[0]),
+            check=False
+        )
+
+        with open(
+            "/mnt/stackos-install/etc/default/locale",
+            "w"
+        ) as f:
+            f.write("LANG=" + self.locale + "\n")
+
+            locale_base = self.locale.split(".")[0]
+            language_base = locale_base.split("_")[0]
+
+            f.write(
+                "LANGUAGE=" +
+                locale_base +
+                ":" +
+                language_base +
+                "\n"
+            )
+
+        locale_text = Path('/mnt/stackos-install/etc/default/locale').read_text()
+        Path('/mnt/stackos-install/etc/locale.conf').write_text(locale_text)
+        Path('/mnt/stackos-install/etc/vconsole.conf').write_text('KEYMAP=' + ('br-abnt2' if self.keyboard_layout == 'br' else 'us') + '\n')
+        # Teclado escolhido
+        with open(
+            "/mnt/stackos-install/etc/default/keyboard",
+            "w"
+        ) as f:
+            f.write('XKBMODEL="pc105"\n')
+            f.write(
+                'XKBLAYOUT="' +
+                self.keyboard_layout +
+                '"\n'
+            )
+            f.write(
+                'XKBVARIANT="' +
+                self.keyboard_variant +
+                '"\n'
+            )
+            f.write('XKBOPTIONS=""\n')
+            f.write('\nBACKSPACE="guess"\n')
+
+        self.set_progress(0.84, self.tr("configuring_fstab"))
+        root_uuid = run("blkid -s UUID -o value " + self.root).stdout.strip()
+        efi_uuid = run("blkid -s UUID -o value " + self.efi).stdout.strip()
+        fstab = "UUID=" + root_uuid + " / ext4 errors=remount-ro 0 1\n"
+        fstab += "UUID=" + efi_uuid + " /boot/efi vfat umask=0077 0 1\n"
+        with open("/mnt/stackos-install/etc/fstab", "w") as f:
+            f.write(fstab)
+
+        self.set_progress(0.90, self.tr("installing_grub"))
+
+        # -----------------------------------------------------
+        # Montagens necessárias ao sistema instalado
+        # -----------------------------------------------------
+
+        run("mount --bind /dev /mnt/stackos-install/dev")
+        run("mount --bind /proc /mnt/stackos-install/proc")
+        run("mount --bind /sys /mnt/stackos-install/sys")
+
+        run(
+            "mount --bind /sys/firmware/efi/efivars "
+            "/mnt/stackos-install/sys/firmware/efi/efivars",
+            check=False
+        )
+
+        # -----------------------------------------------------
+        # Remove componentes Casper da instalação normal.
+        # A sessão Live continua intacta.
+        # -----------------------------------------------------
+
+        run(
+            "find /mnt/stackos-install/usr/share/initramfs-tools/scripts "
+            "-maxdepth 1 -name 'casper*' -exec rm -rf {} +",
+            check=False
+        )
+
+        run(
+            "find /mnt/stackos-install/usr/share/initramfs-tools/hooks "
+            "-maxdepth 1 -name 'casper*' -exec rm -rf {} +",
+            check=False
+        )
+
+        # -----------------------------------------------------
+        # Gera INITRAMFS REAL DO SISTEMA INSTALADO
+        # -----------------------------------------------------
+
+        initramfs_builder = (
+            "/mnt/stackos-install/usr/lib/stackos/"
+            "stackos-build-installed-initramfs"
+        )
+
+        if not os.path.isfile(initramfs_builder):
+            raise RuntimeError(
+                "Gerador do initramfs instalado não encontrado"
+            )
+
+        run(
+            "chroot /mnt/stackos-install "
+            "/usr/lib/stackos/stackos-build-installed-initramfs " +
+            kernel_version
+        )
+
+        installed_initrd = (
+            "/mnt/stackos-install/boot/initrd.img-" +
+            kernel_version
+        )
+
+        if not os.path.isfile(installed_initrd):
+            raise RuntimeError(
+                "Initramfs instalado não foi criado"
+            )
+
+        # -----------------------------------------------------
+        # RECOVERY INDEPENDENTE NA P3
+        # -----------------------------------------------------
+
+        if self.mode == 'erase' and self.recovery:
+
+            recovery_uuid = run(
+                "blkid -s UUID -o value " +
+                self.recovery
+            ).stdout.strip()
+
+            root_partuuid = run(
+                "blkid -s PARTUUID -o value " +
+                self.root
+            ).stdout.strip()
+
+            if not recovery_uuid:
+                raise RuntimeError(
+                    "UUID da partição Recovery não encontrado"
+                )
+
+            if not root_partuuid:
+                raise RuntimeError(
+                    "PARTUUID da partição raiz não encontrado"
+                )
+
+            run(
+                "mkdir -p "
+                "/mnt/stackos-recovery/boot/grub"
+            )
+
+            run(
+                "cp -a "
+                "/mnt/stackos-install/boot/vmlinuz-" +
+                kernel_version +
+                " /mnt/stackos-recovery/boot/"
+                "vmlinuz-recovery"
+            )
+
+            run(
+                "cp -a " +
+                installed_initrd +
+                " /mnt/stackos-recovery/boot/"
+                "initrd-recovery.img"
+            )
+
+            # -------------------------------------------------
+            # Configuração inicial do GRUB.
+            # Instalação limpa = nenhum backup ainda.
+            # -------------------------------------------------
+
+            grub_base = (
+                "set default=0\n"
+                "set timeout=5\n"
+                "\n"
+                "menuentry 'StackOS Genesis' {\n"
+                "    search --no-floppy --fs-uuid "
+                "--set=root " + root_uuid + "\n"
+                "    linux /boot/vmlinuz "
+                "root=UUID=" + root_uuid + " "
+                "quiet splash console=ttyS0,115200 console=tty0 plymouth.enable=1 "
+                "loglevel=3 "
+                "systemd.show_status=false "
+                "rd.systemd.show_status=false "
+                "udev.log_priority=3 "
+                "vt.global_cursor_default=0\n"
+                "    initrd /boot/initrd.img\n"
+                "}\n"
+                "\n"
+                "submenu 'StackOS Recovery' {\n"
+                "\n"
+                "    submenu 'Restaurar de fábrica' {\n"
+                "\n"
+                "        menuentry 'Cancelar e iniciar StackOS' {\n"
+                "            search --no-floppy --fs-uuid "
+                "--set=root " + root_uuid + "\n"
+                "            linux /boot/vmlinuz "
+                "root=UUID=" + root_uuid + " "
+                "quiet splash console=ttyS0,115200 console=tty0\n"
+                "            initrd /boot/initrd.img\n"
+                "        }\n"
+                "\n"
+                "        menuentry "
+                "'CONFIRMAR - apagar sistema e restaurar fábrica' {\n"
+                "            search --no-floppy --fs-uuid "
+                "--set=root " + recovery_uuid + "\n"
+                "            linux /boot/vmlinuz-recovery "
+                "root=UUID=" + root_uuid + " "
+                "stackos.root-partuuid=" + root_partuuid + " "
+                "stackos.factory-reset=1 "
+                "stackos.confirm=yes ro\n"
+                "            initrd /boot/initrd-recovery.img\n"
+                "        }\n"
+                "    }\n"
+                "}\n"
+            )
+
+            with open(
+                "/mnt/stackos-recovery/boot/grub/"
+                "grub-base.cfg",
+                "w"
+            ) as f:
+                f.write(grub_base)
+
+            with open(
+                "/mnt/stackos-recovery/boot/grub/"
+                "grub.cfg",
+                "w"
+            ) as f:
+                f.write(grub_base)
+
+            # Root recebe somente um espelho.
+            os.makedirs(
+                "/mnt/stackos-install/boot/grub",
+                exist_ok=True
+            )
+
+            with open(
+                "/mnt/stackos-install/boot/grub/grub.cfg",
+                "w"
+            ) as f:
+                f.write(grub_base)
+
+            # -------------------------------------------------
+            # P3 vira o ponto primário do GRUB.
+            # Assim o menu continua disponível mesmo se
+            # a root estiver danificada.
+            # -------------------------------------------------
+
+            run(
+                "mkdir -p "
+                "/mnt/stackos-install/stackos-recovery"
+            )
+
+            run(
+                "mount --bind "
+                "/mnt/stackos-recovery "
+                "/mnt/stackos-install/stackos-recovery"
+            )
+
+            run(
+                "chroot /mnt/stackos-install "
+                "grub-install "
+                "--target=x86_64-efi "
+                "--efi-directory=/boot/efi "
+                "--boot-directory=/stackos-recovery/boot "
+                "--bootloader-id=StackOS --removable --no-nvram "
+                "--recheck " +
+                disk
+            )
+
+            run("sync")
+
+        else:
+
+            # Modos que não possuem a partição Recovery
+            # continuam usando o GRUB tradicional.
+            run(
+                "chroot /mnt/stackos-install "
+                "grub-install "
+                "--target=x86_64-efi "
+                "--efi-directory=/boot/efi "
+                "--bootloader-id=StackOS --removable --no-nvram "
+                "--recheck " +
+                disk
+            )
+
+            run(
+                "chroot /mnt/stackos-install "
+                "grub-mkconfig "
+                "-o /boot/grub/grub.cfg"
+            )
+        run("rm -f /mnt/stackos-install/etc/xdg/autostart/stackos-installer.desktop", check=False)
+        run("rm -f /mnt/stackos-install/home/stackos/.config/autostart/stackos-installer.desktop", check=False)
+        run("rm -f /mnt/stackos-install/usr/share/applications/stackos-installer.desktop", check=False)
+
+        # Politicas permissivas existem apenas na sessao Live.
+        run("rm -f /mnt/stackos-install/etc/polkit-1/rules.d/10-stackos-live.rules", check=False)
+        run("rm -f /mnt/stackos-install/etc/polkit-1/rules.d/10-stackos.rules", check=False)
+        run("rm -f /mnt/stackos-install/etc/sudoers.d/stackos-live", check=False)
+        run("rm -f /mnt/stackos-install/etc/sudoers.d/stackos-installer", check=False)
+        subprocess.run("rm -f /mnt/stackos-install/etc/apt/sources.list.d/stackos-local.list", shell=True)
+        subprocess.run("rm -f /mnt/stackos-install/etc/apt/sources.list.d/ubuntu.list", shell=True)
+        for relative in ['etc/polkit-1/rules.d/49-stackos-live.rules', 'etc/sudoers.d/stackos-live', 'etc/xdg/autostart/stackos-welcome.desktop']:
+            Path('/mnt/stackos-install', relative).unlink(missing_ok=True)
+        Path('/mnt/stackos-install/etc/machine-id').write_text('')
+        release=Path('/mnt/stackos-install/etc/os-release')
+        release.write_text(release.read_text().replace(' Live ', ' '))
+        run('chroot /mnt/stackos-install systemctl enable stackos-snapshot.service')
+
+        Path('/mnt/stackos-install/etc/systemd/system/serial-getty@ttyS0.service.d/autologin.conf').unlink(missing_ok=True)
+        run(['chroot', '/mnt/stackos-install', 'passwd', '-l', 'root'])
+        self.set_progress(0.96, self.tr("finishing"))
+
+        # Recovery não pode estar bind-mounted durante
+        # a criação da imagem de fábrica.
+        run(
+            "umount -lf "
+            "/mnt/stackos-install/stackos-recovery",
+            check=False
+        )
+
+        run(
+            "rmdir "
+            "/mnt/stackos-install/stackos-recovery",
+            check=False
+        )
+
+        run("umount -lf /mnt/stackos-install/sys/firmware/efi/efivars", check=False)
+        run("umount -lf /mnt/stackos-install/dev", check=False)
+        run("umount -lf /mnt/stackos-install/proc", check=False)
+        run("umount -lf /mnt/stackos-install/sys", check=False)
+        run("umount -lf /mnt/stackos-install/boot/efi", check=False)
+
+
+        # Cria a imagem limpa usada pelo StackOS Factory Reset.
+        recovery_generator = (
+            "/mnt/stackos-install/usr/lib/stackos/"
+            "stackos-create-factory-image"
+        )
+
+        if not os.path.isfile(recovery_generator):
+            raise RuntimeError(
+                "Gerador da imagem de recuperação não encontrado"
+            )
+
+        self.set_progress(0.96, self.tr("finishing") + " — Recovery")
+        run(
+            recovery_generator +
+            " /mnt/stackos-install"
+        )
+
+        recovery_image = (
+            "/mnt/stackos-install/var/lib/stackos/recovery/"
+            "factory.squashfs"
+        )
+
+        recovery_hash = (
+            "/mnt/stackos-install/var/lib/stackos/recovery/"
+            "factory.sha256"
+        )
+
+        if self.mode == 'erase' and self.recovery:
+            recovery_partition_image = (
+                "/mnt/stackos-recovery/factory/factory.squashfs"
+            )
+            recovery_partition_hash = (
+                "/mnt/stackos-recovery/factory/factory.sha256"
+            )
+
+            run(
+                "cp -a " + recovery_image +
+                " " + recovery_partition_image
+            )
+            run(
+                "cp -a " + recovery_hash +
+                " " + recovery_partition_hash
+            )
+
+            if not os.path.isfile(recovery_partition_image):
+                raise RuntimeError(
+                    "Imagem de fábrica não foi gravada na partição Recovery"
+                )
+
+            if not os.path.isfile(recovery_partition_hash):
+                raise RuntimeError(
+                    "Hash da imagem de fábrica não foi gravado na partição Recovery"
+                )
+
+            run(
+                "cd /mnt/stackos-recovery/factory && "
+                "sha256sum -c factory.sha256"
+            )
+
+            run("sync")
+
+            # A cópia oficial fica somente na P3.
+            # Remove o arquivo temporário usado para gerar/copy.
+            run(
+                "rm -f " +
+                recovery_image +
+                " " +
+                recovery_hash
+            )
+
+            run("sync")
+            run("umount /mnt/stackos-recovery")
+
+            if self.backups:
+                run(
+                    "umount /mnt/stackos-backups",
+                    check=False
+                )
+
+        # No modo erase, a imagem oficial já foi copiada,
+        # validada por SHA256 e preservada na partição Recovery (P3).
+        # A cópia temporária é removida intencionalmente.
+        if self.mode != 'erase':
+            if not os.path.isfile(recovery_image):
+                raise RuntimeError(
+                    "Imagem de recuperação não foi criada"
+                )
+
+            if not os.path.isfile(recovery_hash):
+                raise RuntimeError(
+                    "Hash da imagem de recuperação não foi criado"
+                )
+
+        run("umount -lf /mnt/stackos-install", check=False)
+
+        self.set_progress(1.0, self.tr("completed"))
+        time.sleep(1)
+        GLib.idle_add(self.show_done)
+
+    def show_done(self):
+        self.installing = False
+        self.clear()
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        box.set_margin_top(60)
+        box.set_margin_bottom(40)
+        box.set_margin_start(60)
+        box.set_margin_end(60)
+
+        title = Gtk.Label(
+            label=self.tr("done_title")
+        )
+        title.add_css_class('title')
+        title.set_margin_bottom(8)
+        box.append(title)
+
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        card.add_css_class('card')
+        card.set_margin_top(20)
+        card.set_margin_bottom(30)
+
+        msg = Gtk.Label(
+            label=self.tr("done_message")
+        )
+        msg.add_css_class('label-white')
+        msg.set_justify(Gtk.Justification.CENTER)
+        msg.set_wrap(True)
+        card.append(msg)
+        box.append(card)
+
+        btn = Gtk.Button(
+            label=self.tr("restart_now")
+        )
+        btn.add_css_class('btn-primary')
+        btn.set_halign(Gtk.Align.CENTER)
+        btn.connect('clicked', lambda b: None if self.preview else run("reboot", check=False))
+        box.append(btn)
+
+        self.present_page(box, 'done')
+
+if __name__ == "__main__":
+    app = StackOSInstaller()
+    app.run([arg for arg in sys.argv if arg != "--preview"])

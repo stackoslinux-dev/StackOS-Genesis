@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+[ ! -f /var/lib/stackos/firstboot-pending ]
+[ -f /var/lib/stackos/firstboot-complete ]
+[ -s /boot/vmlinuz ]
+[ -s /boot/initrd.img ]
+[ -x /sbin/init ]
+[ -x /bin/sh ]
+[ -x /usr/bin/systemctl ]
+[ -z "$(systemctl --failed --no-legend --plain)" ]
+findfs LABEL=STACKOS_BACKUPS >/dev/null

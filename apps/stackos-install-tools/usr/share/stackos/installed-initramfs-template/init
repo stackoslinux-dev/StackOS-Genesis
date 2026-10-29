@@ -1,0 +1,38 @@
+#!/bin/busybox sh
+/bin/busybox --install -s /bin
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t devtmpfs devtmpfs /dev
+mkdir -p /run /dev/pts /tmp /root
+mount -t tmpfs -o mode=0755 tmpfs /run
+mount -t devpts devpts /dev/pts
+fatal(){ echo "StackOS installed boot: $*" >/dev/console; exec setsid /bin/sh -c 'exec /bin/sh </dev/console >/dev/console 2>&1'; }
+for m in virtio_pci virtio_blk ahci nvme sd_mod ext4 jbd2 mbcache loop squashfs usbhid hid_generic psmouse virtio_gpu; do modprobe "$m" 2>/dev/null || true; done
+/usr/lib/systemd/systemd-udevd --daemon
+udevadm trigger --action=add
+udevadm settle --timeout=15
+SPEC=""
+for token in $(cat /proc/cmdline); do case "$token" in root=*) SPEC="${token#root=}";; esac; done
+[ -n "$SPEC" ] || fatal 'root= ausente'
+ROOTDEV=""
+for n in 1 2 3 4 5; do
+ case "$SPEC" in UUID=*|LABEL=*) ROOTDEV=$(findfs "$SPEC" 2>/dev/null);; *) ROOTDEV="$SPEC";; esac
+ [ -b "$ROOTDEV" ] && break
+ sleep 1
+done
+[ -b "$ROOTDEV" ] || fatal 'partição raiz ausente'
+mount -o rw "$ROOTDEV" /root || fatal 'não foi possível montar a raiz'
+/bin/sh /scripts/local-bottom/stackos-factory-reset || fatal 'a restauração foi interrompida; confira o erro acima'
+if ! grep -q 'plymouth.enable=0' /proc/cmdline; then
+ /usr/sbin/plymouthd --mode=boot --pid-file=/run/plymouth/pid --tty=/dev/tty1 --ignore-serial-consoles --graphical-boot --attach-to-session 2>/dev/null
+ /usr/bin/plymouth show-splash 2>/dev/null
+ /usr/bin/plymouth update-root-fs --new-root-dir=/root --read-write 2>/dev/null
+fi
+udevadm control --exit
+mkdir -p /root/run /root/dev /root/proc /root/sys
+mount --move /dev /root/dev
+mount --move /proc /root/proc
+mount --move /sys /root/sys
+mount --move /run /root/run
+exec switch_root /root /sbin/init

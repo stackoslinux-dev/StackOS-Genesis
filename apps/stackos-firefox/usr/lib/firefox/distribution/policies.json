@@ -1,0 +1,77 @@
+{
+  "policies": {
+    "Homepage": {
+      "URL": "https://www.google.com/",
+      "StartPage": "homepage",
+      "Locked": false
+    },
+    "OverrideFirstRunPage": "",
+    "OverridePostUpdatePage": "",
+    "DontCheckDefaultBrowser": true,
+    "DisableAppUpdate": true,
+    "ExtensionSettings": {
+      "langpack-pt-BR@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-pt-BR@firefox.mozilla.org.xpi"
+      },
+      "langpack-pt-PT@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-pt-PT@firefox.mozilla.org.xpi"
+      },
+      "langpack-en-GB@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-en-GB@firefox.mozilla.org.xpi"
+      },
+      "langpack-es-ES@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-es-ES@firefox.mozilla.org.xpi"
+      },
+      "langpack-es-MX@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-es-MX@firefox.mozilla.org.xpi"
+      },
+      "langpack-fr@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-fr@firefox.mozilla.org.xpi"
+      },
+      "langpack-de@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-de@firefox.mozilla.org.xpi"
+      },
+      "langpack-it@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-it@firefox.mozilla.org.xpi"
+      },
+      "langpack-nl@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-nl@firefox.mozilla.org.xpi"
+      },
+      "langpack-pl@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-pl@firefox.mozilla.org.xpi"
+      },
+      "langpack-tr@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-tr@firefox.mozilla.org.xpi"
+      },
+      "langpack-ru@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-ru@firefox.mozilla.org.xpi"
+      },
+      "langpack-ja@firefox.mozilla.org": {
+        "installation_mode": "force_installed",
+        "install_url": "file:///usr/lib/firefox/distribution/extensions/langpack-ja@firefox.mozilla.org.xpi"
+      }
+    },
+    "Preferences": {
+      "intl.locale.requested": {
+        "Value": "",
+        "Status": "default"
+      },
+      "browser.shell.checkDefaultBrowser": {
+        "Value": false,
+        "Status": "default"
+      }
+    }
+  }
+}

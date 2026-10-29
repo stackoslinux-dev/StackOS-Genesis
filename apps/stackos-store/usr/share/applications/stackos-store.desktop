@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=StackOS Store
+Comment=Explore, instale e desinstale aplicativos DEB nativos
+Exec=/usr/local/bin/stackos-store
+Icon=org.stackos.Store
+Terminal=false
+Categories=System;PackageManager;
+StartupNotify=true
+StartupWMClass=com.stackos.store
+Keywords=apps;loja;deb;aplicativos;software;

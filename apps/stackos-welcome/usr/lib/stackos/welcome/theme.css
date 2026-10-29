@@ -1,0 +1,55 @@
+window.welcome {background:#040b1c;color:#eff3ff;font-family:'Inter','Noto Sans',sans-serif;font-size:14px;}
+.root {background-image:linear-gradient(115deg,rgba(3,10,28,.96),rgba(4,10,27,.95),rgba(11,9,35,.9)),url('__ASSETS__/wallpaper.png');background-size:cover;background-position:center;}
+.chrome {background:#050d1f;color:#9eb4dc;min-height:26px;border:none;}
+.chrome button {background:transparent;border:none;min-width:30px;min-height:26px;padding:0;}
+.window-title {color:#7f96bc;font-size:11px;}
+.brand-panel {padding:30px 23px 24px;border-right:1px solid #253778;background-image:linear-gradient(180deg,rgba(5,15,39,.75),rgba(3,11,31,.75) 40%,rgba(8,9,44,.1)),url('__ASSETS__/wallpaper.png');background-size:cover;background-position:9% center;}
+.brand-title {font-size:29px;font-weight:850;color:#f7f9ff;}
+.brand-copy {font-size:20px;color:#adbee3;}
+.system-version {font-size:11px;color:#9bb8e3;}
+.content {padding:20px 28px;}
+.welcome-badge {border:1px solid #4d35ac;border-radius:22px;background:linear-gradient(100deg,#07234d,#1a103b);color:#8cbbff;font-size:14px;font-weight:700;padding:7px 20px;}
+.hero-title {font-size:43px;font-weight:850;color:#edf4ff;}
+.hero-sub {font-size:24px;color:#a8bce1;}
+.intro-card {border:1px solid #394698;border-radius:17px;background:linear-gradient(120deg,#0a1c40,#0b1435 65%,#160d35);padding:16px 22px;}
+.intro-title {color:#f0f4ff;font-size:18px;font-weight:750;}
+.muted {color:#a4b8da;font-size:13px;}
+button {border:1px solid #2b4778;border-radius:12px;background:linear-gradient(120deg,#102447,#0b1632);color:#bbceef;box-shadow:none;padding:10px 14px;font-weight:650;}
+button:hover {background:#213d64;border-color:#3c98ff;}
+button:disabled {opacity:.4;}
+button.nav {background:rgba(6,17,46,.65);font-size:12px;border-color:#263c6d;padding:11px;}
+button.nav.selected {background:linear-gradient(110deg,#114d9c,#26116c);border-color:#4173df;color:white;}
+.tile {background:linear-gradient(125deg,#0b2246,#09152e);border-radius:15px;border:1px solid #176dbc;padding:16px 12px;}
+.tile:hover {background:linear-gradient(125deg,#153c69,#14224a);border-color:#41cbff;}
+.tile.purple {border-color:#7633cc;background:linear-gradient(120deg,#211449,#101731);}
+.tile.green {border-color:#058d83;background:linear-gradient(120deg,#083b3d,#0c1a30);}
+.tile.gold {border-color:#8d6b37;background:linear-gradient(120deg,#2e2940,#111a2d);}
+.tile-title {font-size:16px;color:#f6f7ff;font-weight:750;}
+.tile-copy {font-size:12px;color:#a5bce0;}
+.primary {background:linear-gradient(110deg,#00a9f7,#4165ff,#a521f4);border:1px solid #4f8bff;color:white;border-radius:16px;padding:14px 27px;font-size:17px;}
+.primary:hover {background:linear-gradient(110deg,#13c2ff,#6477ff,#b642ff);}
+.facts {border:1px solid #233365;border-radius:15px;background:rgba(7,17,42,.8);padding:16px;}
+.fact-copy {color:#a7bbe0;font-size:12px;}
+.footer {background:rgba(5,12,31,.94);border-top:1px solid #233961;padding:11px 22px;}
+.footer checkbutton {font-size:12px;color:#c6d6ef;}
+.footer .secondary {font-size:12px;padding:8px 12px;}
+.status {background:#050c1e;color:#8fa8d0;font-size:11px;padding:6px 22px 10px;}
+.guide-title {font-size:25px;font-weight:800;color:#eff5ff;}
+.step {background:#0a1b35;border:1px solid #243c65;border-radius:13px;padding:14px 16px;}
+.step-number {font-size:20px;font-weight:800;color:#63c7ff;}
+.step-copy {color:#bacce9;font-size:14px;}
+.screenshot {background:#071124;border:1px solid #284a7f;border-radius:14px;padding:12px;}
+.image-caption {color:#7698ca;font-size:11px;}
+.guide-controls {padding:13px 24px;background:#071127;}
+progressbar trough {background:#10284a;min-height:5px;}progressbar progress {background:linear-gradient(90deg,#07b5ff,#9227ff);min-height:5px;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#829fce;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#60c8ff;background:transparent;}
+
+.content {padding:14px 18px;}
+.hero-title {font-size:32px;}
+.hero-sub {font-size:18px;}
+.brand-panel {padding:18px 12px;}
+.brand-title {font-size:24px;}
+.brand-copy {font-size:16px;}
+.tile {padding:10px;}

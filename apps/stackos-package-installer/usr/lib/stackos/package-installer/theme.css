@@ -1,0 +1,42 @@
+window.installer {background:#050b1b;color:#eef3ff;font-family:'Inter','Noto Sans',sans-serif;font-size:14px;}
+.root {background:linear-gradient(125deg,#061127,#050b1a);}
+.chrome {background:#060e20;color:#aec0de;min-height:26px;border:none;}
+.chrome button {background:transparent;border:none;padding:0;min-width:30px;min-height:26px;}
+.window-title {font-size:11px;color:#7e98bd;}
+.sidebar {padding:25px 20px 20px;background:linear-gradient(145deg,#0c2045,#070f28 55%,#21105a);border-right:1px solid #213d6d;}
+.brand-title {font-size:29px;font-weight:850;color:white;}
+.brand-sub {font-size:19px;color:#a0b8e0;}
+.muted {font-size:13px;color:#a1b8db;}
+button {background:linear-gradient(110deg,#112548,#0b1731);color:#c3d4f3;border:1px solid #2a4371;border-radius:12px;box-shadow:none;padding:11px 15px;font-weight:650;}
+button:hover {background:#23406a;border-color:#448dff;}
+button:disabled {opacity:.4;}
+.nav {background:transparent;border:none;padding:14px 12px;font-size:15px;}
+.nav.selected {background:linear-gradient(110deg,#006aff,#5c18fa);color:white;}
+.content {padding:24px 26px;}
+.hero-title {font-size:29px;font-weight:850;color:#f4f7ff;}
+.subtitle {font-size:15px;color:#98b0db;}
+.panel {border:1px solid #2b4176;border-radius:17px;background:linear-gradient(115deg,#0d1d3e,#0a1430);padding:18px;}
+.tab {background:#09162f;color:#a2b9e6;border-color:#243c70;padding:12px 20px;}
+.tab.selected {background:linear-gradient(110deg,#2038a2,#18275b);color:white;border-color:#5563ef;}
+.dropzone {border:1px dashed #365a9b;border-radius:14px;background:linear-gradient(115deg,#0d2244,#0d1636);padding:22px 18px;}
+.dropzone image {color:#8aabff;}
+.drop-title {font-size:18px;color:#f0f6ff;font-weight:750;}
+.primary {background:linear-gradient(110deg,#006aff,#5824ff);color:white;border-color:#2c63ff;padding:13px 20px;font-size:15px;}
+.primary:hover {background:linear-gradient(110deg,#178aff,#7b41ff);}
+.section-title {font-size:20px;font-weight:750;color:#eff4ff;}
+.format-card {background:linear-gradient(130deg,#102248,#09142c);border:1px solid #2d477b;border-radius:15px;padding:16px 7px;}
+.format-title {font-size:15px;font-weight:750;color:#f4f8ff;}
+.caption {font-size:11px;color:#9cb2d6;}
+.security-card {background:linear-gradient(110deg,#0d2b58,#0b1c3d);border:1px solid #215daf;border-radius:12px;color:#9fc7ff;padding:14px;}
+.status {background:#091c35;border:1px solid #223f70;border-radius:12px;color:#cadcf8;padding:12px;}
+.footer {border-top:1px solid #203a65;background:#060e21;padding:15px 26px;}
+.link {background:transparent;border:none;color:#38b7ff;padding:3px;}
+.info-copy {color:#b4c8e7;font-size:15px;}
+progressbar trough {background:#132d50;min-height:8px;border-radius:6px;}
+progressbar progress {background:linear-gradient(90deg,#049cff,#8d27ff);min-height:8px;border-radius:6px;}
+textview,textview text {background:#08162d;color:#c3d7f3;}
+
+.sidebar {background-image:url('__ASSETS__/wave.svg'),linear-gradient(145deg,#0c2045,#070f28 55%,#21105a);background-size:100% 270px,cover;background-position:bottom,center;background-repeat:no-repeat;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#829fce;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#60c8ff;background:transparent;}

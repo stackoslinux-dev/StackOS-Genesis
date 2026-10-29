@@ -1,0 +1,9 @@
+{
+  "uuid": "stackos-gpu@stackoslinux",
+  "name": "StackOS GPU",
+  "description": "Uso real da GPU e acesso ao StackOS GPU Manager",
+  "shell-version": [
+    "50"
+  ],
+  "version": 1
+}

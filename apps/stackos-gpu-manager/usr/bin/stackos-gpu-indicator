@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/python3 /usr/lib/stackos-gpu-manager/c3_indicator_service.py "$@"

@@ -1,0 +1,598 @@
+#!/usr/bin/env python3
+
+import fcntl
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+from datetime import datetime
+
+
+LOCK_FILE = "/run/lock/stackos-updater.lock"
+LOG_FILE = "/var/log/stackos-updater.log"
+
+FORBIDDEN_PACKAGES = {
+    "snapd",
+    "snap-confine",
+    "snapd-xdg-open",
+    "ubuntu-core-launcher",
+}
+
+CRITICAL_PREFIXES = {
+    "linux-image",
+    "linux-headers",
+    "linux-generic",
+    "linux-modules",
+    "systemd",
+    "sudo",
+    "openssl",
+    "libssl",
+    "grub",
+    "shim",
+    "apt",
+    "dpkg",
+    "polkit",
+    "network-manager",
+    "firmware",
+}
+
+
+def log(message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    if os.geteuid() != 0:
+        return
+
+    with open(LOG_FILE, "a", encoding="utf-8") as file:
+        file.write(f"[{timestamp}] {message}\n")
+
+
+def run(command, *, check=True, stream=False):
+    log("Executando: " + " ".join(command))
+
+    environment = {
+        **os.environ,
+        "DEBIAN_FRONTEND": "noninteractive",
+        "LC_ALL": "C",
+    }
+
+    if stream:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            env=environment,
+        )
+
+        assert process.stdout is not None
+
+        for raw_line in process.stdout:
+            line = raw_line.rstrip()
+
+            if line:
+                log(line)
+                print(line, flush=True)
+
+        return_code = process.wait()
+
+        if check and return_code != 0:
+            raise RuntimeError(
+                f"Comando terminou com código {return_code}."
+            )
+
+        return return_code
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+    if result.stdout:
+        log(result.stdout.strip())
+
+    if result.stderr:
+        log(result.stderr.strip())
+
+    if check and result.returncode != 0:
+        raise RuntimeError(
+            result.stderr.strip()
+            or result.stdout.strip()
+            or "Comando falhou."
+        )
+
+    return result
+
+
+def acquire_lock():
+    Path(LOCK_FILE).parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    lock = open(LOCK_FILE, "w", encoding="utf-8")
+
+    try:
+        fcntl.flock(
+            lock,
+            fcntl.LOCK_EX | fcntl.LOCK_NB,
+        )
+    except BlockingIOError as error:
+        lock.close()
+        raise RuntimeError(
+            "Outra atualização já está em execução."
+        ) from error
+
+    return lock
+
+
+def is_forbidden(name, description):
+    name_lower = name.lower()
+    description_lower = description.lower()
+
+    if name_lower in FORBIDDEN_PACKAGES:
+        return True
+
+    if "snap1-" in description_lower:
+        return True
+
+    if "/snap" in description_lower:
+        return True
+
+    return False
+
+
+def is_critical(name, description):
+    name_lower = name.lower()
+    description_lower = description.lower()
+
+    if "security" in description_lower:
+        return True
+
+    for prefix in CRITICAL_PREFIXES:
+        if (
+            name_lower == prefix
+            or name_lower.startswith(prefix + "-")
+        ):
+            return True
+
+    return False
+
+
+def is_real_upgrade(name):
+    installed_result = run(
+        ["dpkg-query", "-W", "-f=${Version}", name],
+        check=False,
+    )
+
+    if installed_result.returncode != 0:
+        return False
+
+    installed = installed_result.stdout.strip()
+    if not installed:
+        return False
+
+    policy_result = run(
+        ["apt-cache", "policy", name],
+        check=False,
+    )
+
+    candidate = ""
+
+    for line in policy_result.stdout.splitlines():
+        line = line.strip()
+
+        if line.startswith("Candidate:"):
+            candidate = line.split(":", 1)[1].strip()
+            break
+
+    if not candidate or candidate == "(none)":
+        return False
+
+    comparison = run(
+        [
+            "dpkg",
+            "--compare-versions",
+            candidate,
+            "gt",
+            installed,
+        ],
+        check=False,
+    )
+
+    return comparison.returncode == 0
+
+
+def get_updates():
+    result = run(
+        ["apt", "list", "--upgradable"],
+        check=False,
+    )
+
+    packages = []
+    blocked = []
+
+    for raw_line in result.stdout.splitlines():
+        description = raw_line.strip()
+
+        if not description:
+            continue
+
+        if description.lower().startswith("listing"):
+            continue
+
+        if "/" not in description:
+            continue
+
+        name = description.split("/", 1)[0].strip()
+
+        if not re.fullmatch(
+            r"[a-z0-9][a-z0-9+.-]*",
+            name,
+        ):
+            continue
+
+        if not is_real_upgrade(name):
+            continue
+
+        # Pacotes proibidos pela politica StackOS sao ignorados
+        # silenciosamente. Eles nao aparecem como atualizacoes e
+        # nao impedem a instalacao das atualizacoes validas.
+        if is_forbidden(name, description):
+            continue
+
+        packages.append({
+            "name": name,
+            "description": description,
+            "critical": is_critical(
+                name,
+                description,
+            ),
+        })
+
+    critical_count = sum(
+        1
+        for package in packages
+        if package["critical"]
+    )
+
+    if critical_count:
+        status = "red"
+    elif packages:
+        status = "yellow"
+    else:
+        status = "green"
+
+    return {
+        "status": status,
+        "count": len(packages),
+        "critical_count": critical_count,
+        "packages": packages,
+        "blocked": blocked,
+        "blocked_count": len(blocked),
+        "reboot_required": Path(
+            "/var/run/reboot-required"
+        ).exists(),
+        "checked_at": datetime.now().isoformat(
+            timespec="seconds"
+        ),
+    }
+
+
+def refresh_indices():
+    run(["apt-get", "update"])
+
+
+def verify_no_snap_install(package_names):
+    if not package_names:
+        return
+
+    simulation = run(
+        [
+            "apt-get",
+            "-s",
+            "--no-install-recommends",
+            "--allow-change-held-packages",
+            "install",
+            *package_names,
+        ],
+        check=False,
+    )
+
+    output = (
+        simulation.stdout
+        + "\n"
+        + simulation.stderr
+    ).lower()
+
+    forbidden_patterns = (
+        "inst snapd ",
+        "inst snap-confine ",
+        "inst ubuntu-core-launcher ",
+    )
+
+    for pattern in forbidden_patterns:
+        if pattern in output:
+            raise RuntimeError(
+                "Atualização bloqueada: o APT tentou "
+                "instalar um componente Snap."
+            )
+
+
+def emit_progress(percent, stage, message, package=""):
+    try:
+        value = float(percent)
+    except (TypeError, ValueError):
+        value = 0.0
+
+    value = max(0.0, min(value, 100.0))
+
+    payload = {
+        "percent": round(value, 2),
+        "stage": str(stage),
+        "message": str(message).strip(),
+        "package": str(package).strip(),
+    }
+
+    print(
+        "__STACKOS_PROGRESS__"
+        + json.dumps(payload, ensure_ascii=False),
+        flush=True,
+    )
+
+
+def parse_apt_status(line):
+    clean = line.strip()
+
+    if not clean:
+        return None
+
+    parts = clean.split(":", 3)
+
+    if len(parts) != 4:
+        return None
+
+    record_type, package, percent, message = parts
+
+    if record_type not in {
+        "dlstatus",
+        "pmstatus",
+        "pmerror",
+        "pmconffile",
+        "media-change",
+    }:
+        return None
+
+    try:
+        numeric_percent = float(
+            percent.replace("%", "").strip()
+        )
+    except ValueError:
+        numeric_percent = 0.0
+
+    if record_type == "dlstatus":
+        stage = "Baixando"
+    elif record_type == "pmstatus":
+        stage = "Instalando"
+    elif record_type == "pmerror":
+        stage = "Erro"
+    elif record_type == "pmconffile":
+        stage = "Configuração"
+    else:
+        stage = "Mídia"
+
+    return {
+        "percent": numeric_percent,
+        "stage": stage,
+        "message": message.strip(),
+        "package": package.strip(),
+    }
+
+
+def run_apt_with_progress(command):
+    full_command = [
+        *command,
+        "-o",
+        "APT::Status-Fd=1",
+    ]
+
+    log("Executando: " + " ".join(full_command))
+
+    environment = {
+        **os.environ,
+        "DEBIAN_FRONTEND": "noninteractive",
+        "LC_ALL": "C",
+    }
+
+    process = subprocess.Popen(
+        full_command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        env=environment,
+        bufsize=1,
+    )
+
+    assert process.stdout is not None
+
+    for raw_line in process.stdout:
+        clean = raw_line.rstrip()
+
+        if not clean:
+            continue
+
+        event = parse_apt_status(clean)
+
+        if event:
+            emit_progress(
+                event["percent"],
+                event["stage"],
+                event["message"],
+                event["package"],
+            )
+        else:
+            log(clean)
+            print(
+                "__STACKOS_OUTPUT__" + clean,
+                flush=True,
+            )
+
+    process.stdout.close()
+    return_code = process.wait(timeout=30)
+
+    if return_code != 0:
+        raise RuntimeError(
+            f"APT terminou com código {return_code}."
+        )
+
+
+def install_updates():
+    emit_progress(
+        0,
+        "Preparando",
+        "Lendo atualizações disponíveis.",
+    )
+
+    data = get_updates()
+
+    package_names = [
+        package["name"]
+        for package in data["packages"]
+    ]
+
+    if not package_names:
+        emit_progress(
+            100,
+            "Concluído",
+            "O sistema já está atualizado.",
+        )
+
+        print(
+            "__STACKOS_RESULT__"
+            + json.dumps(
+                data,
+                ensure_ascii=False,
+            ),
+            flush=True,
+        )
+        return
+
+    emit_progress(
+        2,
+        "Verificando",
+        "Validando dependências e política sem Snap.",
+    )
+
+    verify_no_snap_install(package_names)
+
+    emit_progress(
+        4,
+        "Preparando",
+        "Concluindo configurações pendentes do dpkg.",
+    )
+
+    run(
+        ["dpkg", "--configure", "-a"],
+        check=False,
+    )
+
+    command = [
+        "apt-get",
+        "-y",
+        "--no-install-recommends",
+        "--allow-change-held-packages",
+        "-o",
+        "Dpkg::Progress-Fancy=0",
+        "install",
+        *package_names,
+    ]
+
+    run_apt_with_progress(command)
+
+    emit_progress(
+        99,
+        "Verificando",
+        "Confirmando o estado final do sistema.",
+    )
+
+    final_data = get_updates()
+
+    emit_progress(
+        100,
+        "Concluído",
+        "Atualização concluída.",
+    )
+
+    print(
+        "__STACKOS_RESULT__"
+        + json.dumps(
+            final_data,
+            ensure_ascii=False,
+        ),
+        flush=True,
+    )
+
+
+def main():
+    if len(sys.argv) != 2:
+        raise RuntimeError(
+            "Uso: stackos-updater-helper "
+            "check|status|install|reboot"
+        )
+
+    action = sys.argv[1]
+    if action == "check":
+        print(json.dumps(get_updates(), ensure_ascii=False))
+        return
+
+    if os.geteuid() != 0:
+        raise RuntimeError("Operação exige autorização administrativa.")
+
+    lock = acquire_lock()
+
+    try:
+        if action == "check":
+            print(
+                json.dumps(
+                    get_updates(),
+                    ensure_ascii=False,
+                )
+            )
+
+        elif action == "status":
+            print(
+                json.dumps(
+                    get_updates(),
+                    ensure_ascii=False,
+                )
+            )
+
+        elif action == "install":
+            refresh_indices()
+            install_updates()
+
+        elif action == "reboot":
+            run(["systemctl", "reboot"])
+
+        else:
+            raise RuntimeError(
+                f"Ação desconhecida: {action}"
+            )
+    finally:
+        lock.close()
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as error:
+        log(f"ERRO: {error}")
+        print(
+            f"ERRO: {error}",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)

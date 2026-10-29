@@ -1,0 +1,59 @@
+window.drivers {background:#f3f5f9;color:#17285c;font-family:'Inter','Noto Sans',sans-serif;font-size:13px;}
+.root {background:linear-gradient(120deg,#f2f4f8,#f3f4f9);}
+.chrome {background:#f3f5f9;color:#253a60;border:none;min-height:26px;}
+.chrome button {background:transparent;border:none;padding:0;min-height:26px;min-width:30px;}
+.window-title {color:#374762;font-size:11px;}
+.header {padding:10px 20px 18px;background:linear-gradient(120deg,#f1f4f8,#f2f4f9);border-bottom:1px solid #bdcadb;}
+.brand-title {font-size:25px;font-weight:850;color:#17223b;}
+.brand-sub {color:#4b1e77;font-size:10px;font-weight:750;letter-spacing:2.6px;}
+.header-value {font-size:14px;color:#1a3267;}
+.muted {color:#2e4261;font-size:12px;}
+button {background:linear-gradient(120deg,#eef1f6,#f0f2f7);border:1px solid #bdc9db;border-radius:11px;color:#183061;padding:11px 15px;box-shadow:none;font-weight:650;}
+button:hover {background:#ebeff5;border-color:#527cff;}
+button:disabled {opacity:.5;}
+.primary {background:linear-gradient(110deg,#006aff,#0341ee);color:white;border-color:#1266ff;}
+.sidebar {padding:16px 12px;border-right:1px solid #bdcadb;background:linear-gradient(120deg,#f1f4f8,#f3f4f9);}
+.nav {background:transparent;border:none;padding:15px 12px;font-size:14px;}
+.nav.selected {background:linear-gradient(110deg,#5415f4,#18106f);color:white;}
+.promo {background:linear-gradient(130deg,#f0f3f7,#f2f4f8);border:1px solid #bdcadb;border-radius:16px;padding:22px 12px;}
+.section-title {color:#17223b;font-weight:750;font-size:16px;}
+.center {padding:18px;}
+.page-title {font-size:25px;color:#17223b;font-weight:800;}
+.banner {padding:18px;background:linear-gradient(120deg,#f1f8f8,#f1f5f8);border:1px solid #bddbd9;border-radius:16px;}
+.banner image {color:#04be91;}
+.summary {font-size:20px;font-weight:800;color:#17305c;}
+.positive {color:#00c290;font-size:14px;font-weight:700;}
+.tab {padding:8px 15px;background:#f0f3f7;border-radius:20px;color:#1b396e;font-size:12px;}
+.tab.selected {background:linear-gradient(120deg,#e6e0ef,#e6e4f1);color:#17223b;}
+.device-card {background:linear-gradient(120deg,#f0f2f7,#f2f4f8);border:1px solid #bdc8db;border-radius:16px;}
+.device-card > title {padding:12px 8px;}
+.device-card > title > expander {color:#283e6a;}
+.device-header {padding:4px 4px;}
+.device-header image {color:#193465;}
+.device-title {font-size:15px;font-weight:750;color:#17285c;}
+.device-rows {padding:10px;}
+.driver-row {padding:12px;background:#f1f3f8;border:1px solid #bdc7db;border-radius:11px;}
+.driver-row > image {color:#1d3272;}
+.driver-title {font-size:14px;font-weight:750;color:#172a5d;}
+.package {color:#223c69;font-size:11px;}
+.badge {border-radius:6px;padding:4px 6px;font-size:9px;font-weight:800;}
+.recommended {background:#e0e4ef;color:#17223b;}
+.alternative {background:#f0f7f6;color:#1f7e60;}
+.installed {color:#00c290;font-size:12px;font-weight:750;}
+.badge.installed {background:#edf6f5;padding:5px 12px;}
+.version {color:#0db587;font-size:10px;}
+.remove {background:linear-gradient(110deg,#e5deee,#e7e3f1);border-color:#6e2be6;color:#17223b;padding:9px 12px;}
+.secondary {padding:9px 12px;}
+.right {padding:18px 12px;border-left:1px solid #bdcadb;background:#f2f4f8;}
+.panel {border:1px solid #bdc9db;border-radius:16px;background:linear-gradient(130deg,#f0f3f7,#f2f4f9);padding:16px 14px;}
+.panel-title {font-size:14px;font-weight:750;color:#172c5c;}
+.panel image {color:#1b356b;}
+.field-value {font-size:12px;color:#18325e;}
+.quick {padding:11px;font-size:12px;}
+progressbar trough {background:#eef2f6;border-radius:8px;min-height:8px;}
+progressbar progress {background:linear-gradient(90deg,#e1e6ef,#e5ddee);border-radius:8px;min-height:8px;}
+textview,textview text {background:#f1f3f8;color:#1c3965;}
+.proprietary {color:#491a66;background:#f2edf6;padding:3px 6px;font-size:9px;}
+
+.stackos-signature {font-size:10px;font-weight:500;color:#29426a;min-height:18px;padding:3px 4px;border:none;background:transparent;box-shadow:none;}
+.stackos-signature:hover {color:#1d5573;background:transparent;}

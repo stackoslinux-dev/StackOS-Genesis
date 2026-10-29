@@ -1,0 +1,9 @@
+{
+  "uuid": "stackos-appearance@stackoslinux",
+  "name": "StackOS Appearance",
+  "description": "Painel e menus acompanham os modos claro e escuro",
+  "shell-version": [
+    "50"
+  ],
+  "version": 2
+}

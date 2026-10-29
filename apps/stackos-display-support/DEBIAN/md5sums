@@ -1,0 +1,6 @@
+c6d9eac0452a4821d677ba04ca062dc4  etc/dconf/db/local.d/20-stackos-window-controls
+02464de091e5884e258bb34d36263a0e  etc/dconf/db/local.d/60-stackos-desktop
+e97546f682227566fc06fcaf65993846  etc/dconf/profile/user
+e76d5381112cba172faa31828e931620  etc/gtk-3.0/settings.ini
+e76d5381112cba172faa31828e931620  etc/gtk-4.0/settings.ini
+1eb15176dd60d6577ec0fe0240eb8d1f  usr/lib/stackos/stackos_window.py

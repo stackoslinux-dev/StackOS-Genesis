@@ -1,0 +1,6 @@
+Package: stackos-disk-utility
+Version: 46.1+stackos1
+Architecture: amd64
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime, stackos-install-tools, stackos-language-pack
+Description: Native GNOME disk editor for manual partitioning

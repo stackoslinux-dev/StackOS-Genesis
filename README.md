@@ -1,49 +1,25 @@
-# StackOS Genesis
+# StackOS Genesis C3
 
-StackOS Genesis is a Linux distribution focused on a clean, modular and lightweight desktop experience.
+Distribuição independente. Versão 10.9 RC3, Linux 7.2.13 e GNOME 50.6. A base Ubuntu pertence ao histórico.
 
-## Project
+Aplicativos e hashes reais: releases/c3-10.9-rc3.json. apps/ contém fontes de integração e empacotamento; bibliotecas upstream não são integralmente reproduzidas aqui.
 
-StackOS Genesis is based on Ubuntu 26.04 LTS and uses GNOME as its desktop environment.
+## Atualizações assinadas na ISO atual
 
-## Philosophy
+curl -fLO https://stackoslinux-dev.github.io/repo/c3/enable-c3-updates.py
+curl -fLO https://stackoslinux-dev.github.io/repo/c3/enable-c3-updates.py.asc
+gpgv --keyring /usr/share/keyrings/stackos-archive-keyring.gpg enable-c3-updates.py.asc enable-c3-updates.py
+sudo python3 enable-c3-updates.py
+sudo /usr/lib/stackos/stackos-updater-helper install
 
-**Modular. Leve. Poderoso.**
+O robô está programado a cada seis horas no chat de manutenção: consulta desenvolvedores oficiais e avisos Ubuntu 26.04 como referência; reconstrói para C3, valida e assina no host autorizado. A chave privada nunca fica no Git.
 
-**Seu Stack. Suas Regras.**
+## Recuperação
 
-## Main components
+Três backups recentes no GRUB. Reset apaga backups antigos e volta ao primeiro uso. Após criar usuário e reiniciar, remove frontend do instalador e conta temporária; preserva recuperação e acesso administrativo do usuário definitivo.
 
-- StackOS Installer
-- StackOS Firstboot
-- StackOS Store
-- StackOS Drivers
-- StackOS Updater
-- StackOS Package Installer
-- StackOS USB Writer
-- StackOS Welcome
-- StackOS Bug Report
-- StackOS Factory Reset
-- StackOS Recovery tools
+## Validação
 
-## Repository structure
+Verificações pontuais de abertura e limpeza foram feitas. A bateria completa de instalação e recuperação não foi repetida na RC3; PC físico ainda precisa de verificação. O catálogo foi conferido com 24 aplicativos reais.
 
-- `apps/` — StackOS applications and integration tools
-- `base/` — base system artifacts
-- `build-tools/` — build and development tooling
-- `docs/` — project documentation
-- `releases/` — release metadata
-
-Large ISO, SquashFS and package artifacts are intentionally excluded from normal Git history.
-
-## Localization
-
-StackOS applications include multiple locales, including Portuguese, English, Spanish, French, German, Italian, Dutch, Polish, Turkish, Russian and Japanese.
-
-## Development status
-
-StackOS Genesis is under active development.
-
-## License
-
-Licensing will be defined per project component before the first public source release.
+Estado antigo preservado em backup/pre-c3-10.9-rc2-20261029.

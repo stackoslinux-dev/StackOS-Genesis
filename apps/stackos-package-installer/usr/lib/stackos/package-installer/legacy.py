@@ -1,0 +1,951 @@
+#!/usr/bin/python3
+
+import os
+import subprocess
+import sys
+import threading
+from pathlib import Path
+
+import gi
+
+gi.require_version("Gtk", "4.0")
+from gi.repository import Gtk, GLib, Gio
+
+if "/usr/lib/stackos" not in sys.path:
+    sys.path.insert(0, "/usr/lib/stackos")
+
+from stackos_i18n import get_translator
+
+_ = get_translator("stackos")
+
+
+class PackageInstaller(Gtk.Application):
+    def __init__(self):
+        super().__init__(
+            application_id="org.stackos.PackageInstaller",
+            flags=Gio.ApplicationFlags.HANDLES_OPEN,
+        )
+
+        self.file_path = None
+        self.file_type = None
+        self.window = None
+
+    def do_activate(self):
+        if self.window is None:
+            self.build_window()
+
+        self.window.present()
+
+    def do_open(self, files, n_files, hint):
+        if self.window is None:
+            self.build_window()
+
+        if files:
+            path = files[0].get_path()
+
+            if path:
+                self.load_file(Path(path))
+
+        self.window.present()
+
+    def build_window(self):
+        self.window = Gtk.ApplicationWindow(application=self)
+        self.window.set_title(_("StackOS Application Installer"))
+        self.window.set_default_size(940, 640)
+        self.window.set_resizable(False)
+
+        # ── Tema StackOS ───────────────────────────────────────────────
+        css = Gtk.CssProvider()
+        css.load_from_data(b"""
+        window {
+            background: #070b14;
+            color: #ffffff;
+        }
+
+        .sidebar {
+            background: #0a111f;
+            border-right: 1px solid rgba(61, 120, 216, 0.25);
+            padding: 18px;
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: 800;
+        }
+
+        .muted {
+            color: #9aa7bd;
+        }
+
+        .nav-active {
+            background: #155ed0;
+            color: #ffffff;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-weight: 700;
+        }
+
+        .page-title {
+            font-size: 26px;
+            font-weight: 800;
+        }
+
+        .card {
+            background: #0d1524;
+            border: 1px solid rgba(61, 120, 216, 0.30);
+            border-radius: 14px;
+            padding: 14px;
+        }
+
+        .info-card {
+            background: rgba(16, 79, 175, 0.20);
+            border: 1px solid rgba(61, 120, 216, 0.60);
+            border-radius: 12px;
+            padding: 13px;
+        }
+
+        .warning-card {
+            background: rgba(123, 47, 247, 0.10);
+            border: 1px solid rgba(123, 47, 247, 0.42);
+            border-radius: 12px;
+            padding: 13px;
+        }
+
+        .format-card {
+            background: #101827;
+            border: 1px solid rgba(61, 120, 216, 0.20);
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .format-title {
+            font-weight: 700;
+        }
+
+        .security-card {
+            background: rgba(14, 73, 151, 0.18);
+            border: 1px solid rgba(61, 120, 216, 0.42);
+            border-radius: 11px;
+            padding: 11px;
+            color: #b9d2ff;
+        }
+
+        .windows-badge {
+            background: rgba(185, 28, 55, 0.38);
+            border: 1px solid rgba(255, 65, 100, 0.65);
+            border-radius: 10px;
+            padding: 8px 12px;
+            color: #ffd5dd;
+            font-weight: 700;
+        }
+
+        button {
+            min-height: 36px;
+            border-radius: 10px;
+        }
+
+        button.suggested-action {
+            background: #155ed0;
+            color: #ffffff;
+        }
+
+        progressbar trough {
+            min-height: 7px;
+            border-radius: 7px;
+        }
+
+        progressbar progress {
+            background: #3d78d8;
+            border-radius: 7px;
+        }
+        """)
+
+        Gtk.StyleContext.add_provider_for_display(
+            self.window.get_display(),
+            css,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        # ── Header ─────────────────────────────────────────────────────
+        header = Gtk.HeaderBar()
+
+        header_title = Gtk.Label(
+            label=_("StackOS Application Installer")
+        )
+        header_title.add_css_class("format-title")
+        header.set_title_widget(header_title)
+
+        self.window.set_titlebar(header)
+
+        # ── Estrutura geral ────────────────────────────────────────────
+        shell = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=0,
+        )
+        self.window.set_child(shell)
+
+        # ── Sidebar ────────────────────────────────────────────────────
+        sidebar = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=14,
+        )
+        sidebar.set_size_request(210, -1)
+        sidebar.add_css_class("sidebar")
+
+        brand_row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+
+        brand_icon = Gtk.Image.new_from_icon_name(
+            "stackos-package-installer"
+        )
+        brand_icon.set_pixel_size(44)
+        brand_row.append(brand_icon)
+
+        brand_box = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=0,
+        )
+
+        brand = Gtk.Label(label="StackOS", xalign=0)
+        brand.add_css_class("brand")
+
+        brand_sub = Gtk.Label(label="Linux", xalign=0)
+        brand_sub.add_css_class("muted")
+
+        brand_box.append(brand)
+        brand_box.append(brand_sub)
+        brand_row.append(brand_box)
+
+        sidebar.append(brand_row)
+        sidebar.append(Gtk.Separator())
+
+        nav = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+        nav.add_css_class("nav-active")
+        nav.append(
+            Gtk.Image.new_from_icon_name(
+                "document-save-symbolic"
+            )
+        )
+        nav.append(Gtk.Label(label=_("Installer"), xalign=0))
+        sidebar.append(nav)
+
+        formats = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+        formats.append(
+            Gtk.Image.new_from_icon_name(
+                "package-x-generic-symbolic"
+            )
+        )
+        formats.append(Gtk.Label(label=_("Formats"), xalign=0))
+        sidebar.append(formats)
+
+        help_row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+        help_row.append(
+            Gtk.Image.new_from_icon_name(
+                "help-about-symbolic"
+            )
+        )
+        help_row.append(Gtk.Label(label=_("Help"), xalign=0))
+        sidebar.append(help_row)
+
+        about_row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=10,
+        )
+        about_row.append(
+            Gtk.Image.new_from_icon_name(
+                "dialog-information-symbolic"
+            )
+        )
+        about_row.append(Gtk.Label(label=_("About"), xalign=0))
+        sidebar.append(about_row)
+
+        sidebar.append(Gtk.Box(vexpand=True))
+        sidebar.append(Gtk.Separator())
+
+        security_title = Gtk.Label(
+            label="🛡  " + _("Security"),
+            xalign=0,
+        )
+        security_title.add_css_class("format-title")
+        sidebar.append(security_title)
+
+        security_text = Gtk.Label(
+            label=_("Snap blocked"),
+            xalign=0,
+        )
+        security_text.add_css_class("muted")
+        sidebar.append(security_text)
+
+        shell.append(sidebar)
+
+        # ── Conteúdo ───────────────────────────────────────────────────
+        root = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=14,
+            margin_top=22,
+            margin_bottom=22,
+            margin_start=24,
+            margin_end=24,
+            hexpand=True,
+            vexpand=True,
+        )
+        shell.append(root)
+
+        hero = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=16,
+        )
+
+        hero_icon = Gtk.Image.new_from_icon_name(
+            "stackos-package-installer"
+        )
+        hero_icon.set_pixel_size(62)
+        hero.append(hero_icon)
+
+        hero_text = Gtk.Box(
+            orientation=Gtk.Orientation.VERTICAL,
+            spacing=4,
+            valign=Gtk.Align.CENTER,
+        )
+
+        title = Gtk.Label(
+            label=_("StackOS Application Installer"),
+            xalign=0,
+        )
+        title.add_css_class("page-title")
+
+        subtitle = Gtk.Label(
+            label=_(
+                "Install Linux applications and packages compatible with StackOS."
+            ),
+            xalign=0,
+        )
+        subtitle.add_css_class("muted")
+
+        hero_text.append(title)
+        hero_text.append(subtitle)
+        hero.append(hero_text)
+        root.append(hero)
+
+        # ── Arquivo selecionado ────────────────────────────────────────
+        file_card = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=14,
+        )
+        file_card.add_css_class("card")
+
+        file_icon = Gtk.Image.new_from_icon_name(
+            "application-x-executable-symbolic"
+        )
+        file_icon.set_pixel_size(50)
+        file_card.append(file_icon)
+
+        self.package_label = Gtk.Label(
+            label=_("No file selected"),
+            xalign=0,
+            yalign=0.5,
+            hexpand=True,
+        )
+        self.package_label.set_wrap(True)
+        self.package_label.set_selectable(True)
+        file_card.append(self.package_label)
+
+        root.append(file_card)
+
+        # ── Mensagem/status principal ──────────────────────────────────
+        self.status = Gtk.Label(
+            label=_("Select an application or package to continue."),
+            xalign=0,
+            wrap=True,
+        )
+        self.status.set_selectable(True)
+        self.status.add_css_class("info-card")
+        root.append(self.status)
+
+        # ── Formatos suportados ────────────────────────────────────────
+        formats_title = Gtk.Label(
+            label=_("Supported formats:"),
+            xalign=0,
+        )
+        formats_title.add_css_class("format-title")
+        root.append(formats_title)
+
+        formats_grid = Gtk.Grid(
+            column_spacing=10,
+            row_spacing=10,
+            column_homogeneous=True,
+        )
+
+        supported = [
+            ("application-x-deb", "DEB"),
+            ("image-x-generic", "AppImage"),
+            ("utilities-terminal", "RUN"),
+            ("text-x-script", "SH"),
+            ("application-x-executable", _("Executables")),
+            ("package-x-generic", "Flatpak"),
+        ]
+
+        for col, (icon_name, label_text) in enumerate(supported):
+            box = Gtk.Box(
+                orientation=Gtk.Orientation.VERTICAL,
+                spacing=6,
+                halign=Gtk.Align.FILL,
+                valign=Gtk.Align.CENTER,
+            )
+            box.add_css_class("format-card")
+
+            icon = Gtk.Image.new_from_icon_name(icon_name)
+            icon.set_pixel_size(32)
+
+            label = Gtk.Label(label=label_text)
+            label.add_css_class("format-title")
+
+            box.append(icon)
+            box.append(label)
+
+            formats_grid.attach(box, col, 0, 1, 1)
+
+        root.append(formats_grid)
+
+        self.info_label = Gtk.Label(
+            label="ⓘ " + _("Snap is blocked by StackOS policy."),
+            xalign=0,
+            wrap=True,
+        )
+        self.info_label.add_css_class("security-card")
+        root.append(self.info_label)
+
+        # ── Spinner ────────────────────────────────────────────────────
+        self.spinner = Gtk.Spinner()
+        self.spinner.set_halign(Gtk.Align.CENTER)
+        root.append(self.spinner)
+
+        # ── Ações ──────────────────────────────────────────────────────
+        buttons = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=12,
+            halign=Gtk.Align.END,
+        )
+
+        select_button = Gtk.Button(
+            label=_("Select file")
+        )
+        select_button.set_icon_name("folder-open-symbolic")
+        select_button.connect(
+            "clicked",
+            self.select_file,
+        )
+
+        cancel = Gtk.Button(label=_("Cancel"))
+        cancel.set_icon_name("window-close-symbolic")
+        cancel.connect(
+            "clicked",
+            lambda *_: self.quit(),
+        )
+
+        self.install_button = Gtk.Button(
+            label=_("Install")
+        )
+        self.install_button.set_icon_name(
+            "document-save-symbolic"
+        )
+        self.install_button.set_sensitive(False)
+        self.install_button.add_css_class(
+            "suggested-action"
+        )
+        self.install_button.connect(
+            "clicked",
+            self.install_selected,
+        )
+
+        buttons.append(select_button)
+        buttons.append(cancel)
+        buttons.append(self.install_button)
+        root.append(buttons)
+
+        args = sys.argv[1:]
+
+        if args:
+            candidate = Path(args[0]).expanduser()
+
+            if candidate.exists():
+                self.load_file(candidate)
+
+    def select_file(self, button):
+        chooser = Gtk.FileChooserNative(
+            title=_("Select application or package"),
+            transient_for=self.window,
+            action=Gtk.FileChooserAction.OPEN,
+            accept_label=_("Select"),
+            cancel_label=_("Cancel"),
+        )
+
+        chooser.connect(
+            "response",
+            self.file_selected,
+        )
+
+        chooser.show()
+
+    def file_selected(self, chooser, response):
+        if response != Gtk.ResponseType.ACCEPT:
+            return
+
+        selected = chooser.get_file()
+
+        if not selected:
+            return
+
+        path = selected.get_path()
+
+        if path:
+            self.load_file(Path(path))
+
+    def command_output(self, cmd):
+        result = subprocess.run(
+            cmd,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        if result.returncode != 0:
+            return ""
+
+        return result.stdout.strip()
+
+    def detect_type(self, path):
+        name = path.name.lower()
+
+        if name.endswith(".deb"):
+            return "deb"
+
+        if name.endswith(".appimage"):
+            return "appimage"
+
+        if name.endswith(".flatpakref"):
+            return "flatpakref"
+
+        if name.endswith(".flatpak"):
+            return "flatpak"
+
+        if name.endswith(".run"):
+            return "run"
+
+        if name.endswith(".sh"):
+            return "script"
+
+        if name.endswith(".exe"):
+            return "windows-exe"
+
+        if name.endswith(".msi"):
+            return "windows-msi"
+
+        description = self.command_output(
+            ["file", "-b", str(path)]
+        ).lower()
+
+        if "appimage" in description:
+            return "appimage"
+
+        if (
+            "pe32 executable" in description
+            or "pe32+ executable" in description
+            or "ms-dos executable" in description
+        ):
+            return "windows-exe"
+
+        if (
+            "msi installer" in description
+            or "windows installer" in description
+        ):
+            return "windows-msi"
+
+        if (
+            "elf " in description
+            and "executable" in description
+        ):
+            return "executable"
+
+        if (
+            "shell script" in description
+            or "bash script" in description
+        ):
+            return "script"
+
+        return "unknown"
+
+    def load_file(self, source):
+        try:
+            path = source.expanduser().resolve()
+        except Exception as exc:
+            self.status.set_text(str(exc))
+            return
+
+        if not path.is_file():
+            self.status.set_text(
+                _("File not found.")
+            )
+
+            self.install_button.set_sensitive(False)
+            return
+
+        file_type = self.detect_type(path)
+
+        self.file_path = path
+        self.file_type = file_type
+
+        if file_type == "deb":
+            self.load_deb(path)
+            return
+
+        labels = {
+            "appimage": (
+                "AppImage",
+                _("Run application"),
+            ),
+            "run": (
+                _("RUN installer"),
+                _("Run installer"),
+            ),
+            "script": (
+                _("Installation script"),
+                _("Run script"),
+            ),
+            "executable": (
+                _("Linux executable"),
+                _("Run installer"),
+            ),
+            "flatpak": (
+                _("Flatpak package"),
+                _("Install"),
+            ),
+            "flatpakref": (
+                _("Flatpak reference"),
+                _("Install"),
+            ),
+        }
+
+        if file_type in ("windows-exe", "windows-msi"):
+            kind = (
+                _("Windows application (.exe)")
+                if file_type == "windows-exe"
+                else _("Windows installer (.msi)")
+            )
+
+            self.package_label.set_markup(
+                f"<b>{GLib.markup_escape_text(path.name)}</b>\n"
+                + _("Type: {type}").format(
+                    type=GLib.markup_escape_text(kind)
+                )
+            )
+
+            self.status.set_text(
+                _(
+                    "This application was created for Windows and cannot be "
+                    "installed natively on StackOS. Use Wine/Bottles or look "
+                    "for a Linux version."
+                )
+            )
+
+            self.install_button.set_label(_("Incompatible"))
+            self.install_button.set_sensitive(False)
+            return
+
+        if file_type not in labels:
+            self.package_label.set_markup(
+                f"<b>{GLib.markup_escape_text(path.name)}</b>"
+            )
+
+            self.status.set_text(
+                _("Format not recognized as a supported Linux installer.")
+            )
+
+            self.install_button.set_sensitive(False)
+            return
+
+        kind, action = labels[file_type]
+
+        self.package_label.set_markup(
+            f"<b>{GLib.markup_escape_text(path.name)}</b>\n"
+            + _("Type: {type}").format(
+                type=GLib.markup_escape_text(kind)
+            )
+        )
+
+        if file_type in ("flatpak", "flatpakref"):
+            if not GLib.find_program_in_path("flatpak"):
+                self.status.set_text(
+                    _("Flatpak is not installed on this system.")
+                )
+
+                self.install_button.set_sensitive(False)
+                return
+
+        self.status.set_text(
+            _("File recognized and ready.")
+        )
+
+        self.install_button.set_label(action)
+        self.install_button.set_sensitive(True)
+
+    def deb_field(self, path, field):
+        return self.command_output(
+            [
+                "dpkg-deb",
+                "-f",
+                str(path),
+                field,
+            ]
+        )
+
+    def load_deb(self, path):
+        package = self.deb_field(
+            path,
+            "Package",
+        )
+
+        version = self.deb_field(
+            path,
+            "Version",
+        )
+
+        arch = self.deb_field(
+            path,
+            "Architecture",
+        )
+
+        if not package:
+            self.status.set_text(
+                _("Invalid DEB package.")
+            )
+
+            self.install_button.set_sensitive(False)
+            return
+
+        self.package_label.set_markup(
+            f"<b>{GLib.markup_escape_text(package)}</b>\n"
+            + _("Version: {version}").format(
+                version=GLib.markup_escape_text(
+                    version or _("unknown")
+                )
+            )
+            + "\n"
+            + _("Architecture: {architecture}").format(
+                architecture=GLib.markup_escape_text(
+                    arch or _("unknown")
+                )
+            )
+        )
+
+        self.status.set_text(
+            _("DEB package ready to install.")
+        )
+
+        self.install_button.set_label(
+            _("Install")
+        )
+
+        self.install_button.set_sensitive(True)
+
+    def install_selected(self, button):
+        if not self.file_path:
+            return
+
+        if self.file_type == "deb":
+            self.install_deb()
+            return
+
+        if self.file_type in (
+            "appimage",
+            "run",
+            "script",
+            "executable",
+        ):
+            self.run_user_installer()
+            return
+
+        if self.file_type in (
+            "flatpak",
+            "flatpakref",
+        ):
+            self.install_flatpak()
+            return
+
+    def install_deb(self):
+        self.start_busy(
+            _("Installing package and resolving dependencies...")
+        )
+
+        threading.Thread(
+            target=self.deb_worker,
+            daemon=True,
+        ).start()
+
+    def deb_worker(self):
+        cmd = [
+            "pkexec",
+            "/usr/lib/stackos/"
+            "stackos-package-installer-helper",
+            "install",
+            str(self.file_path),
+        ]
+
+        try:
+            result = subprocess.run(
+                cmd,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+
+            output = result.stdout.strip()
+
+            GLib.idle_add(
+                self.finish_deb,
+                result.returncode == 0,
+                output,
+            )
+
+        except Exception as exc:
+            GLib.idle_add(
+                self.finish_deb,
+                False,
+                str(exc),
+            )
+
+    def finish_deb(self, success, output):
+        self.stop_busy()
+
+        if success:
+            self.status.set_text(
+                _("Package installed successfully.")
+            )
+
+            self.install_button.set_label(
+                _("Installed")
+            )
+
+            self.install_button.set_sensitive(False)
+
+        else:
+            self.status.set_text(
+                output
+                or
+                _("Installation cancelled or not authorized.")
+            )
+
+            self.install_button.set_sensitive(True)
+
+        return False
+
+    def run_user_installer(self):
+        path = self.file_path
+
+        try:
+            mode = path.stat().st_mode
+            path.chmod(mode | 0o100)
+
+            if self.file_type == "script":
+                cmd = [
+                    "/usr/bin/bash",
+                    str(path),
+                ]
+            else:
+                cmd = [
+                    str(path),
+                ]
+
+            subprocess.Popen(
+                cmd,
+                cwd=str(path.parent),
+            )
+
+            self.status.set_text(
+                _("Installer started.")
+            )
+
+        except Exception as exc:
+            self.status.set_text(
+                _("Failed to start: {error}").format(error=exc)
+            )
+
+    def install_flatpak(self):
+        self.start_busy(
+            _("Installing Flatpak application...")
+        )
+
+        threading.Thread(
+            target=self.flatpak_worker,
+            daemon=True,
+        ).start()
+
+    def flatpak_worker(self):
+        cmd = [
+            "flatpak",
+            "install",
+            "--user",
+            "-y",
+            str(self.file_path),
+        ]
+
+        try:
+            result = subprocess.run(
+                cmd,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+            )
+
+            GLib.idle_add(
+                self.finish_flatpak,
+                result.returncode == 0,
+                result.stdout.strip(),
+            )
+
+        except Exception as exc:
+            GLib.idle_add(
+                self.finish_flatpak,
+                False,
+                str(exc),
+            )
+
+    def finish_flatpak(self, success, output):
+        self.stop_busy()
+
+        if success:
+            self.status.set_text(
+                _("Flatpak application installed successfully.")
+            )
+
+            self.install_button.set_sensitive(False)
+
+        else:
+            self.status.set_text(
+                output or _("Flatpak installation failed.")
+            )
+
+            self.install_button.set_sensitive(True)
+
+        return False
+
+    def start_busy(self, text):
+        self.spinner.start()
+        self.status.set_text(text)
+        self.install_button.set_sensitive(False)
+
+    def stop_busy(self):
+        self.spinner.stop()
+
+

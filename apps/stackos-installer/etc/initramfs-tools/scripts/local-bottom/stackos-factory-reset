@@ -1,0 +1,648 @@
+#!/bin/sh
+
+PREREQ=""
+
+prereqs()
+{
+    echo "$PREREQ"
+}
+
+case "$1" in
+    prereqs)
+        prereqs
+        exit 0
+        ;;
+esac
+
+
+REQUEST="/root/var/lib/stackos/recovery/factory-reset-requested"
+
+RMOUNT="/run/stackos-recovery"
+BMOUNT="/run/stackos-backups"
+IMOUNT="/run/stackos-restore-image"
+
+
+cmdline_value()
+{
+    key="$1"
+
+    for token in $(cat /proc/cmdline); do
+        case "$token" in
+            "$key"=*)
+                printf '%s\n' "${token#*=}"
+                return 0
+                ;;
+        esac
+    done
+
+    return 1
+}
+
+
+FACTORY=0
+GUI_REQUEST=0
+SNAPSHOT=""
+
+if [ -f "$REQUEST" ]; then
+    GUI_REQUEST=1
+    FACTORY=1
+fi
+
+FACTORY_CMD="$(
+    cmdline_value stackos.factory-reset 2>/dev/null ||
+    true
+)"
+
+if [ -n "$FACTORY_CMD" ]; then
+
+    CONFIRM="$(
+        cmdline_value stackos.confirm 2>/dev/null ||
+        true
+    )"
+
+    if [ "$CONFIRM" != "yes" ]; then
+        echo "StackOS Recovery: Factory Reset not confirmed"
+        exit 1
+    fi
+
+    FACTORY=1
+fi
+
+SNAPSHOT="$(
+    cmdline_value stackos.snapshot 2>/dev/null ||
+    true
+)"
+
+if [ "$FACTORY" -eq 0 ] && \
+   [ -z "$SNAPSHOT" ]; then
+    exit 0
+fi
+
+
+ROOT_SPEC="$(
+    cmdline_value root 2>/dev/null ||
+    true
+)"
+
+ROOT_UUID=""
+
+case "$ROOT_SPEC" in
+    UUID=*)
+        ROOT_UUID="${ROOT_SPEC#UUID=}"
+        ;;
+esac
+
+ROOT_PARTUUID="$(
+    cmdline_value stackos.root-partuuid 2>/dev/null ||
+    true
+)"
+
+
+ROOT_DEV=""
+
+if [ -n "$ROOT_UUID" ]; then
+    ROOT_DEV="$(
+        findfs UUID="$ROOT_UUID" 2>/dev/null ||
+        true
+    )"
+fi
+
+# Se o filesystem estiver danificado, usa PARTUUID.
+if [ -z "$ROOT_DEV" ] && \
+   [ -n "$ROOT_PARTUUID" ]; then
+
+    ROOT_DEV="$(
+        blkid \
+            -t PARTUUID="$ROOT_PARTUUID" \
+            -o device \
+            2>/dev/null |
+        head -n1
+    )"
+fi
+
+
+RECOVERY_DEV="$(
+    findfs LABEL=STACKOS_RECOVERY 2>/dev/null ||
+    true
+)"
+
+BACKUPS_DEV="$(
+    findfs LABEL=STACKOS_BACKUPS 2>/dev/null ||
+    true
+)"
+
+
+if [ -z "$ROOT_DEV" ] || \
+   [ -z "$RECOVERY_DEV" ]; then
+
+    echo "StackOS Recovery: root/recovery device not found"
+    exit 1
+fi
+
+if [ "$ROOT_DEV" = "$RECOVERY_DEV" ]; then
+    echo "StackOS Recovery: invalid root device"
+    exit 1
+fi
+
+
+# Se UUID não pôde ser lido por corrupção,
+# usa o UUID gravado na linha root= do GRUB.
+if [ -z "$ROOT_UUID" ]; then
+    echo "StackOS Recovery: root UUID unavailable"
+    exit 1
+fi
+
+
+mkdir -p "$RMOUNT" "$BMOUNT" "$IMOUNT"
+
+
+# ------------------------------------------------------------
+# STACKOS RECOVERY AUTHENTICATION
+#
+# Acesso direto pelo GRUB exige a mesma senha administrativa.
+# Solicitações feitas pela interface gráfica já passaram pelo
+# pkexec/Polkit e não pedem a senha novamente.
+# ------------------------------------------------------------
+
+if [ "$GUI_REQUEST" -eq 0 ]; then
+
+    if [ -z "$BACKUPS_DEV" ]; then
+        echo "StackOS Recovery: authentication unavailable"
+        exit 1
+    fi
+
+    if ! mount -o ro,nosuid,nodev,noexec \
+        "$BACKUPS_DEV" \
+        "$BMOUNT"; then
+
+        echo "StackOS Recovery: cannot access authentication"
+        exit 1
+    fi
+
+    AUTH_FILE="$BMOUNT/recovery-auth/auth.conf"
+
+    if [ ! -f "$AUTH_FILE" ]; then
+        echo "StackOS Recovery: authentication not configured"
+        umount "$BMOUNT" 2>/dev/null || true
+        exit 1
+    fi
+
+    AUTH_VERSION=""
+    AUTH_USER=""
+    AUTH_ALGORITHM=""
+    AUTH_ITERATIONS=""
+    AUTH_SALT=""
+    AUTH_VERIFIER=""
+
+    while IFS='=' read -r key value; do
+        case "$key" in
+            version)
+                AUTH_VERSION="$value"
+                ;;
+            user)
+                AUTH_USER="$value"
+                ;;
+            algorithm)
+                AUTH_ALGORITHM="$value"
+                ;;
+            iterations)
+                AUTH_ITERATIONS="$value"
+                ;;
+            salt)
+                AUTH_SALT="$value"
+                ;;
+            verifier)
+                AUTH_VERIFIER="$value"
+                ;;
+        esac
+    done < "$AUTH_FILE"
+
+    AUTH_VALID=1
+
+    [ "$AUTH_VERSION" = "1" ] || AUTH_VALID=0
+    [ "$AUTH_ALGORITHM" = "pbkdf2-sha256" ] || AUTH_VALID=0
+    [ "$AUTH_ITERATIONS" = "600000" ] || AUTH_VALID=0
+    [ -n "$AUTH_USER" ] || AUTH_VALID=0
+    [ "${#AUTH_SALT}" -eq 16 ] || AUTH_VALID=0
+    [ "${#AUTH_VERIFIER}" -eq 64 ] || AUTH_VALID=0
+
+    case "$AUTH_SALT" in
+        *[!0-9A-Fa-f]*)
+            AUTH_VALID=0
+            ;;
+    esac
+
+    case "$AUTH_VERIFIER" in
+        *[!0-9A-Fa-f]*)
+            AUTH_VALID=0
+            ;;
+    esac
+
+    if [ "$AUTH_VALID" -ne 1 ]; then
+        echo "StackOS Recovery: invalid authentication data"
+        umount "$BMOUNT" 2>/dev/null || true
+        exit 1
+    fi
+
+    AUTH_OK=0
+    AUTH_TRY=1
+
+    while [ "$AUTH_TRY" -le 3 ]; do
+
+        printf '\nStackOS Recovery\n' > /dev/console
+        printf 'Senha de %s: ' "$AUTH_USER" > /dev/console
+
+        OLD_STTY="$(
+            /usr/bin/stty -g < /dev/console 2>/dev/null
+        )"
+
+        if [ -z "$OLD_STTY" ]; then
+            echo "StackOS Recovery: secure console unavailable"
+            umount "$BMOUNT" 2>/dev/null || true
+            exit 1
+        fi
+
+        if ! /usr/bin/stty -echo \
+            < /dev/console \
+            2>/dev/null; then
+
+            echo "StackOS Recovery: cannot hide password"
+            umount "$BMOUNT" 2>/dev/null || true
+            exit 1
+        fi
+
+        AUTH_PASSWORD=""
+
+        IFS= read -r AUTH_PASSWORD \
+            < /dev/console || true
+
+        /usr/bin/stty "$OLD_STTY" \
+            < /dev/console \
+            2>/dev/null || true
+
+        printf '\n' > /dev/console
+
+        AUTH_OUTPUT="$(
+            printf '%s\n' "$AUTH_PASSWORD" |
+            /usr/bin/openssl enc \
+                -aes-256-cbc \
+                -P \
+                -pbkdf2 \
+                -iter "$AUTH_ITERATIONS" \
+                -md sha256 \
+                -S "$AUTH_SALT" \
+                -pass stdin \
+                2>/dev/null
+        )"
+
+        AUTH_PASSWORD=""
+
+        AUTH_DERIVED="$(
+            printf '%s\n' "$AUTH_OUTPUT" |
+            while IFS='=' read -r k v; do
+                if [ "$k" = "key" ]; then
+                    printf '%s\n' "$v"
+                    break
+                fi
+            done
+        )"
+
+        AUTH_OUTPUT=""
+
+        # Normaliza para maiúsculas sem depender de bash.
+        AUTH_DERIVED="$(
+            printf '%s' "$AUTH_DERIVED" |
+            tr 'a-f' 'A-F'
+        )"
+
+        AUTH_EXPECTED="$(
+            printf '%s' "$AUTH_VERIFIER" |
+            tr 'a-f' 'A-F'
+        )"
+
+        if [ -n "$AUTH_DERIVED" ] && \
+           [ "$AUTH_DERIVED" = "$AUTH_EXPECTED" ]; then
+
+            AUTH_OK=1
+            AUTH_DERIVED=""
+            AUTH_EXPECTED=""
+            break
+        fi
+
+        AUTH_DERIVED=""
+        AUTH_EXPECTED=""
+
+        echo "Senha incorreta." > /dev/console
+
+        AUTH_TRY=$((AUTH_TRY + 1))
+    done
+
+    if [ "$AUTH_OK" -ne 1 ]; then
+        echo "StackOS Recovery: authentication failed"
+        umount "$BMOUNT" 2>/dev/null || true
+        exit 1
+    fi
+
+    echo "Autenticação confirmada." > /dev/console
+
+    if ! umount "$BMOUNT"; then
+        echo "StackOS Recovery: cannot release authentication partition"
+        exit 1
+    fi
+
+fi
+
+
+if ! mount -o ro "$RECOVERY_DEV" "$RMOUNT"; then
+    echo "StackOS Recovery: cannot mount Recovery"
+    exit 1
+fi
+
+
+MODE=""
+
+if [ "$FACTORY" -eq 1 ]; then
+
+    MODE="factory"
+
+    IMAGE="$RMOUNT/factory/factory.squashfs"
+    HASH="$RMOUNT/factory/factory.sha256"
+
+else
+
+    MODE="snapshot"
+
+    case "$SNAPSHOT" in
+        snapshot-*.squashfs)
+            ;;
+        *)
+            echo "StackOS Recovery: invalid backup name"
+            umount "$RMOUNT" 2>/dev/null || true
+            exit 1
+            ;;
+    esac
+
+    if [ -z "$BACKUPS_DEV" ]; then
+        echo "StackOS Recovery: backup partition not found"
+        umount "$RMOUNT" 2>/dev/null || true
+        exit 1
+    fi
+
+    if ! mount -o ro "$BACKUPS_DEV" "$BMOUNT"; then
+        echo "StackOS Recovery: cannot mount backups"
+        umount "$RMOUNT" 2>/dev/null || true
+        exit 1
+    fi
+
+    IMAGE="$BMOUNT/snapshots/$SNAPSHOT"
+    HASH="$IMAGE.sha256"
+fi
+
+
+if [ ! -f "$IMAGE" ] || \
+   [ ! -f "$HASH" ]; then
+
+    echo "StackOS Recovery: restore image missing"
+
+    umount "$BMOUNT" 2>/dev/null || true
+    umount "$RMOUNT" 2>/dev/null || true
+
+    exit 1
+fi
+
+
+HASH_DIR="$(dirname "$HASH")"
+HASH_FILE="$(basename "$HASH")"
+
+if ! (
+    cd "$HASH_DIR" &&
+    sha256sum -c "$HASH_FILE"
+); then
+
+    echo "StackOS Recovery: SHA256 validation failed"
+
+    umount "$BMOUNT" 2>/dev/null || true
+    umount "$RMOUNT" 2>/dev/null || true
+
+    exit 1
+fi
+
+
+if ! mount \
+    -t squashfs \
+    -o loop,ro \
+    "$IMAGE" \
+    "$IMOUNT"; then
+
+    echo "StackOS Recovery: cannot mount restore image"
+
+    umount "$BMOUNT" 2>/dev/null || true
+    umount "$RMOUNT" 2>/dev/null || true
+
+    exit 1
+fi
+
+
+if [ ! -d "$IMOUNT/etc" ] || \
+   [ ! -d "$IMOUNT/usr" ] || \
+   [ ! -d "$IMOUNT/boot" ]; then
+
+    echo "StackOS Recovery: invalid restore image"
+
+    umount "$IMOUNT" 2>/dev/null || true
+    umount "$BMOUNT" 2>/dev/null || true
+    umount "$RMOUNT" 2>/dev/null || true
+
+    exit 1
+fi
+
+
+# ------------------------------------------------------------
+# MARCA TRANSAÇÃO NA P3 ANTES DE FORMATAR ROOT
+# ------------------------------------------------------------
+
+mount -o remount,rw \
+    "$RECOVERY_DEV" \
+    "$RMOUNT" || exit 1
+
+cat > "$RMOUNT/restore-in-progress.tmp" <<EOF
+mode=$MODE
+root_uuid=$ROOT_UUID
+root_partuuid=$ROOT_PARTUUID
+EOF
+
+sync
+
+mv \
+    "$RMOUNT/restore-in-progress.tmp" \
+    "$RMOUNT/restore-in-progress"
+
+sync
+
+mount -o remount,ro \
+    "$RECOVERY_DEV" \
+    "$RMOUNT" || true
+
+
+# ------------------------------------------------------------
+# FACTORY RESET:
+# APAGA TODOS OS BACKUPS ANTES DE ALTERAR A ROOT
+# ------------------------------------------------------------
+
+if [ "$MODE" = "factory" ]; then
+
+    if [ -z "$BACKUPS_DEV" ]; then
+        echo "StackOS Recovery: backup partition not found"
+        exit 1
+    fi
+
+    if [ "$BACKUPS_DEV" = "$ROOT_DEV" ] || \
+       [ "$BACKUPS_DEV" = "$RECOVERY_DEV" ]; then
+
+        echo "StackOS Recovery: invalid backup device"
+        exit 1
+    fi
+
+    umount "$BMOUNT" 2>/dev/null || true
+
+    if ! mkfs.ext4 \
+        -F \
+        -L STACKOS_BACKUPS \
+        "$BACKUPS_DEV"; then
+
+        echo "StackOS Recovery: cannot clear backups"
+        exit 1
+    fi
+
+    # Remove imediatamente do GRUB qualquer backup antigo.
+    if ! mount -o remount,rw \
+        "$RECOVERY_DEV" \
+        "$RMOUNT"; then
+
+        echo "StackOS Recovery: cannot update recovery GRUB"
+        exit 1
+    fi
+
+    if [ ! -f "$RMOUNT/boot/grub/grub-base.cfg" ]; then
+        echo "StackOS Recovery: base GRUB configuration missing"
+        exit 1
+    fi
+
+    cp \
+        "$RMOUNT/boot/grub/grub-base.cfg" \
+        "$RMOUNT/boot/grub/grub.cfg"
+
+    sync
+
+    mount -o remount,ro \
+        "$RECOVERY_DEV" \
+        "$RMOUNT" || true
+
+fi
+
+
+# ------------------------------------------------------------
+# FORMATA ROOT PRESERVANDO UUID
+# ------------------------------------------------------------
+
+cd /
+
+if ! umount /root; then
+    echo "StackOS Recovery: cannot unmount root"
+    exit 1
+fi
+
+if ! mkfs.ext4 \
+    -F \
+    -U "$ROOT_UUID" \
+    "$ROOT_DEV"; then
+
+    echo "StackOS Recovery: root format failed"
+    exit 1
+fi
+
+if ! mount "$ROOT_DEV" /root; then
+    echo "StackOS Recovery: cannot remount root"
+    exit 1
+fi
+
+
+# ------------------------------------------------------------
+# RESTAURA
+# ------------------------------------------------------------
+
+if ! rsync \
+    -aHAX \
+    --numeric-ids \
+    "$IMOUNT/" \
+    /root/; then
+
+    echo "StackOS Recovery: restore failed"
+    exit 1
+fi
+
+sync
+
+
+if [ ! -d /root/etc ] || \
+   [ ! -d /root/usr ] || \
+   [ ! -f /root/boot/vmlinuz ] || \
+   [ ! -f /root/boot/initrd.img ]; then
+
+    echo "StackOS Recovery: restored system invalid"
+    exit 1
+fi
+
+
+RESTORED_UUID="$(
+    blkid -s UUID -o value "$ROOT_DEV" 2>/dev/null ||
+    true
+)"
+
+if [ "$RESTORED_UUID" != "$ROOT_UUID" ]; then
+    echo "StackOS Recovery: root UUID changed"
+    exit 1
+fi
+
+
+# Imagem já foi copiada para a root.
+umount "$IMOUNT" 2>/dev/null || true
+
+
+# A P4 já foi apagada no início do Factory Reset.
+# Snapshot restore mantém a P4 intacta.
+if [ "$MODE" != "factory" ]; then
+    umount "$BMOUNT" 2>/dev/null || true
+fi
+
+
+# ------------------------------------------------------------
+# FINALIZA TRANSAÇÃO
+# ------------------------------------------------------------
+
+mount -o remount,rw \
+    "$RECOVERY_DEV" \
+    "$RMOUNT" || exit 1
+
+rm -f "$RMOUNT/restore-in-progress"
+
+cat > "$RMOUNT/last-restore" <<EOF
+mode=$MODE
+status=success
+EOF
+
+sync
+
+mount -o remount,ro \
+    "$RECOVERY_DEV" \
+    "$RMOUNT" || true
+
+umount "$RMOUNT" 2>/dev/null || true
+
+rmdir "$IMOUNT" 2>/dev/null || true
+rmdir "$BMOUNT" 2>/dev/null || true
+rmdir "$RMOUNT" 2>/dev/null || true
+
+echo "StackOS Recovery: restore completed"
+
+exit 0

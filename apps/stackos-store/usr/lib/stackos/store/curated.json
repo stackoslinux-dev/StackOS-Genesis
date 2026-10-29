@@ -1,0 +1,424 @@
+{
+  "Internet": [
+    [
+      "firefox",
+      "Navegador Web",
+      "Navegador rapido e seguro",
+      "firefox",
+      "https://www.mozilla.org"
+    ],
+    [
+      "geary",
+      "Geary",
+      "Cliente de email simples",
+      "geary",
+      "https://wiki.gnome.org/Apps/Geary"
+    ],
+    [
+      "chromium-browser",
+      "Chromium",
+      "Navegador baseado no Chrome",
+      "chromium-browser",
+      "https://www.chromium.org"
+    ],
+    [
+      "transmission-gtk",
+      "Transmission",
+      "Cliente BitTorrent",
+      "transmission",
+      "https://transmissionbt.com"
+    ],
+    [
+      "filezilla",
+      "FileZilla",
+      "Cliente FTP/SFTP",
+      "filezilla",
+      "https://filezilla-project.org"
+    ],
+    [
+      "qbittorrent",
+      "qBittorrent",
+      "BitTorrent avancado sem anuncios",
+      "qbittorrent",
+      "https://www.qbittorrent.org"
+    ],
+    [
+      "wget",
+      "Wget",
+      "Downloader via terminal",
+      "utilities-terminal",
+      "https://www.gnu.org/software/wget"
+    ],
+    [
+      "remmina",
+      "Remmina",
+      "Acesso remoto RDP/VNC/SSH",
+      "remmina",
+      "https://remmina.org"
+    ]
+  ],
+  "Desenvolvimento": [
+    [
+      "code",
+      "VS Code",
+      "Editor de codigo profissional",
+      "com.visualstudio.code",
+      "https://code.visualstudio.com"
+    ],
+    [
+      "vim",
+      "Vim",
+      "Editor de texto avancado",
+      "utilities-terminal",
+      "https://www.vim.org"
+    ],
+    [
+      "git",
+      "Git",
+      "Controle de versao",
+      "utilities-terminal",
+      "https://git-scm.com"
+    ],
+    [
+      "python3",
+      "Python 3",
+      "Linguagem de programacao",
+      "utilities-terminal",
+      "https://www.python.org"
+    ],
+    [
+      "nodejs",
+      "Node.js",
+      "Runtime JavaScript",
+      "utilities-terminal",
+      "https://nodejs.org"
+    ],
+    [
+      "docker.io",
+      "Docker",
+      "Containers Linux",
+      "utilities-terminal",
+      "https://www.docker.com"
+    ],
+    [
+      "build-essential",
+      "Build Tools",
+      "Ferramentas de compilacao",
+      "utilities-terminal",
+      "https://packages.ubuntu.com"
+    ],
+    [
+      "sqlite3",
+      "SQLite 3",
+      "Banco de dados leve",
+      "utilities-terminal",
+      "https://www.sqlite.org"
+    ],
+    [
+      "meld",
+      "Meld",
+      "Comparador visual de arquivos",
+      "org.gnome.meld",
+      "https://meldmerge.org"
+    ]
+  ],
+  "Multimidia": [
+    [
+      "vlc",
+      "VLC",
+      "Reprodutor de midia universal",
+      "vlc",
+      "https://www.videolan.org/vlc"
+    ],
+    [
+      "gimp",
+      "GIMP",
+      "Editor de imagens profissional",
+      "gimp",
+      "https://www.gimp.org"
+    ],
+    [
+      "inkscape",
+      "Inkscape",
+      "Editor vetorial SVG",
+      "inkscape",
+      "https://inkscape.org"
+    ],
+    [
+      "audacity",
+      "Audacity",
+      "Editor de audio profissional",
+      "audacity",
+      "https://www.audacityteam.org"
+    ],
+    [
+      "kdenlive",
+      "Kdenlive",
+      "Editor de video nao-linear",
+      "kdenlive",
+      "https://kdenlive.org"
+    ],
+    [
+      "obs-studio",
+      "OBS Studio",
+      "Gravacao e streaming ao vivo",
+      "com.obsproject.Studio",
+      "https://obsproject.com"
+    ],
+    [
+      "handbrake",
+      "HandBrake",
+      "Conversor de video",
+      "fr.handbrake.ghb",
+      "https://handbrake.fr"
+    ],
+    [
+      "rhythmbox",
+      "Rhythmbox",
+      "Player de musica do GNOME",
+      "org.gnome.Rhythmbox",
+      "https://wiki.gnome.org/Apps/Rhythmbox"
+    ],
+    [
+      "krita",
+      "Krita",
+      "Pintura digital e concept art",
+      "krita",
+      "https://krita.org"
+    ]
+  ],
+  "Office": [
+    [
+      "libreoffice",
+      "LibreOffice",
+      "Suite de escritorio completa",
+      "libreoffice-startcenter",
+      "https://www.libreoffice.org"
+    ],
+    [
+      "libreoffice-writer",
+      "Writer",
+      "Processador de texto",
+      "libreoffice-writer",
+      "https://www.libreoffice.org"
+    ],
+    [
+      "libreoffice-calc",
+      "Calc",
+      "Planilhas eletronicas",
+      "libreoffice-calc",
+      "https://www.libreoffice.org"
+    ],
+    [
+      "evince",
+      "Evince",
+      "Leitor de PDF",
+      "evince",
+      "https://wiki.gnome.org/Apps/Evince"
+    ],
+    [
+      "gedit",
+      "Gedit",
+      "Editor de texto simples",
+      "gedit",
+      "https://wiki.gnome.org/Apps/Gedit"
+    ],
+    [
+      "gnome-calendar",
+      "Calendario",
+      "Calendario do GNOME",
+      "gnome-calendar",
+      "https://wiki.gnome.org/Apps/Calendar"
+    ],
+    [
+      "gnucash",
+      "GnuCash",
+      "Financas pessoais",
+      "gnucash",
+      "https://www.gnucash.org"
+    ]
+  ],
+  "Sistema": [
+    [
+      "gparted",
+      "GParted",
+      "Gerenciador de particoes",
+      "gparted",
+      "https://gparted.org"
+    ],
+    [
+      "htop",
+      "Htop",
+      "Monitor de processos",
+      "utilities-system-monitor",
+      "https://htop.dev"
+    ],
+    [
+      "timeshift",
+      "Timeshift",
+      "Backup do sistema",
+      "timeshift",
+      "https://github.com/teejee2008/timeshift"
+    ],
+    [
+      "bleachbit",
+      "BleachBit",
+      "Limpeza do sistema",
+      "bleachbit",
+      "https://www.bleachbit.org"
+    ],
+    [
+      "stacer",
+      "Stacer",
+      "Otimizador do sistema",
+      "stacer",
+      "https://github.com/oguzhaninan/Stacer"
+    ],
+    [
+      "neofetch",
+      "Neofetch",
+      "Info do sistema no terminal",
+      "utilities-terminal",
+      "https://github.com/dylanaraps/neofetch"
+    ],
+    [
+      "baobab",
+      "Analisador",
+      "Uso de disco por pasta",
+      "baobab",
+      "https://wiki.gnome.org/Apps/DiskUsageAnalyzer"
+    ],
+    [
+      "gnome-tweaks",
+      "GNOME Tweaks",
+      "Ajustes avancados do GNOME",
+      "org.gnome.tweaks",
+      "https://wiki.gnome.org/Apps/Tweaks"
+    ]
+  ],
+  "Jogos": [
+    [
+      "steam",
+      "Steam",
+      "Plataforma de jogos da Valve",
+      "steam",
+      "https://store.steampowered.com"
+    ],
+    [
+      "lutris",
+      "Lutris",
+      "Gerenciador universal de jogos",
+      "net.lutris.Lutris",
+      "https://lutris.net"
+    ],
+    [
+      "wine",
+      "Wine",
+      "Compatibilidade Windows",
+      "wine",
+      "https://www.winehq.org"
+    ],
+    [
+      "gamemode",
+      "GameMode",
+      "Otimizador para jogos",
+      "applications-games",
+      "https://github.com/FeralInteractive/gamemode"
+    ],
+    [
+      "heroic",
+      "Heroic",
+      "Cliente Epic Games e GOG",
+      "application-x-executable",
+      "https://heroicgameslauncher.com"
+    ],
+    [
+      "supertuxkart",
+      "SuperTuxKart",
+      "Kart open-source divertido",
+      "supertuxkart",
+      "https://supertuxkart.net"
+    ],
+    [
+      "0ad",
+      "0 A.D.",
+      "Estrategia historica RTS",
+      "0ad",
+      "https://play0ad.com"
+    ],
+    [
+      "openarena",
+      "OpenArena",
+      "Shooter multiplayer",
+      "openarena",
+      "https://openarena.ws"
+    ]
+  ],
+  "Jogos Nativos": [
+    [
+      "supertuxkart",
+      "SuperTuxKart",
+      "Kart open-source divertido",
+      "supertuxkart",
+      "https://supertuxkart.net"
+    ],
+    [
+      "0ad",
+      "0 A.D.",
+      "Estrategia historica RTS",
+      "0ad",
+      "https://play0ad.com"
+    ],
+    [
+      "openarena",
+      "OpenArena",
+      "Shooter multiplayer",
+      "openarena",
+      "https://openarena.ws"
+    ],
+    [
+      "wesnoth",
+      "Wesnoth",
+      "Estrategia em turno fantasy",
+      "wesnoth",
+      "https://www.wesnoth.org"
+    ],
+    [
+      "xonotic",
+      "Xonotic",
+      "FPS rapido open-source",
+      "xonotic",
+      "https://xonotic.org"
+    ],
+    [
+      "minetest",
+      "Minetest",
+      "Sandbox estilo Minecraft",
+      "minetest",
+      "https://www.minetest.net"
+    ]
+  ],
+  "Seguranca": [
+    [
+      "keepassxc",
+      "KeePassXC",
+      "Gerenciador de senhas",
+      "keepassxc",
+      "https://keepassxc.org"
+    ],
+    [
+      "fail2ban",
+      "Fail2ban",
+      "Bloqueio de ataques bruta",
+      "security-high",
+      "https://www.fail2ban.org"
+    ],
+    [
+      "gnupg",
+      "GnuPG",
+      "Criptografia PGP",
+      "security-medium",
+      "https://gnupg.org"
+    ]
+  ]
+}

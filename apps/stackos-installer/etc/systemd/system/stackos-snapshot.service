@@ -1,0 +1,13 @@
+[Unit]
+Description=StackOS rotating system snapshot
+After=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/bin/true
+RemainAfterExit=yes
+ExecStop=/usr/lib/stackos/stackos-snapshot-on-shutdown
+TimeoutStopSec=30min
+
+[Install]
+WantedBy=multi-user.target

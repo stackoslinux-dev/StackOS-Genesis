@@ -1,0 +1,6 @@
+Package: stackos-display-support
+Version: 10.9.3
+Architecture: all
+Maintainer: StackOS
+Depends: stackos-c3-runtime (>= 10.7), stackos-language-pack
+Description: Adaptive window sizing for StackOS applications

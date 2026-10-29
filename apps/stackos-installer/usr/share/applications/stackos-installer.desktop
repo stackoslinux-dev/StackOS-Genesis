@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Instalador StackOS
+Name[en]=StackOS Installer
+Comment=Instalar o StackOS Genesis
+Exec=/usr/local/bin/stackos-installer-launcher
+Icon=/usr/share/stackos-installer/stackos-symbol.png
+Terminal=false
+Categories=System;
+StartupNotify=true

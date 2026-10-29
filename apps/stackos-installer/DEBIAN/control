@@ -1,0 +1,8 @@
+Package: stackos-installer
+Version: 2.3+c3.4
+Architecture: amd64
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime (>= 10.8.2), stackos-archive-keyring, stackos-install-tools, stackos-disk-utility, stackos-language-pack, stackos-display-support (>= 10.9.1)
+Section: admin
+Priority: optional
+Description: StackOS Genesis official installer with recovery and first boot

@@ -1,0 +1,11 @@
+Package: stackos-usb-writer
+Version: 0.3.0+stackos1+c3.2+fix10.8
+Section: utils
+Priority: optional
+Architecture: all
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime (>= 10.7), stackos-display-support (>= 10.8)
+Homepage: https://github.com/stackoslinux-dev
+Description: Gravador USB StackOS com interface moderna e verificacao
+ Suporta imagens brutas e comprimidas, checksum, comparacao apos gravar,
+ formatacao, cancelamento e revalidacao do dispositivo por worker Polkit.

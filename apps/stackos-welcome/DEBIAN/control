@@ -1,0 +1,12 @@
+Package: stackos-welcome
+Version: 2.0.0+stackos1+c3.2+fix10.8
+Section: x11
+Priority: optional
+Architecture: all
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime (>= 10.7), stackos-display-support (>= 10.8)
+Homepage: https://github.com/stackoslinux-dev
+Recommends: stackos-store, stackos-drivers, stackos-updater, stackos-bugreport
+Description: Boas-vindas e guia interativo do StackOS Genesis
+ Interface moderna com imagens reais, atalhos, sete etapas de guia e
+ controle de inicio automatico por usuario atraves do padrao XDG Autostart.

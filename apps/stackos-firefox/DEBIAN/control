@@ -1,0 +1,6 @@
+Package: stackos-firefox
+Version: 140.17.0esr+stackos1
+Architecture: amd64
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime, stackos-language-pack, stackos-install-tools
+Description: Mozilla Firefox ESR with offline language packs and Google homepage

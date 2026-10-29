@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Bem-vindo ao StackOS
+Comment=Guia do StackOS no início da sessão
+Exec=/usr/local/bin/stackos-welcome --autostart
+Icon=org.stackos.Welcome
+Terminal=false
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3

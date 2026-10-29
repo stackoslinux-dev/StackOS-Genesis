@@ -1,0 +1,20 @@
+#panel.stackos-light { background-color:rgba(246,248,253,0.94); color:#17223b; }
+#panel.stackos-light .panel-button { color:#17223b; }
+#panel.stackos-light .panel-button:hover { background-color:rgba(65,105,220,0.12); }
+.stackos-light .popup-menu-content, .stackos-light .quick-settings { background-color:#f5f7fc; color:#17223b; border-color:#d1daed; }
+.stackos-light .popup-menu-item { color:#17223b; }
+.stackos-light .popup-menu-item:active { background-color:#4264ef; color:white; }
+.stackos-light .quick-toggle { background-color:#e2e8f4; color:#17223b; }
+.stackos-light .quick-toggle:checked { background-color:#4264ef; color:white; }
+
+/* StackOS application overview: native GNOME actors, original navigation. */
+#overview { background-color:rgba(3,10,28,0.78); }
+.search-entry { border-radius:24px; border:1px solid #218dff; background-color:rgba(10,28,67,0.96); color:#e7efff; selection-background-color:#5637ef; }
+.search-entry:focus { border-color:#56c6ff; box-shadow:0 0 10px rgba(20,120,255,0.35); }
+.app-grid .overview-icon { border-radius:18px; border:1px solid rgba(89,122,203,0.24); background-color:rgba(14,26,55,0.65); }
+.app-grid .overview-icon:hover { background-color:rgba(33,65,124,0.85); border-color:#438cff; }
+.app-grid .overview-icon:selected { background-color:#4632af; border-color:#9070ff; }
+.stackos-light #overview { background-color:rgba(233,240,253,0.88); }
+.stackos-light .search-entry { background-color:#f8faff; color:#17223b; }
+.stackos-light .app-grid .overview-icon { background-color:rgba(244,248,255,0.8); color:#17223b; border-color:#b8cae6; }
+.stackos-light .app-grid .overview-icon:hover { background-color:#dceaff; border-color:#4285ef; }

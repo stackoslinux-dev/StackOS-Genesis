@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /usr/bin/python3 /usr/lib/stackos/updater-ui/modern_updater.py "$@"

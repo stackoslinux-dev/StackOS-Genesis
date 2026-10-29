@@ -1,0 +1,152 @@
+#!/bin/bash
+set -euo pipefail
+exec 9>/run/stackos-snapshot.lock
+flock -n 9 || exit 0
+
+LABEL="STACKOS_BACKUPS"
+MOUNT="/run/stackos-backups"
+DIR="$MOUNT/snapshots"
+
+DEV="$(findfs LABEL="$LABEL" 2>/dev/null || true)"
+
+[ -n "$DEV" ] || {
+    logger -t stackos-snapshot \
+        "Particao STACKOS_BACKUPS ausente"
+    exit 0
+}
+
+mkdir -p "$MOUNT"
+
+if mountpoint -q "$MOUNT"; then
+    mount -o remount,rw "$MOUNT"
+else
+    mount "$DEV" "$MOUNT"
+fi
+
+mkdir -p "$DIR"
+chmod 700 "$DIR"
+
+# Remove somente transacoes incompletas.
+find "$DIR" \
+    -maxdepth 1 \
+    -type f \
+    \( -name '.snapshot-*.tmp' \
+       -o -name '.snapshot-*.sha256.tmp' \
+       -o -name '.snapshot-*.meta.tmp' \) \
+    -delete
+
+STAMP="$(date '+%Y-%m-%d_%H-%M-%S')"
+
+NAME="snapshot-$STAMP.squashfs"
+
+TMP_IMAGE="$DIR/.$NAME.tmp"
+TMP_HASH="$DIR/.$NAME.sha256.tmp"
+TMP_META="$DIR/.$NAME.meta.tmp"
+
+FINAL_IMAGE="$DIR/$NAME"
+FINAL_HASH="$FINAL_IMAGE.sha256"
+FINAL_META="$FINAL_IMAGE.meta"
+
+echo "StackOS Snapshot: criando $STAMP"
+
+# O backup inclui a root atual, mas nunca inclui
+# EFI, Recovery ou a propria particao de backups.
+mksquashfs / "$TMP_IMAGE" \
+    -comp gzip -Xcompression-level 3 \
+    -processors 2 \
+    -mem 256M \
+    -noappend \
+    -wildcards \
+    -e \
+    "proc/*" \
+    "sys/*" \
+    "dev/*" \
+    "run/*" \
+    "tmp/*" \
+    "mnt/*" \
+    "media/*" \
+    "lost+found" \
+    "boot/efi/*" \
+    "var/lib/stackos/recovery/*"
+
+sync
+
+DIGEST="$(
+    sha256sum "$TMP_IMAGE" |
+    awk '{print $1}'
+)"
+
+[ -n "$DIGEST" ] || {
+    echo "StackOS Snapshot: SHA256 vazio" >&2
+    exit 1
+}
+
+# Valida a imagem temporaria antes de promove-la.
+printf '%s  %s\n' \
+    "$DIGEST" \
+    "$(basename "$TMP_IMAGE")" \
+    > "$TMP_HASH"
+
+(
+    cd "$DIR"
+    sha256sum -c "$(basename "$TMP_HASH")"
+)
+
+# O hash definitivo referencia o nome definitivo.
+printf '%s  %s\n' \
+    "$DIGEST" \
+    "$NAME" \
+    > "$TMP_HASH"
+
+cat > "$TMP_META" <<EOF
+status=valid
+timestamp=$STAMP
+healthcheck=passed
+sha256=$DIGEST
+image=$NAME
+EOF
+
+sync
+
+# Commit transacional.
+mv "$TMP_IMAGE" "$FINAL_IMAGE"
+mv "$TMP_HASH" "$FINAL_HASH"
+mv "$TMP_META" "$FINAL_META"
+
+sync
+
+# Confirma novamente depois do commit.
+(
+    cd "$DIR"
+    sha256sum -c "$(basename "$FINAL_HASH")"
+)
+
+# Atualiza o GRUB enquanto os backups anteriores
+# ainda continuam intactos.
+/usr/lib/stackos/stackos-update-grub-recovery
+
+# Somente agora pode remover o quarto mais antigo.
+mapfile -t images < <(
+    find "$DIR" \
+        -maxdepth 1 \
+        -type f \
+        -name 'snapshot-*.squashfs' \
+        -printf '%T@ %p\n' |
+    sort -nr |
+    awk '{print $2}'
+)
+
+if [ "${#images[@]}" -gt 3 ]; then
+    for old in "${images[@]:3}"; do
+        rm -f \
+            "$old" \
+            "$old.sha256" \
+            "$old.meta"
+    done
+fi
+
+sync
+
+umount "$MOUNT" 2>/dev/null || true
+
+echo "StackOS Snapshot: concluido"

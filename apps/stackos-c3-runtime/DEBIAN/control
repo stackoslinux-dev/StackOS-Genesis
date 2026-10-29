@@ -1,0 +1,10 @@
+Package: stackos-c3-runtime
+Version: 10.8.2
+Architecture: amd64
+Depends: stackos-archive-keyring (>= 2026.10.28)
+Essential: yes
+Maintainer: StackOS
+Section: admin
+Priority: required
+Description: Runtime nativo C3 compilado para os aplicativos StackOS
+ APT, DPKG, bibliotecas Python e ferramentas de hardware construidos no C3.

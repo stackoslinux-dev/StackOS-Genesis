@@ -1,0 +1,6 @@
+Package: stackos-install-tools
+Version: 10.9.1
+Architecture: amd64
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime
+Description: Native installation, ext4, EFI GRUB and recovery tools

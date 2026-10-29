@@ -1,0 +1,12 @@
+Package: stackos-package-installer
+Version: 1.2.0+stackos1+c3.2+fix10.8
+Section: admin
+Priority: optional
+Architecture: all
+Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Depends: stackos-c3-runtime (>= 10.7), stackos-display-support (>= 10.8)
+Homepage: https://github.com/stackoslinux-dev
+Suggests: flatpak, wine, stackos-store
+Description: Instalador universal de aplicativos StackOS
+ Interface GTK4 com arrastar arquivos, analise de compatibilidade,
+ multiplos formatos Linux, extracao portatil e helper DEB autenticado.

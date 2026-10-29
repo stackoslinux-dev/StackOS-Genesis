@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+true # cleanup runs before GDM starts
+
+if id stackos >/dev/null 2>&1; then
+    userdel -r stackos >/dev/null 2>&1 || true
+fi
+
+# Remove only the Live installer frontend; preserve recovery tools.
+if [ -s /var/lib/stackos/firstboot-complete ]; then
+    rm -f /usr/local/bin/stackos-installer /usr/local/bin/stackos-installer-launcher
+    rm -f /usr/share/applications/stackos-installer.desktop
+    rm -f /etc/xdg/autostart/stackos-installer.desktop
+    rm -f /etc/skel/Desktop/stackos-installer.desktop
+    rm -f /etc/skel/.local/share/applications/stackos-installer.desktop
+fi
+
+rm -f /etc/sudoers.d/stackos-live
+rm -f /etc/sudoers.d/stackos-installer
+rm -f /etc/sudoers.d/stackos-firstboot
+rm -f /var/lib/stackos/firstboot-pending
+rm -f /etc/xdg/autostart/stackos-firstboot.desktop
+rm -f /usr/share/applications/stackos-firstboot.desktop
+rm -f /usr/local/bin/stackos-firstboot
+rm -f /usr/lib/stackos/stackos-firstboot-helper
+
+systemctl disable stackos-firstboot-cleanup.service >/dev/null 2>&1 || true
+rm -f /etc/systemd/system/stackos-firstboot-cleanup.service
+
+systemctl daemon-reload

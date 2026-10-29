@@ -1,0 +1,3 @@
+#!/bin/sh
+set -e
+systemctl --global enable stackos-keyring-init.service stackos-user-dirs.service stackos-gpu-indicator.service >/dev/null

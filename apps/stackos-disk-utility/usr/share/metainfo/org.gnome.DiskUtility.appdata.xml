@@ -1,0 +1,502 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2015 Michael Catanzaro and contributors -->
+<component type="desktop">
+  <id>org.gnome.DiskUtility.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0+</project_license>
+  <name>Disks</name>
+  <name xml:lang="zh-Hant-TW">磁碟</name>
+  <name xml:lang="zh-Hant-HK">磁碟</name>
+  <name xml:lang="zh-Hans-CN">磁盘</name>
+  <name xml:lang="vi">Đĩa</name>
+  <name xml:lang="uk">Диски</name>
+  <name xml:lang="ug">دىسكىلار</name>
+  <name xml:lang="tr">Diskler</name>
+  <name xml:lang="th">ดิสก์</name>
+  <name xml:lang="tg">Дискҳо</name>
+  <name xml:lang="te">డిస్కులు </name>
+  <name xml:lang="ta">வட்டுகள்</name>
+  <name xml:lang="sv">Diskar</name>
+  <name xml:lang="sr-Latn">Diskovi</name>
+  <name xml:lang="sr-Cyrl">Дискови</name>
+  <name xml:lang="sl">Diski</name>
+  <name xml:lang="sk">Disky</name>
+  <name xml:lang="ru">Диски</name>
+  <name xml:lang="ro">Discuri</name>
+  <name xml:lang="pt-BR">Discos</name>
+  <name xml:lang="pt">Discos</name>
+  <name xml:lang="pl">Dyski</name>
+  <name xml:lang="pa">ਡਿਸਕਾਂ</name>
+  <name xml:lang="or">ଡିସ୍କଗୁଡ଼ିକ</name>
+  <name xml:lang="oc">Disques</name>
+  <name xml:lang="nl">Schijven</name>
+  <name xml:lang="ne">डिस्क</name>
+  <name xml:lang="nb">Disker</name>
+  <name xml:lang="ms">Cakera</name>
+  <name xml:lang="mr">डिस्कस्</name>
+  <name xml:lang="ml">ഡിസ്കുകള്‍</name>
+  <name xml:lang="mjw">Disks</name>
+  <name xml:lang="lv">Diski</name>
+  <name xml:lang="lt">Diskai</name>
+  <name xml:lang="ko">디스크</name>
+  <name xml:lang="kn">ಡಿಸ್ಕುಗಳು</name>
+  <name xml:lang="km">ដ្រាយ</name>
+  <name xml:lang="kk-Cyrl">Дисктер</name>
+  <name xml:lang="kab">Iḍebsiyen</name>
+  <name xml:lang="ka">დისკები</name>
+  <name xml:lang="ja">ディスク</name>
+  <name xml:lang="it">Dischi</name>
+  <name xml:lang="is">Diskar</name>
+  <name xml:lang="ie">Discos</name>
+  <name xml:lang="id">Diska</name>
+  <name xml:lang="hu">Lemezek</name>
+  <name xml:lang="hr">Diskovi</name>
+  <name xml:lang="hi">डिस्क</name>
+  <name xml:lang="he">כוננים</name>
+  <name xml:lang="gu">ડિસ્ક</name>
+  <name xml:lang="gl">Discos</name>
+  <name xml:lang="gd">Diosgan</name>
+  <name xml:lang="ga">Dioscaí</name>
+  <name xml:lang="fur">Discs</name>
+  <name xml:lang="fr">Disques</name>
+  <name xml:lang="fi">Levyt</name>
+  <name xml:lang="fa">دیسک‌ها</name>
+  <name xml:lang="eu">Diskoak</name>
+  <name xml:lang="et">Kettad</name>
+  <name xml:lang="es">Discos</name>
+  <name xml:lang="eo">Diskoj</name>
+  <name xml:lang="en-GB">Disks</name>
+  <name xml:lang="el">Δίσκοι</name>
+  <name xml:lang="de">Laufwerke</name>
+  <name xml:lang="da">Diske</name>
+  <name xml:lang="cs">Disky</name>
+  <name xml:lang="ca-valencia">Discs</name>
+  <name xml:lang="ca">Discs</name>
+  <name xml:lang="bs-Latn">Diskovi</name>
+  <name xml:lang="bn-IN">ডিস্ক</name>
+  <name xml:lang="bg">Дискове</name>
+  <name xml:lang="be-Cyrl">Дыскі</name>
+  <name xml:lang="as">ডিস্ক</name>
+  <name xml:lang="ar">الأقراص</name>
+  <summary>Disk management utility for GNOME</summary>
+  <summary xml:lang="zh-Hant-TW">GNOME 的磁碟管理程式</summary>
+  <summary xml:lang="zh-Hans-CN">GNOME 磁盘管理工具</summary>
+  <summary xml:lang="vi">Tiện ích quản lý đĩa dành cho GNOME</summary>
+  <summary xml:lang="uk">Засіб керування дисками для GNOME</summary>
+  <summary xml:lang="tr">GNOME için disk yönetim aracı</summary>
+  <summary xml:lang="th">เครื่องมือจัดการดิสก์สำหรับ GNOME</summary>
+  <summary xml:lang="tg">Барномаи идоракунии диск барои GNOME</summary>
+  <summary xml:lang="sv">Diskhanteringsverktyg för GNOME</summary>
+  <summary xml:lang="sr-Latn">Gnom alatka za upravljanje diskovima</summary>
+  <summary xml:lang="sr-Cyrl">Гном алатка за управљање дисковима</summary>
+  <summary xml:lang="sl">Pripomoček za upravljanje z diskovjem</summary>
+  <summary xml:lang="sk">Nástroj na správu diskov pre prostredie GNOME</summary>
+  <summary xml:lang="ru">Приложение управления дисками для GNOME</summary>
+  <summary xml:lang="ro">Utilitar de administrarea discului pentru GNOME</summary>
+  <summary xml:lang="pt-BR">Utilitário de gerenciamento de disco para o GNOME</summary>
+  <summary xml:lang="pt">Utilitário de gestão de discos para o GNOME</summary>
+  <summary xml:lang="pl">Narzędzie do zarządzania dyskami dla środowiska GNOME</summary>
+  <summary xml:lang="pa">ਗਨੋਮ ਲਈ ਡਿਸਕ ਪ੍ਰਬੰਧ ਸਹੂਲਤ</summary>
+  <summary xml:lang="oc">Utilitari de gestion dels disques per GNOME</summary>
+  <summary xml:lang="nl">Hulpprogramma voor schijfbeheer voor GNOME</summary>
+  <summary xml:lang="ne">जिनोमका लागि डिस्क व्यवस्थापन युटिलिटी</summary>
+  <summary xml:lang="nb">Diskhåndteringsverktøy for GNOME</summary>
+  <summary xml:lang="ms">Utiliti pengurusan cakera untuk GNOME</summary>
+  <summary xml:lang="lv">GNOME disku pārvaldīšanas utilītprogramma</summary>
+  <summary xml:lang="lt">Diskų tvarkymo įrankis GNOME aplinkai</summary>
+  <summary xml:lang="ko">그놈 데스크톱의 디스크 관리 유틸리티</summary>
+  <summary xml:lang="kk-Cyrl">GNOME үшін дисктерді басқару қолданбасы</summary>
+  <summary xml:lang="kab">Tnfa n usefrek n uḍebsi i GNOME</summary>
+  <summary xml:lang="ka">დისკების მართვის პროგრამა GNOME-სთვის</summary>
+  <summary xml:lang="ja">GNOME のディスク管理ユーティリティ</summary>
+  <summary xml:lang="it">Strumento di gestione dischi per GNOME</summary>
+  <summary xml:lang="is">Diskaumsýsla fyrir GNOME</summary>
+  <summary xml:lang="ie">Gerentie de discos por GNOME</summary>
+  <summary xml:lang="id">Utilitas manajemen diska untuk GNOME</summary>
+  <summary xml:lang="hu">Lemezkezelő segédprogram a GNOME-hoz</summary>
+  <summary xml:lang="hr">Alat upravljanja diskovima za GNOME</summary>
+  <summary xml:lang="hi">गनोम के लिए डिस्क प्रबंधन उपयोगिता</summary>
+  <summary xml:lang="he">כלי עזר לניהול כוננים עבור GNOME</summary>
+  <summary xml:lang="gu">GNOME ની ડિસ્ક સંચાલન ઉપયોગીતા</summary>
+  <summary xml:lang="gl">Utilidade de xestión de discos de GNOME</summary>
+  <summary xml:lang="gd">Goireas stiùireadh dhiosgan airson GNOME</summary>
+  <summary xml:lang="fur">Utilitât di gjestion dai discs par GNOME</summary>
+  <summary xml:lang="fr">Utilitaire de gestion des disques pour GNOME</summary>
+  <summary xml:lang="fi">Levyjen hallintaan tarkoitettu työkalu Gnome-työpöydälle</summary>
+  <summary xml:lang="fa">ابزار مدیریت دیسک برای گنوم</summary>
+  <summary xml:lang="eu">Diskoak kudeatzeko GNOMEko tresna</summary>
+  <summary xml:lang="es">Utilidad de gestión de discos de GNOME</summary>
+  <summary xml:lang="eo">Diska mastrumilo por GNOME</summary>
+  <summary xml:lang="en-GB">Disk management utility for GNOME</summary>
+  <summary xml:lang="el">Εργαλείο διαχείρισης δίσκων για το GNOME</summary>
+  <summary xml:lang="de">Festplattenverwaltungswerkzeug für GNOME</summary>
+  <summary xml:lang="da">Diskhåndteringsværktøj til GNOME</summary>
+  <summary xml:lang="cs">Nástroj pro správu disků v GNOME</summary>
+  <summary xml:lang="ca-valencia">Utilitat de gestió de disc pel GNOME</summary>
+  <summary xml:lang="ca">Utilitat de gestió de disc pel GNOME</summary>
+  <summary xml:lang="bg">Програма за управление на дискове за GNOME</summary>
+  <summary xml:lang="be-Cyrl">Праграма кіравання дыскамі для працоўнага асяроддзя GNOME</summary>
+  <summary xml:lang="ar">أداة جنوم لإدارة الأقراص</summary>
+  <description>
+    <p>
+      Disks provides an easy way to inspect, format, partition, and configure disks
+      and block devices.
+    </p>
+    <p xml:lang="zh-Hant-TW">《磁碟》提供簡便的方法來檢查、 格式化、 分割，和設定磁碟和區塊裝置。</p>
+    <p xml:lang="zh-Hans-CN">磁盘提供了一种简单的方法来检查、格式化、分区并配置磁盘和块设备。</p>
+    <p xml:lang="vi">Đĩa giúp bạn dễ dàng kiểm tra, định dạng, phân vùng và cấu hình đĩa và thiết bị khối.</p>
+    <p xml:lang="uk">Диски надають простий спосіб досліджувати, форматувати, розділяти, налаштовувати диски і пристрої.</p>
+    <p xml:lang="tr">Diskler; diskleri ve blok aygıtları denetlemek, biçimlendirmek, bölümlendirmek ve yapılandırmak için kolay bir yol sağlar.</p>
+    <p xml:lang="th">"ดิสก์" จัดเตรียมวิธีที่ง่ายในการตรวจสอบ, ฟอร์แมต, จัดพาร์ทิชัน และตั้งค่าดิสก์และอุปกรณ์เก็บข้อมูลแบบบล็อคต่างๆ</p>
+    <p xml:lang="tg">Барномаи "Дискҳо" назорат, формат, қисмбандӣ, танзимкунӣ ва манъкунии дастгоҳҳоро осон мекунад.</p>
+    <p xml:lang="sv">Diskar erbjuder ett enkelt sätt att inspektera, formatera, partitionera samt konfigurera diskar och blockenheter.</p>
+    <p xml:lang="sr-Latn">Diskovi vam pružaju lak način za proveru, formatiranje, particionisanje i podešavanje diskova i blok uređaja.</p>
+    <p xml:lang="sr-Cyrl">Дискови вам пружају лак начин за проверу, форматирање, партиционисање и подешавање дискова и блок уређаја.</p>
+    <p xml:lang="sl">Program omogoča enostaven nadzor in upravljanje z diski, formatiranje, razdeljevanje in nastavljanje vseh bločnih naprav.</p>
+    <p xml:lang="sk">Aplikácia Disky poskytuje jednoduchý spôsob ako kontrolovať, formátovať, deliť a konfigurovať disky a blokové zariadenia.</p>
+    <p xml:lang="ru">Приложение Диски предоставляет простой способ проверки, форматирования, разметки и настройки дисков и блочных устройств.</p>
+    <p xml:lang="ro">Discuri furnizează o metodă facilă de a inspecta, formata, partiționa, și configura discuri și dispozitive de bloc.</p>
+    <p xml:lang="pt-BR">O aplicativo Discos oferece uma forma fácil de inspecionar, formatar, particionar e configurar discos e dispositivos de bloco.</p>
+    <p xml:lang="pt">O Discos propicia uma forma fácil de inspecionar, formatar, criar partições e configurar discos e dispositivos de blocos.</p>
+    <p xml:lang="pl">Program Dyski dostarcza łatwy sposób na badanie, formatowanie, partycjonowanie i konfigurowanie dysków oraz urządzeń blokowych.</p>
+    <p xml:lang="pa">ਡਿਸਕ ਅਤੇ ਬਲਾਕ ਡਿਵਾਈਸਾਂ ਦੀ ਜਾਂਚ, ਫਾਰਮੈਟ ਕਰਨ, ਪਾਰਟੀਸ਼ਨ ਬਣਾਉਣ ਅਤੇ ਸੰਰਚਨਾ ਕਰਨ ਵਾਸਤੇ ਡਿਸਕਾਂ।</p>
+    <p xml:lang="oc">Disques prepausa un biais simple d'inspectar, de formatar, particionar e configurar los disques e periferics en mòde blòt.</p>
+    <p xml:lang="nl">Met Schijven kunt u op een eenvoudige manier schijven en blokapparaten inspecteren, formatteren, partitioneren en configureren.</p>
+    <p xml:lang="ne">डिस्कनिरीक्षण, ढाँचा, विभाजन, र डिस्क र ब्लक उपकरणहरू कन्फिगर गर्न एक सजिलो तरिका प्रदान गर्दछ।</p>
+    <p xml:lang="nb">Disker gir deg en enkel måte å se på, formatere, partisjonere og konfigurere disker og andre blokkenheter.</p>
+    <p xml:lang="ms">Cakera menyediakan cara termudah untuk memeriksa, memformat, membuat sekatan, dan mengkonfigur cakera dan peranti blok.</p>
+    <p xml:lang="lv">Diski piedāvā vienkāršu veidu, kā izpētīt, formatēt, sadalīt un konfigurēt diskus un bloka ierīces.</p>
+    <p xml:lang="lt">Diskai suteikia paprastą būdą tikrinti, formatuoti, skaidyti skaidiniai bei konfigūruoti diskus bei blokinius įrenginius.</p>
+    <p xml:lang="ko">디스크를 사용해 디스크 및 블록 장치를 살펴보고, 포맷하고, 파티션을 나누고, 설정하는 일을 쉽게 할 수 있습니다.</p>
+    <p xml:lang="kk-Cyrl">Дисктер қолданбасы көмегімен дисктер мен блоктық құрылғыларды икемді түрде зерттеу, пішімдеу, бөлімдеу және баптауға болады.</p>
+    <p xml:lang="kab">Iḍebsiyen ttmudden abrid fessusen i usweḍ, i umsal, i uḥric akked uswel n yiḍebsiyen akked yibenkan n yiḥder.</p>
+    <p xml:lang="ka">დისკებს აქვთ ადვილი საშუალება, რომ შეამოწმოთ, დააფორმატოთ, დაყოთ და მოირგოთ დისკები და ბლოკური მოწყობილობები.</p>
+    <p xml:lang="ja">GNOME Disks はディスクやブロックデバイスの検査、フォーマット、パーティショニング、設定を簡単にできるようにするユーティリティです。</p>
+    <p xml:lang="it">Dischi fornisce uno strumento semplice per ispezionare, formattare, partizionare e configurare dischi e dispositivi a blocchi.</p>
+    <p xml:lang="is">Diskar er einföld leið til að skoða, forsníða, sneiða og setja upp diska og blokkartæki.</p>
+    <p xml:lang="id">Diska memberikan cara yang mudah untuk memeriksa, format, partisi dan mengatur diska dan blok perangkat.</p>
+    <p xml:lang="hu">A Lemezek egyszerű módon biztosítja a lemezek és blokkeszközök vizsgálatát, formázását, particionálását és beállítását.</p>
+    <p xml:lang="hr">Diskovi pružaju jednostavan način za provjeru, formatiranje, particioniranje, i podešavanje diskova i blokova uređaja.</p>
+    <p xml:lang="hi">डिस्क निरीक्षण, प्रारूप, विभाजन और डिस्क को विन्यस्त करने और डिवाइस को ब्लॉक करने का एक आसान तरीका प्रदान करता है।</p>
+    <p xml:lang="he">כוננים מספק דרך קלה לבדוק, לפרמט, לחלק ולהגדיר כוננים והתקנים.</p>
+    <p xml:lang="gu">ડિસ્ક એ નિરીક્ષણ, બંધારણ, પાર્ટીશન, તથા ડિસ્ક અને બ્લોક ઉપકરણોને રૂપરેખાંકિત કરવા માટે એક સરળ માર્ગ પૂરો પાડે છે.</p>
+    <p xml:lang="gl">Discos fornece unha forma doada de inspeccionar, formatar, partición e configurar discos e dispositivos de bloque.</p>
+    <p xml:lang="gd">Bheir Diosgan dòigh furasta dhut gus diosgan is uidheaman bloca a sgrùdadh, fhòrmatadh, a phàirteachadh ’s a rèiteachadh.</p>
+    <p xml:lang="fur">Discs al furnìs une maniere semplice par ispezionâ, formatâ, partizionâ e configurâ discs e dispositîfs a blocs.</p>
+    <p xml:lang="fr">Disques propose une façon simple d’inspecter, de formater, partitionner et configurer les disques et périphériques en mode bloc.</p>
+    <p xml:lang="fi">Levyt tarjoaa helpon tavatan tutkia, alustaa, osioida ja määrittää levyjen sekä lohkolaitteiden asetuksia.</p>
+    <p xml:lang="fa">دیسک‌ها راهی آسان برای بازبینی، قالب‌بندی، افراز و پیکربندی دیسک‌ها و افزاره‌های بلوکی فراهم می‌کند.</p>
+    <p xml:lang="eu">'Diskoak' tresnak disko eta blokeko gailuak aztertzeko, formatu emateko, partizioak egiteko eta konfiguratzeko modu erraza eskaintzen du.</p>
+    <p xml:lang="es">Discos proporciona una manera sencilla de inspeccionar, formatear, particionar y configurar discos y dispositivos de bloques.</p>
+    <p xml:lang="eo">Diskoj donas al vi facilan manieron ekzameni, strukturi, subdiskigi, kaj agordi diskojn kaj blokajn aparatojn.</p>
+    <p xml:lang="en-GB">Disks provides an easy way to inspect, format, partition, and configure disks and block devices.</p>
+    <p xml:lang="el">Οι Δίσκοι παρέχουν έναν εύκολο τρόπο επιθεώρησης, διαμόρφωσης, κατάτμησης και ρύθμισης συσκευών δίσκων και ομάδων.</p>
+    <p xml:lang="de">Laufwerke bietet eine einfache Möglichkeit zum Inspizieren, Formatieren, Partitionieren und Konfigurieren von Festplatten und Blockgeräten.</p>
+    <p xml:lang="da">Diske gør det let at inspicere, formatere, partitionere og konfigurere diske og blokenheder.</p>
+    <p xml:lang="cs">Aplikace Disky poskytuje snadný způsob, jak kontrolovat, formátovat, rozdělovat a nastavovat disky a bloková zařízení.</p>
+    <p xml:lang="ca-valencia">El Discs ofereix una forma senzilla d'inspeccionar, formatar, crear particions, i configurar discs i dispositius de blocs.</p>
+    <p xml:lang="ca">El Discs ofereix una forma senzilla d'inspeccionar, formatar, crear particions, i configurar discs i dispositius de blocs.</p>
+    <p xml:lang="bg">Програмата „Дискове на GNOME“ дава възможност лесно да проверявате, форматирате, поделяте и настройвате дискове и други блокови устройства.</p>
+    <p xml:lang="be-Cyrl">Праграма «Дыскі» - гэта зручны спосаб праглядаць, падзяляць на раздзелы і наладжваць дыскі і састаўныя прылады.</p>
+    <p>
+      Using Disks, you can view SMART data, manage devices, benchmark physical
+      disks, and image USB sticks.
+    </p>
+    <p xml:lang="zh-Hant-TW">使用《磁碟》，您可以檢視 SMART 資料、管理 RAID 裝置、物理磁碟的評測，以及製作 USB 隨身碟映像檔。工作會在背景執行，即使使用者關閉程式也一樣。</p>
+    <p xml:lang="zh-Hans-CN">使用磁盘，您可以查看 SMART 数据，管理 RAID 设备，对物理磁盘进行性能测试及获取 U 盘镜像。</p>
+    <p xml:lang="vi">Dùng Đĩa, bạn có thể xem dữ liệu SMART, quản lý các thiết bị, đo kiểm tốc độ đĩa vật lý, và ảnh đĩa USB.</p>
+    <p xml:lang="uk">За допомогою «Дисків» ви зможете переглядати дані SMART, керувати пристроями, випробовувати фізичні диски і записувати образи на флешки USB.</p>
+    <p xml:lang="tr">Diskler’i kullanarak; SMART verisini görebilir, aygıtları yönetebilir, fiziksel diskleri değerlendirebilir, USB bellekleri kopyalayabilirsiniz.</p>
+    <p xml:lang="sv">Med Diskar kan du se SMART-data, hantera enheter, prestandatesta fysiska diskar och avbilds-USB-stickor.</p>
+    <p xml:lang="sr-Latn">Korišćenjem Diskova možete videti SMART podatke, upravljati uređajima, meriti odlike fizičkih diskova i praviti odraze USB štapića.</p>
+    <p xml:lang="sr-Cyrl">Коришћењем Дискова можете видети СМАРТ податке, управљати уређајима, мерити одлике физичких дискова и правити одразе УСБ штапића.</p>
+    <p xml:lang="sl">Uporaba programa Disks omogoča pregled podatkov SMART, upravljanje naprav, izvajanje testiranj diskov in ključkov USB.</p>
+    <p xml:lang="sk">Vďaka aplikácii Disky môžete prezerať údaje SMART, spravovať zariadenia, odskúšať výkon fyzických diskov a vytvárať obrazy USB kľúčov.</p>
+    <p xml:lang="ru">Используя приложение Диски, можно просматривать данне SMART, управлять устройствами, оценивать производительность физических дисков, и записывать образы на USB носители.</p>
+    <p xml:lang="ro">Utilizând Discuri, puteți vizualiza date SMART, administra dispozitive, efectua teste de performanță pe discuri fizice, și instala imagini pe stickuri USB.</p>
+    <p xml:lang="pt-BR">Ao usar o aplicativo Discos, você pode ver dados de SMART, gerenciar dispositivos, fazer avaliações de performance de discos físicos, e criar imagens de dispositivos USB.</p>
+    <p xml:lang="pt">Ao usar o Discos, pode ver dados SMART, gerir dispositivos, analisar discos físicos e efetuar imagens de unidades USB.</p>
+    <p xml:lang="pl">Za pomocą programu Dyski można wyświetlać dane SMART, zarządzać urządzeniami, testować wydajność fizycznych dysków i nagrywać obrazy na dyski USB.</p>
+    <p xml:lang="pa">ਡਿਸਕਾਂ ਦੀ ਵਰਤੋਂ ਕਰਕੇ ਤੁਸੀਂ SMART ਡਾਟਾ ਵੇਖ, ਡਿਵਾਈਸਾਂ ਦਾ ਇੰਤਜ਼ਾਮ ਕਰ, ਭੌਤਿਕ ਡਿਸਕਾਂ ਲਈ ਬੈਂਚਮਾਰਕ ਲਾ ਅਤੇ USB ਸਟਿੱਕਾਂ ਲਈ ਈਮੇਜ਼ ਬਣਾ ਸਕਦੇ ਹੋ।</p>
+    <p xml:lang="nl">Met Schijven kunt u SMART-gegevens bekijken, apparaten beheren, fysieke schijven benchmarken en schijfkopieën maken van USB-sticks.</p>
+    <p xml:lang="ne">डिस्कहरू प्रयोग गरेर, तपाईं SMART डेटा हेर्न सक्नुहुन्छ, उपकरणहरू व्यवस्थापन गर्न सक्नुहुन्छ, मानक भौतिक डिस्कहरू, र छवि USB स्टिकहरू।</p>
+    <p xml:lang="nb">Med Disker kan du vise SMART-data, håndtere RAID-enheter, sjekke ytelse på fysiske disker og lage bilder av USB-minnepinner.</p>
+    <p xml:lang="ms">Dengan menggunakan Cakera, anda boleh lihat data SMART, urus peranti, tanda aras cakera fizikal, dan imejkan pemacu pena USB.</p>
+    <p xml:lang="lv">Izmantojot “Diskus”, jūs varat skatīt SMART datus, pārvaldīt ierīces, pārbaudīt veiktspēju un veidot USB atmiņas attēlus.</p>
+    <p xml:lang="lt">Naudodami diskus galite matyti SMART duomenis, tvarkyti RAID įrenginius, matuoti fizinius diskus bei kurti USB laikmenų atvaizdžius.</p>
+    <p xml:lang="ko">디스크를 사용해 스마트(SMART) 데이터를 보고, RAID 장치를 관리하고, 물리적 디스크를 벤치마크하고, USB 메모리 이미지를 만들 수 있습니다. 사용자가 프로그램을 닫더라도 필요한 작업을 백그라운드에서 실행합니다.</p>
+    <p xml:lang="kk-Cyrl">Дисктер қолданбасымен SMART деректерін қарау, құрылғыларды басқару, физикалық дисктерді сынау және USB тасушыларына бейнелерді жазуға болады.</p>
+    <p xml:lang="kab">S useqdec n yiḍebsiyen, tzemreḍ ad twaliḍ isefka SMART, ad tesferkeḍ ibenkan, ad tektazleḍ iḍebsiyen iɣaranen akked tmerna n tugniwin n tsura USB.</p>
+    <p xml:lang="ka">თუ იყენებთ დისკებს, შეგიძლიათ, იხილოთ SMART მონაცემები, მართოთ მოწყობილობები, დატესტოთ ფიზიკური დისკები და შექმნათ USB დისკის ასლები.</p>
+    <p xml:lang="ja">GNOME Disks を使用すると、SMART データの確認、デバイスの管理、物理ディスクのベンチマーク、USB メモリへのディスクイメージ書き込みができます。</p>
+    <p xml:lang="it">Utilizzando Dischi è possibile visualizzare i dati SMART, gestire dispositivi RAID, eseguire benchmark su dischi fisici e scrivere immagini su dispositivi USB.</p>
+    <p xml:lang="is">Með því að nota Diskar-forritið geturðu skoðað SMART-gögn, sýslað með tæki, afkastaprófað raundiska og skrifað diskmyndir á USB-minnislykla.</p>
+    <p xml:lang="id">Dengan Diska, Anda bisa melihat data SMART, mengelola perangkat, menguji fisik diska, dan stik USB.</p>
+    <p xml:lang="hu">A Lemezek használatával megtekintheti a SMART adatokat, kezelheti az eszközöket, teljesítménytesztet hajthat végre fizikai lemezeken, valamint lemezképet készíthet USB-meghajtókról.</p>
+    <p xml:lang="hr">Upotrebom Diskova možete vidjeti SMART podatke, upravljati uređajima, testirati fizičke diskove i stvarati slike USB uređaja.</p>
+    <p xml:lang="hi">डिस्क का उपयोग करके, आप स्मार्ट डेटा देख सकते हैं, डिवाइस प्रबंधित कर सकते हैं, बेंचमार्क भौतिक डिस्क और छवि USB स्टिक देख सकते हैं।</p>
+    <p xml:lang="he">בשימוש בכוננים, נתן לצפות בנתוני SMART, לנהל התקנים, לבצע בדיקת נתונים פיזית לכוננים, ויצירת דמויות כונן ל־USB.</p>
+    <p xml:lang="gl">Usando Discos, pode ver datos SMART, xestionar dispositivos RAID, facer probas de rendemento en discos fixos e chaves USB.</p>
+    <p xml:lang="gd">Le Diosgan, ’s urrainn dhut dàta SMART a shealltainn, uidheaman a stiùireadh, tomhas-measaidh air diosgan fiosaigeach a dhèanamh is ìomhaighean de USB sticks a chruthachadh.</p>
+    <p xml:lang="fur">Doprant Discs, tu puedis viodi dâts SMART, ministrâ dispositîfs RAID, misurâ lis prestazions dai discs fisics e fâ imagjins di penis USB.</p>
+    <p xml:lang="fr">Disques permet de consulter les données SMART, gérer des périphériques, tester des disques physiques et créer des images sur des clés USB.</p>
+    <p xml:lang="fi">Levysovelluksella voit tarkkailla SMART-tietoja, hallita laitteita, mitata suorituskykytestejä ja luoda esimerkiksi USB-muistitikkuja levykuvista.</p>
+    <p xml:lang="fa">با استفاده از دیسک‌ها می‌توانید داده‌های SMART را ببینید، دیسک‌های فیزیکی را محک زده و از حافظه‌های USB تصویر بگیرید.</p>
+    <p xml:lang="eu">'Diskoak' erabiliz SMART datuak ikus ditzakezu, gailuak kudeatu, disko fisikoen errendimendua aztertu edo eta USB gailuen irudiak sortu.</p>
+    <p xml:lang="es">Usando Discos puede ver los datos SMART, gestionar dispositivos, realizar pruebas de rendimiento a los discos y crear imágenes de dispositivos USB.</p>
+    <p xml:lang="eo">Uzante Diskojn, vi povas vidi SMART-datumojn, mastrumi aparatojn, taksotesti diskojn, kaj ekzakte kopii al poŝmemoriloj.</p>
+    <p xml:lang="en-GB">Using Disks, you can view SMART data, manage devices, benchmark physical disks, and image USB sticks.</p>
+    <p xml:lang="el">Χρησιμοποιώντας το Δίσκοι, μπορείτε να προβάλετε δεδομένα SMART, να διαχειριστείτε συσκευές, να μετρήσετε τις επιδόσεις των φυσικών δίσκων και εικόνων USB sticks.</p>
+    <p xml:lang="de">Durch die Verwendung von Laufwerke können Sie SMART-Daten ansehen, RAID-Geräte verwalten, die Leistung von Festplatten testen und USB-Datenträger bespielen.</p>
+    <p xml:lang="da">Med Diske kan du se SMART-data, håndtere enheder, samt benchmarke fysiske diske og aftryk på USB-nøgler.</p>
+    <p xml:lang="cs">Pomocí Disků si můžete prohlížet data SMART, spravovat zařízení, provádět srovnávací testy disků a zobrazovat flashdisky USB.</p>
+    <p xml:lang="ca-valencia">Amb el Discs, podeu veure les dades SMART, gestionar dispositius, proves de rendiment dels discs i imatges en llapis USB. </p>
+    <p xml:lang="ca">Amb el Discs, podeu veure les dades SMART, gestionar dispositius, test de referència dels discs i imatges en llapis USB.</p>
+    <p xml:lang="bg">Чрез „Дискове на GNOME“ може да преглеждате данните от самодиагностиката (SMART), да управлявате и да тествате производителността на устройства, както и да записвате изображение върху USB памет.</p>
+    <p xml:lang="be-Cyrl">З дапамогай праграмы «Дыскі» вы можаце праглядаць даныя SMART, кіраваць прыладамі, тэставаць фізічныя дыскі, ствараць вобразы USB дыскаў.</p>
+  </description>
+  <screenshots>
+    <screenshot>
+      <image>https://gitlab.gnome.org/GNOME/gnome-disk-utility/raw/gnome-46/data/screenshots/disks-format.png</image>
+      <caption>Partition and format disks</caption>
+      <caption xml:lang="zh-Hans-CN">磁盘分区和格式化</caption>
+      <caption xml:lang="uk">Поділ диска на розділи та його форматування</caption>
+      <caption xml:lang="tr">Diskleri bölümle ve biçimlendir</caption>
+      <caption xml:lang="sv">Partitionera och formatera diskar</caption>
+      <caption xml:lang="sl">Razdelite in formatirajte diske</caption>
+      <caption xml:lang="sk">Rozdelenie a formátovanie diskov</caption>
+      <caption xml:lang="ru">Разметка и форматирование дисков</caption>
+      <caption xml:lang="ro">Partiționează și formatează discurile</caption>
+      <caption xml:lang="pt-BR">Particione e formate discos</caption>
+      <caption xml:lang="pt">Particionar e formatar discos</caption>
+      <caption xml:lang="pl">Partycjonowanie i formatowanie dysków</caption>
+      <caption xml:lang="lt">Skaidykite ir formatuokite diskus</caption>
+      <caption xml:lang="ko">디스크 분할 및 포맷</caption>
+      <caption xml:lang="kab">Beṭṭu d umsal n yiḍebsiyen</caption>
+      <caption xml:lang="ka">დისკების დაყოფა და დაფორმატება</caption>
+      <caption xml:lang="id">Mempartisi dan memformat disk</caption>
+      <caption xml:lang="hu">Lemezek particionálása és formázása</caption>
+      <caption xml:lang="hi">डिस्क का विभाजन और प्रारूप</caption>
+      <caption xml:lang="he">חלוקה למחיצות ופרמוט כוננים</caption>
+      <caption xml:lang="fr">Partitionnez et formatez des disques</caption>
+      <caption xml:lang="fa">افرازش و قالب‌بندی دیسک‌ها</caption>
+      <caption xml:lang="eu">Diskoan partizioak sortu eta formatua eman</caption>
+      <caption xml:lang="en-GB">Partition and format disks</caption>
+      <caption xml:lang="el">Διαμέριση και διαμόρφωση δίσκων</caption>
+      <caption xml:lang="de">Partitionieren und formatieren Sie Datenträger</caption>
+      <caption xml:lang="cs">Rozdělte a formátujte disky</caption>
+      <caption xml:lang="ca">Particiona i formata discos</caption>
+      <caption xml:lang="be-Cyrl">Стварэнне раздзелаў і фарматаванне дыскаў</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://gitlab.gnome.org/GNOME/gnome-disk-utility/raw/gnome-46/data/screenshots/disks-smart.png</image>
+      <caption>Inspect drive speed and health status</caption>
+      <caption xml:lang="zh-Hans-CN">检查驱动器速度和健康状况</caption>
+      <caption xml:lang="uk">Вивчення швидкості роботи диска та його стану працездатності</caption>
+      <caption xml:lang="tr">Sürücü hızını ve sağlık durumunu incele</caption>
+      <caption xml:lang="sv">Inspektera hastighet och hälsostatus för enheter</caption>
+      <caption xml:lang="sl">Preglejte hitrost in zdravstveno stanje pogonov</caption>
+      <caption xml:lang="sk">Kontrola rýchlosti a stavu disku</caption>
+      <caption xml:lang="ru">Проверка скорости диска и состояния здоровья</caption>
+      <caption xml:lang="ro">Inspectează viteza unității și starea de sănătate</caption>
+      <caption xml:lang="pt-BR">Inspecione a velocidade da unidade e o estado de integridade</caption>
+      <caption xml:lang="pt">Inspecionar a velocidade do disco e o seu estado</caption>
+      <caption xml:lang="pl">Sprawdzanie prędkości dysku i jego stanu</caption>
+      <caption xml:lang="lt">Tikrinkite diskų greitį bei būseną</caption>
+      <caption xml:lang="ko">드라이브 속도 및 상태 점검</caption>
+      <caption xml:lang="kab">Sweḍ arured n unuḍaf akked waddad n tezmert</caption>
+      <caption xml:lang="ka">დისკის სიჩქარისა და აპარატურის სტატუსის შემოწმება</caption>
+      <caption xml:lang="id">Memeriksa kecepatan drive dan status kesehatan</caption>
+      <caption xml:lang="hu">Meghajtó sebességének és egészségi állapotának ellenőrzése</caption>
+      <caption xml:lang="hi">ड्राइव की गति और स्वास्थ्य स्थिति का निरीक्षण करें</caption>
+      <caption xml:lang="he">חקירת מהירות הכונן ומצב בריאותו</caption>
+      <caption xml:lang="fr">Inspectez la vitesse et l’état de santé des disques</caption>
+      <caption xml:lang="fa">بازرسی سرعت گرداننده و وضعیت سلامت</caption>
+      <caption xml:lang="eu">Unitateen abiadura ikuskatu eta osasun-egoerak aztertu</caption>
+      <caption xml:lang="en-GB">Inspect drive speed and health status</caption>
+      <caption xml:lang="el">Επιθεώρηση της ταχύτητας δίσκου και της κατάστασης υγείας</caption>
+      <caption xml:lang="de">Inspizieren Sie die Laufwerksgeschwindigkeit und den Gesundheitsstatus</caption>
+      <caption xml:lang="cs">Zkontrolujte rychlost a stav jednotky</caption>
+      <caption xml:lang="ca">Inspecciona la velocitat del disc i l'estat de salut</caption>
+      <caption xml:lang="be-Cyrl">Праверка хуткасці дыска і стану здароўя</caption>
+    </screenshot>
+    <screenshot type="default">
+      <image>https://gitlab.gnome.org/GNOME/gnome-disk-utility/raw/gnome-46/data/screenshots/disks-main.png</image>
+      <caption>Manage your storage devices</caption>
+      <caption xml:lang="zh-Hans-CN">管理您的存储设备</caption>
+      <caption xml:lang="uk">Керування вашими пристроями зберігання даних</caption>
+      <caption xml:lang="tr">Depolama aygıtlarını yönet</caption>
+      <caption xml:lang="sv">Hantera dina lagringsenheter</caption>
+      <caption xml:lang="sl">Upravljajte svoje naprave za shranjevanje</caption>
+      <caption xml:lang="sk">Správa pamäťových zariadení</caption>
+      <caption xml:lang="ru">Управление устройствами хранения данных</caption>
+      <caption xml:lang="ro">Administrează dispozitivele de stocare</caption>
+      <caption xml:lang="pt-BR">Gerencie seus dispositivos de armazenamento</caption>
+      <caption xml:lang="pt">Gerir os seus dispositivos de armazenamento</caption>
+      <caption xml:lang="pl">Zarządzanie urządzeniami do przechowywania danych</caption>
+      <caption xml:lang="lt">Tvarkykite saugyklos įrenginius</caption>
+      <caption xml:lang="ko">저장 장치를 관리합니다</caption>
+      <caption xml:lang="kab">Sefrek ibenkan-ik n uḥraz</caption>
+      <caption xml:lang="ka">მართეთ თქვენი საცავის მოწყობილობები</caption>
+      <caption xml:lang="id">Mengelola perangkat penyimpanan Anda</caption>
+      <caption xml:lang="hu">Tárolóeszközök kezelése</caption>
+      <caption xml:lang="hi">अपने भंडारण उपकरण प्रबंधित करें</caption>
+      <caption xml:lang="he">ניהול התקני האחסון שלך</caption>
+      <caption xml:lang="fr">Gérez vos périphériques de stockage</caption>
+      <caption xml:lang="fa">مدیریت افزاره‌های ذخیره‌سازیتان</caption>
+      <caption xml:lang="eu">Biltegiratze-gailuak kudeatu</caption>
+      <caption xml:lang="en-GB">Manage your storage devices</caption>
+      <caption xml:lang="el">Διαχείριση συσκευών αποθήκευσης</caption>
+      <caption xml:lang="de">Verwalten Sie Ihre Speichergeräte</caption>
+      <caption xml:lang="cs">Spravujte svá úložná zařízení</caption>
+      <caption xml:lang="ca">Gestiona els dispositius d'emmagatzemament</caption>
+      <caption xml:lang="be-Cyrl">Кіраванне прыладамі захоўвання даных</caption>
+    </screenshot>
+  </screenshots>
+  <update_contact>kailueke@riseup.net</update_contact>
+  <project_group>GNOME</project_group>
+  <kudos>
+    <kudo>AppMenu</kudo>
+    <kudo>HiDpiIcon</kudo>
+    <kudo>ModernToolkit</kudo>
+  </kudos>
+  <content_rating type="oars-1.1"/>
+  <translation type="gettext">gnome-disk-utility</translation>
+  <launchable type="desktop-id">org.gnome.DiskUtility.desktop</launchable>
+  <!-- developer_name tag deprecated with Appstream 1.0 -->
+  <developer_name>The GNOME Project</developer_name>
+  <developer_name xml:lang="zh-Hant-TW">GNOME 專案</developer_name>
+  <developer_name xml:lang="zh-Hans-CN">GNOME 项目</developer_name>
+  <developer_name xml:lang="vi">Dự án GNOME</developer_name>
+  <developer_name xml:lang="uk">Проект GNOME</developer_name>
+  <developer_name xml:lang="tr">GNOME Projesi</developer_name>
+  <developer_name xml:lang="th">โครงการ GNOME</developer_name>
+  <developer_name xml:lang="tg">Лоиҳаи «GNOME»</developer_name>
+  <developer_name xml:lang="sv">GNOME-projektet</developer_name>
+  <developer_name xml:lang="sr-Latn">Gnomov projekat</developer_name>
+  <developer_name xml:lang="sr-Cyrl">Гномов пројекат</developer_name>
+  <developer_name xml:lang="sl">Projekt GNOME</developer_name>
+  <developer_name xml:lang="sk">Projekt GNOME</developer_name>
+  <developer_name xml:lang="ru">Проект GNOME</developer_name>
+  <developer_name xml:lang="ro">Proiectul GNOME</developer_name>
+  <developer_name xml:lang="pt-BR">O Projeto GNOME</developer_name>
+  <developer_name xml:lang="pt">O Projeto GNOME</developer_name>
+  <developer_name xml:lang="pl">Projekt GNOME</developer_name>
+  <developer_name xml:lang="pa">ਗਨੋਮ ਪਰੋਜੈਕਟ</developer_name>
+  <developer_name xml:lang="oc">Lo projècte GNOME</developer_name>
+  <developer_name xml:lang="nl">Het GNOME-project</developer_name>
+  <developer_name xml:lang="ne">जिनोम परियोजना</developer_name>
+  <developer_name xml:lang="nb">GNOME prosjektet</developer_name>
+  <developer_name xml:lang="ms">Projek GNOME</developer_name>
+  <developer_name xml:lang="mjw">GNOME Project</developer_name>
+  <developer_name xml:lang="lv">GNOME projekts</developer_name>
+  <developer_name xml:lang="lt">GNOME projektas</developer_name>
+  <developer_name xml:lang="ko">그놈 프로젝트</developer_name>
+  <developer_name xml:lang="kk-Cyrl">GNOME жобасы</developer_name>
+  <developer_name xml:lang="kab">Asenfar n GNOME</developer_name>
+  <developer_name xml:lang="ka">პროექტი „GNOME“</developer_name>
+  <developer_name xml:lang="ja">The GNOME Project</developer_name>
+  <developer_name xml:lang="it">Il progetto GNOME</developer_name>
+  <developer_name xml:lang="is">GNOME-verkefnið</developer_name>
+  <developer_name xml:lang="ie">Li projecte GNOME</developer_name>
+  <developer_name xml:lang="id">Projek GNOME</developer_name>
+  <developer_name xml:lang="hu">A GNOME projekt</developer_name>
+  <developer_name xml:lang="hr">GNOME projekt</developer_name>
+  <developer_name xml:lang="hi">GNOME परियोजना</developer_name>
+  <developer_name xml:lang="he">מיזם GNOME</developer_name>
+  <developer_name xml:lang="gl">O Proxecto GNOME</developer_name>
+  <developer_name xml:lang="gd">Pròiseact GNOME</developer_name>
+  <developer_name xml:lang="fur">Il progjet GNOME</developer_name>
+  <developer_name xml:lang="fr">Le projet GNOME</developer_name>
+  <developer_name xml:lang="fi">Gnome-projekti</developer_name>
+  <developer_name xml:lang="fa">پروژهٔ گنوم</developer_name>
+  <developer_name xml:lang="eu">GNOME proiektua</developer_name>
+  <developer_name xml:lang="es">El proyecto GNOME</developer_name>
+  <developer_name xml:lang="eo">La GNOME-projekto</developer_name>
+  <developer_name xml:lang="en-GB">The GNOME Project</developer_name>
+  <developer_name xml:lang="el">Το έργο GNOME</developer_name>
+  <developer_name xml:lang="de">Das GNOME-Projekt</developer_name>
+  <developer_name xml:lang="da">GNOME-projektet</developer_name>
+  <developer_name xml:lang="cs">Projekt GNOME</developer_name>
+  <developer_name xml:lang="ca-valencia">El projecte GNOME</developer_name>
+  <developer_name xml:lang="ca">El projecte GNOME</developer_name>
+  <developer_name xml:lang="bg">Проектът GNOME</developer_name>
+  <developer_name xml:lang="be-Cyrl">Праект GNOME</developer_name>
+  <developer_name xml:lang="ab">The GNOME Project</developer_name>
+  <developer id="org.gnome">
+    <name>The GNOME Project</name>
+    <name xml:lang="zh-Hant-TW">GNOME 專案</name>
+    <name xml:lang="zh-Hans-CN">GNOME 项目</name>
+    <name xml:lang="vi">Dự án GNOME</name>
+    <name xml:lang="uk">Проект GNOME</name>
+    <name xml:lang="tr">GNOME Projesi</name>
+    <name xml:lang="th">โครงการ GNOME</name>
+    <name xml:lang="tg">Лоиҳаи «GNOME»</name>
+    <name xml:lang="sv">GNOME-projektet</name>
+    <name xml:lang="sr-Latn">Gnomov projekat</name>
+    <name xml:lang="sr-Cyrl">Гномов пројекат</name>
+    <name xml:lang="sl">Projekt GNOME</name>
+    <name xml:lang="sk">Projekt GNOME</name>
+    <name xml:lang="ru">Проект GNOME</name>
+    <name xml:lang="ro">Proiectul GNOME</name>
+    <name xml:lang="pt-BR">O Projeto GNOME</name>
+    <name xml:lang="pt">O Projeto GNOME</name>
+    <name xml:lang="pl">Projekt GNOME</name>
+    <name xml:lang="pa">ਗਨੋਮ ਪਰੋਜੈਕਟ</name>
+    <name xml:lang="oc">Lo projècte GNOME</name>
+    <name xml:lang="nl">Het GNOME-project</name>
+    <name xml:lang="ne">जिनोम परियोजना</name>
+    <name xml:lang="nb">GNOME prosjektet</name>
+    <name xml:lang="ms">Projek GNOME</name>
+    <name xml:lang="mjw">GNOME Project</name>
+    <name xml:lang="lv">GNOME projekts</name>
+    <name xml:lang="lt">GNOME projektas</name>
+    <name xml:lang="ko">그놈 프로젝트</name>
+    <name xml:lang="kk-Cyrl">GNOME жобасы</name>
+    <name xml:lang="kab">Asenfar n GNOME</name>
+    <name xml:lang="ka">პროექტი „GNOME“</name>
+    <name xml:lang="ja">The GNOME Project</name>
+    <name xml:lang="it">Il progetto GNOME</name>
+    <name xml:lang="is">GNOME-verkefnið</name>
+    <name xml:lang="ie">Li projecte GNOME</name>
+    <name xml:lang="id">Projek GNOME</name>
+    <name xml:lang="hu">A GNOME projekt</name>
+    <name xml:lang="hr">GNOME projekt</name>
+    <name xml:lang="hi">GNOME परियोजना</name>
+    <name xml:lang="he">מיזם GNOME</name>
+    <name xml:lang="gl">O Proxecto GNOME</name>
+    <name xml:lang="gd">Pròiseact GNOME</name>
+    <name xml:lang="fur">Il progjet GNOME</name>
+    <name xml:lang="fr">Le projet GNOME</name>
+    <name xml:lang="fi">Gnome-projekti</name>
+    <name xml:lang="fa">پروژهٔ گنوم</name>
+    <name xml:lang="eu">GNOME proiektua</name>
+    <name xml:lang="es">El proyecto GNOME</name>
+    <name xml:lang="eo">La GNOME-projekto</name>
+    <name xml:lang="en-GB">The GNOME Project</name>
+    <name xml:lang="el">Το έργο GNOME</name>
+    <name xml:lang="de">Das GNOME-Projekt</name>
+    <name xml:lang="da">GNOME-projektet</name>
+    <name xml:lang="cs">Projekt GNOME</name>
+    <name xml:lang="ca-valencia">El projecte GNOME</name>
+    <name xml:lang="ca">El projecte GNOME</name>
+    <name xml:lang="bg">Проектът GNOME</name>
+    <name xml:lang="be-Cyrl">Праект GNOME</name>
+    <name xml:lang="ab">The GNOME Project</name>
+  </developer>
+  <url type="homepage">https://apps.gnome.org/DiskUtility/</url>
+  <url type="bugtracker">https://gitlab.gnome.org/GNOME/gnome-disk-utility/issues</url>
+  <url type="contribute">https://welcome.gnome.org/app/DiskUtility/</url>
+  <url type="donation">https://www.gnome.org/donate/</url>
+  <url type="help">https://help.gnome.org/users/gnome-help/stable/disk.html</url>
+  <url type="translate">https://l10n.gnome.org/module/gnome-disk-utility/</url>
+  <url type="vcs-browser">https://gitlab.gnome.org/GNOME/gnome-disk-utility</url>
+  <recommends>
+    <control>touch</control>
+    <control>keyboard</control>
+    <control>pointing</control>
+  </recommends>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+</component>

@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+ldconfig
+mkdir -p /var/lib/dpkg/info /var/lib/dpkg/updates /var/lib/dpkg/triggers /var/lib/apt/lists/partial /var/cache/apt/archives/partial /var/log/apt
+getent passwd _apt >/dev/null || useradd -r -M -d /nonexistent -s /bin/false _apt
+systemctl enable switcheroo-control.service >/dev/null 2>&1 || true

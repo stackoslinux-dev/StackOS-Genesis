@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Bem-vindo ao StackOS
+Comment=Boas-vindas e guia de primeiros passos do StackOS Genesis
+Exec=/usr/local/bin/stackos-welcome
+Icon=org.stackos.Welcome
+Terminal=false
+Categories=System;Documentation;
+StartupNotify=true
+StartupWMClass=com.stackos.welcome
+Keywords=guia;ajuda;primeiros passos;welcome;stackos;

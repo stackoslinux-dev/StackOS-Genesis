@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Relatar Bug
+Comment=Revise e envie um relatório de erros do sistema e dos drivers
+Exec=/usr/local/bin/stackos-bugreport
+Icon=/usr/share/icons/hicolor/scalable/apps/org.stackos.BugReport.svg
+Terminal=false
+Categories=System;
+StartupNotify=true
+StartupWMClass=com.stackos.bugreport
+Keywords=bug;erro;diagnostico;drivers;stackos;
