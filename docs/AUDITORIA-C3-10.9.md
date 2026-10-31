@@ -248,3 +248,75 @@ Fonte: relatório enviado pelo usuário em `Texto colado(20261031-233536).txt`, 
 Foram identificados dois novos pontos de segurança que merecem prioridade: permissões 0664 em `/etc/passwd` e `/etc/group`, e sudo irrestrito sem senha na sessão Live (este último requer decisão de produto). O tempo de boot medido foi 50,896 s, com demora concentrada no loader, Plymouth e ldconfig. Os demais resultados foram classificados como pendências, avisos ou estados normais quando não há evidência suficiente para chamá-los de defeito.
 
 Nenhum arquivo do sistema auditado foi alterado durante esta coleta. Nenhuma correção foi declarada concluída.
+
+
+## 12. Requisitos adicionais — jogos, Steam/Proton e aplicativos Debian
+
+Pedido registrado em 2026-10-31: tornar a StackOS compatível com jogos e com aplicativos distribuídos em pacotes Debian .deb, sem recompilar o sistema inteiro para instalar cada aplicativo.
+
+**Estado: REQUISITOS REGISTRADOS; NÃO TESTADOS.** A presença de pacotes ou a habilitação de i386 não certifica compatibilidade.
+
+### 12.1 Matriz de jogos
+
+| ID | Verificação | Critério de aprovação | Estado |
+|---|---|---|---|
+| GAME-001 | Multiarch amd64 + i386 | Arquitetura principal amd64 e i386 estrangeira habilitada; APT resolve ambas sem conflitos | PENDENTE |
+| GAME-002 | OpenGL 64/32 bits | Renderer, versão, vendor e criação de contexto validados nas duas arquiteturas | PENDENTE |
+| GAME-003 | Vulkan 64/32 bits | ICD correto, GPU enumerada e teste Vulkan executado nas duas arquiteturas | PENDENTE |
+| GAME-004 | Mesa e bibliotecas gráficas 32-bit | GL/EGL/GLX, Vulkan, DRM e dependências 32-bit coerentes com as versões amd64 | PENDENTE |
+| GAME-005 | Firmware e drivers | Intel, AMD e NVIDIA testados separadamente; firmware carregado, módulo ativo e aceleração real comprovados | PENDENTE |
+| GAME-006 | Steam | Cliente inicia, autentica e executa um jogo de teste; logs e GPU usada registrados | PENDENTE |
+| GAME-007 | Proton, DXVK e VKD3D-Proton | Jogo Windows executado; versão Proton e caminho gráfico registrados | PENDENTE |
+| GAME-008 | Wine 32/64 bits | Aplicações Windows 32 e 64 bits iniciam corretamente | PENDENTE |
+| GAME-009 | Áudio e controles | Áudio durante jogo, gamepad USB/Bluetooth e hotplug validados | PENDENTE |
+| GAME-010 | Estabilidade | Sessão prolongada sem crash, GPU reset ou travamento; logs e temperaturas registrados | PENDENTE |
+| GAME-011 | GPU híbrida e desempenho | Seleção iGPU/dGPU comprovada e FPS/frametime medidos por método repetível | PENDENTE |
+
+Matriz física a cobrir quando disponível: Intel integrada, AMD Radeon RX 7600, NVIDIA RTX 4050 híbrida e, em trilha separada, GTX 550 Ti/GPUs legadas. Não prometer que um único driver NVIDIA atende placas novas e antigas. Cada teste deve registrar PCI ID, kernel, driver, Mesa/Vulkan, arquitetura do jogo e resultado.
+
+**Histórico:** auditoria anterior da StackOS 1.1 encontrou somente amd64, i386 desabilitado, pacotes gráficos i386 ausentes e ferramentas glxinfo/vulkaninfo ausentes. A habilitação de i386 e atualização dos índices APT foram depois registradas como bem-sucedidas, mas a pilha gráfica i386 e os testes Steam/Proton/Wine não foram comprovados. Também não foi provado que a falta de i386 causava um erro específico no Albion.
+
+### 12.2 Aplicativos .deb sem recompilar o sistema
+
+Objetivo: instalar binários .deb compatíveis, sem reconstruir kernel, GNOME, Mesa ou rootfs a cada instalação. A compilação deve ficar restrita aos componentes próprios ou às dependências para as quais não exista binário compatível e confiável.
+
+| ID | Verificação | Critério de aprovação | Estado |
+|---|---|---|---|
+| DEB-001 | Metadados | Ler nome, versão, arquitetura, Depends/Pre-Depends e conteúdo com dpkg-deb | PENDENTE |
+| DEB-002 | Arquitetura | Aceitar amd64/all quando aplicável e rejeitar arquitetura incompatível antes da instalação | PENDENTE |
+| DEB-003 | Dependências | Resolver dependências binárias via APT e apresentar transação antes de instalar | PENDENTE |
+| DEB-004 | Origem e confiança | Validar origem, assinatura do repositório e checksum; não confiar em .deb aleatório | PENDENTE |
+| DEB-005 | ABI | Verificar glibc, libstdc++, GTK/Qt, Python, OpenSSL e símbolos requeridos | PENDENTE |
+| DEB-006 | Scripts de mantenedor | Inspecionar preinst/postinst/prerm/postrm e testar em VM/chroot descartável | PENDENTE |
+| DEB-007 | Ciclo de vida | Instalar, abrir, atualizar e remover sem quebrar serviços ou deixar estado inconsistente | PENDENTE |
+| DEB-008 | Package Installer | Abrir .deb graficamente, exibir metadados/dependências e autenticar conforme política do sistema | PENDENTE |
+| DEB-009 | Falhas | Simular conflito/dependência ausente em ambiente descartável e comprovar recuperação | PENDENTE |
+| DEB-010 | Repositórios | Validar índices e pacotes StackOS amd64/all; confirmar separadamente qualquer suporte i386 | PENDENTE |
+
+Fluxo desejado: .deb confiável → leitura de metadados → validação de arquitetura/ABI → simulação da transação APT → confirmação e autenticação → APT/dpkg → teste de execução. Não usar dpkg -i isolado como instalador automático sem resolver dependências.
+
+Formato .deb não significa compatibilidade universal com qualquer pacote Debian. Um aplicativo pode exigir versões de glibc, systemd, GTK/Qt ou bibliotecas que a StackOS não fornece. Priorizar binários dos repositórios nativos StackOS e pacotes Debian compatíveis. Não adicionar repositórios de outra distribuição nem forçar bibliotecas centrais sem análise.
+
+### 12.3 Política para não recompilar tudo
+
+1. O sistema-base C3 continua construído a partir das fontes, conforme o objetivo do projeto.
+2. Depois de instalado, o sistema deve consumir pacotes binários .deb compatíveis sem reconstruir a distribuição.
+3. Aplicativos oficiais podem ser compilados e empacotados individualmente; o usuário instala o .deb pronto.
+4. Dependências já disponíveis em repositórios confiáveis e compatíveis devem ser reutilizadas como binários, sem rebuild desnecessário.
+5. Registrar versão, arquitetura, origem e hash; não misturar releases incompatíveis.
+6. Instalação de aplicativo não pode trocar kernel, bootloader ou pilha gráfica central sem mostrar a transação e obter autorização.
+7. Testar instalação/remoção primeiro em VM ou chroot descartável.
+
+### 12.4 Agente autônomo no GitHub
+
+Repositório localizado: [stackoslinux-dev/stackos-agent-private](https://github.com/stackoslinux-dev/stackos-agent-private), branch padrão main.
+
+O README consultado declara **StackOS Agent v2.0 — ZERO**, FASE 0 PLANEJADA e “nenhum código de produção aqui ainda”. Ele aponta para docs/plano/CRONOGRAMA-MESTRE.txt e diz que o agente antigo foi preservado em backups-agente/agente-backup-20261012-204828/.
+
+O cronograma prevê empacotamento .deb na FASE 8 e testes em VM na FASE 10; isso é planejamento, não prova de implementação. A busca no repositório não encontrou evidência de código funcional para Steam/Proton/i386 nem para instalação .deb. Os caminhos dev/tasks/pending/ e dev/reports/ não foram localizados na consulta atual.
+
+Não alterei o repositório do agente nem criei tarefas nele: seu README exige ler o cronograma antes de qualquer intervenção, inventário inicial somente leitura e autorização explícita antes de modificar arquivos. Portanto, o agente foi localizado e consultado, mas não está comprovado como agente autônomo operacional nesta versão ZERO.
+
+### 12.5 Critério de aprovação
+
+Compatibilidade com jogos e instalação de .deb são objetivos separados. Executar GAME-001 a GAME-011 e DEB-001 a DEB-010, registrar logs e associar resultados ao hash da ISO e ao hardware usado. Até esses testes serem feitos, todos permanecem PENDENTES/NÃO COMPROVADOS. Esta atualização foi documental; não instalou pacotes, compilou componentes nem alterou o sistema auditado.
