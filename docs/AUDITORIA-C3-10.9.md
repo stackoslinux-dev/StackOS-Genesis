@@ -144,3 +144,54 @@ Ordem inicial sugerida, sujeita à análise das fontes e dependências antes de 
 - Manter a auditoria separada dos procedimentos de correção e da geração da ISO.
 
 **Estado geral:** auditoria em andamento. Nenhuma correção desta lista é declarada concluída por este documento.
+
+
+## 10. Revisão estática do repositório oficial — 2026-10-31
+
+Fontes efetivamente lidas:
+- `README.md` da raiz.
+- `docs/ARCHITECTURE.md`.
+- `releases/c3-10.9-rc3.json`.
+- Esta própria página de auditoria.
+
+### 10.1 Manifesto da RC3
+
+O manifesto registra:
+- ISO: `/srv/StackOS/C3-BUILD/base-solo/11-iso/StackOS-C3-live-v10.9-RC3.iso`.
+- Tamanho: 2.872.602.624 bytes.
+- SHA-256 declarado: `077875bd547af5f830c328584b1ed13e0f458b8295c715f1e844a3ea1571c690`.
+- `digital_signatures: VERIFIED`.
+- Chave pública: `056F482818FF0BFCA93F31E28E5BDB912C8A2A16`.
+- `final_functional_tests: STOPPED_BY_USER_REQUEST`.
+
+**Interpretação:** o manifesto declara assinatura verificada, mas declara expressamente que os testes funcionais finais foram interrompidos por solicitação do usuário. Não há base para afirmar que a RC3 passou pela bateria final. O hash está registrado no manifesto; não foi recalculado nesta revisão porque o arquivo ISO não foi disponibilizado ao ambiente de leitura do GitHub.
+
+### 10.2 Consistência do catálogo
+
+A lista do manifesto contém 17 pacotes StackOS. Os nomes e versões foram comparados com a seção 4 desta auditoria: os 17 registros correspondem aos 17 pacotes descritos no relatório de hardware. Esta é uma conferência documental, não uma verificação criptográfica dos arquivos DEB nem uma instalação/teste de execução.
+
+### 10.3 Arquitetura e política de distribuição
+
+`docs/ARCHITECTURE.md` declara C3 independente, pacotes DEB próprios para APT/dpkg, compilação de bibliotecas no ambiente nativo C3 e proibição de usar repositórios Ubuntu no C3. Declara também que chave privada e árvore de compilação ficam fora do Git, no host autorizado.
+
+O README informa que os aplicativos e hashes reais estão no manifesto; que a bateria completa de instalação e recuperação não foi repetida na RC3; e que ainda falta verificação em PC físico. A auditoria de hardware Acer registrada nesta página é evidência adicional posterior/associada à sessão de teste, mas não substitui a bateria completa de instalação e recuperação.
+
+### 10.4 Resultado dos testes que podem ser feitos por leitura remota
+
+| Verificação | Resultado |
+|---|---|
+| README e arquitetura coerentes com a linha C3 independente | CONFERIDO DOCUMENTALMENTE |
+| Manifesto da RC3 encontrado e lido | APROVADO |
+| Declaração de assinatura digital no manifesto | VERIFIED (declaração do manifesto; não revalidada criptograficamente nesta revisão) |
+| Contagem do catálogo do manifesto versus auditoria | 17 / 17, nomes e versões conferidos |
+| SHA-256 real da ISO recalculado | NÃO EXECUTADO — ISO binária não acessível nesta leitura |
+| Instalação/boot em máquina física nesta sessão | NÃO EXECUTADO — depende do hardware/mídia de teste |
+| Testes funcionais de Store, Updater, Installer, Drivers, GPU Manager e demais apps | NÃO EXECUTADOS nesta revisão |
+| Teste completo de instalação, FirstBoot, recuperação e backups | NÃO EXECUTADO nesta revisão |
+| Busca de código-fonte via índice de código do GitHub | SEM RESULTADOS para as consultas tentadas; não equivale a prova de que os arquivos não existam |
+
+### 10.5 Limite desta revisão
+
+Esta revisão foi documental/estática, usando os arquivos do repositório acessíveis pela integração GitHub. Não executei a ISO, não acessei o host de build, não alterei o sistema de teste e não rodei comandos no computador físico. Portanto, nenhum defeito de hardware/software listado acima foi marcado como corrigido por esta revisão.
+
+**Conclusão desta etapa:** o catálogo e a documentação de arquitetura são coerentes com o manifesto; a RC3 tem assinatura declarada como verificada; os testes funcionais finais permanecem incompletos. A prioridade técnica continua sendo resolver os achados confirmados GPU-001, USB-001 e BOOT-001, e depois repetir os testes funcionais de ponta a ponta.
