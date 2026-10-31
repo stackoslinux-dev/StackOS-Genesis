@@ -195,3 +195,56 @@ O README informa que os aplicativos e hashes reais estão no manifesto; que a ba
 Esta revisão foi documental/estática, usando os arquivos do repositório acessíveis pela integração GitHub. Não executei a ISO, não acessei o host de build, não alterei o sistema de teste e não rodei comandos no computador físico. Portanto, nenhum defeito de hardware/software listado acima foi marcado como corrigido por esta revisão.
 
 **Conclusão desta etapa:** o catálogo e a documentação de arquitetura são coerentes com o manifesto; a RC3 tem assinatura declarada como verificada; os testes funcionais finais permanecem incompletos. A prioridade técnica continua sendo resolver os achados confirmados GPU-001, USB-001 e BOOT-001, e depois repetir os testes funcionais de ponta a ponta.
+
+
+## 11. Auditoria profunda — segunda coleta de terminal (2026-10-31)
+
+Fonte: relatório enviado pelo usuário em `Texto colado(20261031-233536).txt`, execução da varredura `STACKOS_FINAL_SCAN`. Esta seção registra apenas evidências adicionais desta coleta; ocorrências repetidas atualizam os IDs anteriores.
+
+### 11.1 Novos achados
+
+| ID | Área | Evidência | Estado | Prioridade |
+|---|---|---|---|---|
+| SEC-001 | Permissões de contas | `stat` mostrou `/etc/passwd` e `/etc/group` como `-rw-rw-r-- root:root` (0664). Os dois arquivos estão graváveis pelo grupo root; o modo usual esperado para estes arquivos é 0644. Confirmar se há razão deliberada e corrigir na imagem-base, após validar scripts de geração de usuários. | DEFEITO DE PERMISSÃO CONFIRMADO | Alta |
+| SEC-002 | Política sudo da sessão Live | `sudo -l` mostrou `(ALL : ALL) NOPASSWD: ALL`, além da regra específica do instalador. Isso concede root sem senha ao usuário Live. Pode ser intencional no ambiente Live, mas precisa ser decisão explícita, documentada e isolada da política do sistema instalado. | RISCO / DECISÃO DE PRODUTO PENDENTE | Alta |
+| SYS-006 | Integridade de arquivos de pacote | `dpkg -V` sinalizou divergência MD5 em `/etc/apt/preferences.d/stackos-native-release` e `/etc/xdg/autostart/stackos-welcome.desktop`. A divergência não prova corrupção: ambos podem ser arquivos de configuração modificados intencionalmente. Comparar com templates/fontes do pacote e classificar como configuração local ou alteração indevida. | PENDENTE DE COMPARAÇÃO COM A FONTE | Média |
+| PERF-001 | Tempo de inicialização | `systemd-analyze`: 50,896 s total (firmware 5,269 s; loader 18,635 s; kernel 4,652 s; userspace 22,338 s). `plymouth-quit-wait.service` consumiu 11,550 s e `ldconfig.service` 6,137 s. | OPORTUNIDADE DE OTIMIZAÇÃO; NÃO É FALHA FUNCIONAL | Média |
+| POWER-001 | Perfis de energia | `power-profiles-daemon.service` não existe; UPower está ativo e `/sys/power/state` expõe freeze/mem/disk, com `s2idle` selecionado e `deep` disponível. Validar se a interface StackOS/GNOME deve oferecer perfis de energia e testar suspensão/retomada real. | PENDENTE DE VALIDAÇÃO FUNCIONAL | Média |
+| SYS-007 | Pressão de memória | `/proc/pressure/memory` não existe. Verificar configuração do kernel (PSI) e se a ausência é esperada na configuração C3; não inferir falha de RAM a partir disso. | PENDENTE DE DIAGNÓSTICO | Baixa |
+| SYS-008 | Documentação de unidades systemd | `systemd-analyze verify` acusou falha ao executar `man` para páginas de manual de alguns serviços. Os serviços citados estavam ativos; isso indica documentação/man-db ausente ou incompleta, não executável de serviço ausente. | LIMITAÇÃO DOCUMENTAL | Baixa |
+
+### 11.2 Evidências que atualizam achados existentes
+
+- **BOOT-001 / snapshot:** a unidade foi lida integralmente. `ExecStart=/bin/true`, `RemainAfterExit=yes`, `ExecStop=/usr/lib/stackos/stackos-snapshot-on-shutdown`; o serviço termina com sucesso sem criar snapshot no start. O script de desligamento existe como caminho configurado, mas sua existência e comportamento ainda não foram validados. O nome/descrição da unidade não comprova que snapshots sejam criados.
+- **BOOT-003 / serial-getty:** a cadeia de logs contém centenas de mensagens repetidas `/dev/ttyS0: não é um tty`, aproximadamente a cada 10 segundos durante a sessão. A unidade aparece no blame com cerca de 223 ms de início; o loop de mensagens polui o journal e precisa ser resolvido no perfil de boot Live sem quebrar consoles seriais em hardware que os possua.
+- **GPU-001:** a coleta confirma `i915/adlp_guc_70.bin` ausente, falha de inicialização GuC e GPU declarada wedged; também confirma `i915/adlp_dmc.bin` ausente e gerenciamento de energia runtime desabilitado. São falhas reproduzidas na mesma máquina.
+- **GNOME-004:** a assertion `g_variant_unref: value != NULL` em `gsd-keyboard` reaparece no journal.
+- **GNOME-002:** o GNOME não importa DBusMenu; quicklists indisponíveis.
+- **GNOME-003:** `libcanberra-login-sound` falha porque arquivo/dado de som não foi encontrado.
+- **FW-001:** `cfg80211: failed to load regulatory.db` permanece no log de boot; o arquivo foi visto posteriormente no filesystem. Investigar momento/caminho de carregamento, não classificar como definitivamente ausente.
+
+### 11.3 Resultados sem defeito comprovado
+
+- **Impressão:** CUPS está ativo, mas `lpstat` informa que não há destinos configurados. Em Live sem impressora adicionada, isso é estado normal; falta teste com impressora real.
+- **SSH:** `ssh.service` retorna `not-found` e `inactive`. Não é falha por si só se servidor SSH não faz parte do escopo da ISO.
+- **Power profiles:** ausência do daemon só é defeito se a StackOS prometer seleção de perfis ou depender dele para controles de energia.
+- **Locale:** `LANG=pt_BR.UTF-8` e keymap virtual `br-abnt2`; `LC_ALL=C` foi definido explicitamente pelo próprio script de auditoria, portanto as demais categorias C não demonstram configuração incorreta persistente.
+- **X11 layout:** `localectl` mostrou layout X11 não definido, enquanto IBus reportou `xkb:br::por`; validar teclado na sessão Wayland antes de classificar.
+- **Ausência de `/proc/pressure/memory`:** investigar opção de kernel e contexto Live; não presumir falha de memória.
+- **`gnome-software` ausente:** não é defeito automático, pois a StackOS possui Store e Package Installer próprios.
+- **`systemd-analyze verify` com mensagens sobre man pages:** não confundir ausência de documentação com falha de binário/serviço.
+- **Mensagens ACPI/WMI:** parecem vir da implementação ACPI/firmware do Acer; manter separadas dos defeitos comprovadamente reproduzíveis da ISO.
+
+### 11.4 Segurança e política de produto a decidir antes da próxima ISO
+
+1. Definir modos e permissões corretos para `/etc/passwd` e `/etc/group` no sistema Live e instalado; validar a criação de usuários do FirstBoot.
+2. Documentar se a sessão Live concede sudo irrestrito sem senha e garantir que essa regra não seja transportada inadvertidamente para instalações com senha.
+3. Comparar os dois arquivos divergentes do `dpkg -V` com o conteúdo original dos pacotes antes de qualquer restauração.
+4. Corrigir a unidade snapshot somente após inspecionar o script de desligamento e o mecanismo real de backup; não substituir `/bin/true` por comando inventado.
+5. Tratar a repetição de serial-getty no perfil Live sem remover suporte serial universal sem análise.
+
+### 11.5 Conclusão desta coleta
+
+Foram identificados dois novos pontos de segurança que merecem prioridade: permissões 0664 em `/etc/passwd` e `/etc/group`, e sudo irrestrito sem senha na sessão Live (este último requer decisão de produto). O tempo de boot medido foi 50,896 s, com demora concentrada no loader, Plymouth e ldconfig. Os demais resultados foram classificados como pendências, avisos ou estados normais quando não há evidência suficiente para chamá-los de defeito.
+
+Nenhum arquivo do sistema auditado foi alterado durante esta coleta. Nenhuma correção foi declarada concluída.
