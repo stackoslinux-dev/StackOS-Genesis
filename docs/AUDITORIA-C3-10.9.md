@@ -339,3 +339,42 @@ Compatibilidade com jogos e instalação de .deb são objetivos separados. Execu
 - Uma busca por mensagens i915 em arquivos `*.log`/`*.txt` de `boot-v10.9` não encontrou resultados; outra busca por nomes genéricos de relatórios retornou majoritariamente arquivos de código-fonte. **Essas buscas não invalidam o relatório original já documentado aqui.**
 
 **Estado:** auditoria e investigação em andamento, sem alteração ou reconstrução da ISO durante essas verificações.
+
+
+## 11. Plano de correção incremental — iniciado em 2026-11-01
+
+**Decisão do projeto:** corrigir os defeitos documentados antes de produzir uma nova ISO de teste. Não iniciar build de ISO enquanto houver correções pendentes ou sem validação. Atualizar esta auditoria no GitHub a cada etapa relevante, preservando o histórico e sem substituir evidências anteriores.
+
+### 11.1 Ordem de trabalho
+
+1. **GPU-001 — Intel i915 / firmware / Mesa (em investigação; não corrigido).** Primeiro separar a falha de disponibilidade antecipada do firmware da compatibilidade/integração Mesa. Inspecionar a receita real de geração do initramfs, a configuração e os artefatos do kernel, os pacotes Mesa instalados e a ligação entre DRI driver, GBM, EGL e Gallium. Propor a menor correção rastreável; preservar os artefatos aprovados e não reconstruir componentes sem necessidade demonstrada.
+2. **GPU-002 — NVIDIA / nouveau e gráficos híbridos.** Investigar após estabilizar a base i915/Mesa, evitando misturar causas.
+3. **AUD-001 — áudio PipeWire/PulseAudio.** Resolver a arquitetura de serviços e sockets antes de retestar dispositivos.
+4. **USB-001 — exFAT e mídia removível.** Confirmar suporte no kernel e userspace.
+5. **BOOT-001 — snapshot no-op.** Conferir implementação real, integração com backups/recuperação e só então corrigir a unidade.
+6. **Demais achados:** BOOT-002/003, FW-001, BT-001, USB-002, NET-001, CPU-001, GNOME-001 a GNOME-005, SYS-001/002 e APP-001 a APP-004. Reclassificar limitações externas e decisões de produto sem mascará-las como bugs da ISO.
+7. **QA final:** testes de integração, instalação, FirstBoot, armazenamento, áudio, rede, USB, recuperação e aplicativos. Só depois gerar ISO candidata para QEMU e hardware.
+
+### 11.2 Evidência adicional relevante para GPU-001 / RC4
+
+Na inspeção estática da ISO RC4 em 2026-11-01, foram comprovados os seguintes fatos:
+- A imagem `/live/initramfs.cpio.gz` contém `usr/lib/firmware/regulatory.db` e `regulatory.db.p7s`, mas não contém `i915/adlp_dmc*` nem `i915/adlp_guc*`.
+- O SquashFS da mesma ISO contém `usr/lib/firmware/i915/adlp_dmc.bin.zst`, `adlp_dmc_ver2_16.bin.zst`, `adlp_guc_70.bin.zst` e `adlp_guc_70.1.1.bin.zst`, entre outras versões.
+- O `/init` do initramfs inicia udev e executa `udevadm trigger/settle` antes de montar o SquashFS e fazer `switch_root` para o sistema Live.
+- A configuração examinada do kernel `7.2.13-stackos108` informa `CONFIG_DRM_I915=y`, `CONFIG_FW_LOADER=y`, `CONFIG_FW_LOADER_COMPRESS_ZSTD=y` e `CONFIG_EXTRA_FIRMWARE=""`.
+- A receita/fonte exata que produziu o initramfs RC4 ainda precisa ser identificada e lida antes de escolher onde corrigir. Não assumir que basta copiar firmware manualmente para um arquivo sem corrigir o processo reprodutível.
+
+**Hipótese técnica a testar:** como i915 está integrado ao kernel e o initramfs não inclui os blobs Intel, o driver pode solicitar firmware antes de o SquashFS estar disponível como raiz. A presença dos blobs no SquashFS não garante que estejam disponíveis no momento inicial da solicitação. Isso é uma hipótese forte e coerente com os sintomas da auditoria original, mas a inspeção estática, sozinha, ainda não prova que explique todos os erros GuC/GT0 ou os avisos Mesa/GNOME.
+
+### 11.3 Estado atual da correção
+
+| Item | Estado | Critério para avançar |
+|---|---|---|
+| Consolidar inventário de bugs | CONCLUÍDO documentalmente | IDs e evidências mantidos nesta auditoria |
+| GPU-001: localizar receita real do initramfs e cadeia de firmware | EM INVESTIGAÇÃO | Ler receita, parâmetros, cópia de firmware e logs de build existentes |
+| GPU-001: definir correção mínima | NÃO INICIADO | Causa isolada e mudança proposta revisada |
+| GPU-001: aplicar e validar correção | NÃO INICIADO | Build reproduzível e teste de carregamento/firmware com evidência |
+| GPU-001: validar Mesa/Iris/EGL/GBM | NÃO INICIADO | Dependências coerentes e teste OpenGL/renderer sem erro |
+| Gerar nova ISO | BLOQUEADO | Bugs corrigidos e QA pré-ISO concluído |
+
+**Limite operacional:** esta atualização foi feita no GitHub por leitura/escrita do documento. Nenhum comando foi executado no notebook/PC, nenhum arquivo local foi alterado e nenhum bug foi declarado corrigido. Para executar a próxima inspeção no ambiente de build, o usuário fornecerá a saída dos comandos propostos; as conclusões e decisões serão então registradas aqui.
