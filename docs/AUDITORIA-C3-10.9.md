@@ -320,3 +320,22 @@ Não alterei o repositório do agente nem criei tarefas nele: seu README exige l
 ### 12.5 Critério de aprovação
 
 Compatibilidade com jogos e instalação de .deb são objetivos separados. Executar GAME-001 a GAME-011 e DEB-001 a DEB-010, registrar logs e associar resultados ao hash da ISO e ao hardware usado. Até esses testes serem feitos, todos permanecem PENDENTES/NÃO COMPROVADOS. Esta atualização foi documental; não instalou pacotes, compilou componentes nem alterou o sistema auditado.
+
+
+## Orientação de continuidade entre conversas — 2026-11-01
+
+**Fonte de verdade dos erros já coletados:** este relatório de auditoria. A coleta original foi feita durante execução da StackOS C3 v10.9 em hardware real (notebook Acer); o usuário informou que o ambiente original de teste não está mais disponível. **Não solicitar nova coleta naquele PC nem procurar seus logs no PC atual como se ainda existissem.** Não interpretar ausência desses logs no ambiente atual como ausência de defeitos.
+
+**Procedimento para outras conversas/agentes:** ler esta auditoria e os achados identificados por ID antes de sugerir comandos. Continuar por análise estática da ISO RC4 existente e dos artefatos disponíveis; pedir novos testes Live somente se necessários e viáveis, sem presumir que já foram feitos. Preservar a distinção entre evidência original de execução e conclusões posteriores de inspeção da ISO. Não declarar correções sem reteste.
+
+**Evidências adicionais obtidas por inspeção somente de leitura da ISO RC4 (2026-11-01):**
+- ISO inspecionada: `/mnt/STACKOS_WORK/C3-BUILD/base-solo/11-iso/StackOS-C3-live-v10.9-RC4.iso` (caminho observado no ambiente atual, não presumir disponibilidade em outros computadores).
+- `/live/filesystem.squashfs`: LBA inicial 8407, offset 17.217.536 bytes, tamanho 2.792.288.256 bytes. Inspeção com `unsquashfs -offset` confirmou `usr/lib/firmware/i915/adlp_dmc.bin.zst`, `adlp_dmc_ver2_16.bin.zst`, `adlp_guc_70.bin.zst` e `adlp_guc_70.1.1.bin.zst` dentro do sistema Live.
+- Inspeção do `/live/initramfs.cpio.gz` da mesma RC4 encontrou somente `regulatory.db` e `regulatory.db.p7s` sob `usr/lib/firmware`, **sem os firmwares Intel i915**.
+- Script `/init` do initramfs inicia `systemd-udevd`, executa `udevadm trigger` e `udevadm settle` antes de montar o SquashFS e executar `switch_root`.
+- Configuração examinada em `boot-v10.9/release-root/boot/config-7.2.13-stackos108`: `CONFIG_DRM_I915=y`, `CONFIG_FW_LOADER=y`, `CONFIG_FW_LOADER_COMPRESS_ZSTD=y`, `CONFIG_EXTRA_FIRMWARE=""`. A configuração pertence à árvore de build; ainda não foi comprovada equivalência binária independente com o kernel dentro da ISO RC4.
+- `/boot/grub/grub.cfg` da RC4 possui modo normal (`quiet splash loglevel=3`) e diagnóstico (`stackos.debug=1 loglevel=6`); não há `nomodeset` ou parâmetro explícito de desativação do i915.
+- **Interpretação:** a indisponibilidade antecipada dos firmwares i915 no initramfs é comprovada e é uma hipótese forte para as falhas de carregamento durante o boot. Ainda **não** foi demonstrado que ela seja a causa única do `GT0 wedged` ou dos problemas Mesa/GNOME. Não declarar GPU-001 corrigido.
+- Uma busca por mensagens i915 em arquivos `*.log`/`*.txt` de `boot-v10.9` não encontrou resultados; outra busca por nomes genéricos de relatórios retornou majoritariamente arquivos de código-fonte. **Essas buscas não invalidam o relatório original já documentado aqui.**
+
+**Estado:** auditoria e investigação em andamento, sem alteração ou reconstrução da ISO durante essas verificações.
