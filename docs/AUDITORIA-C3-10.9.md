@@ -398,3 +398,15 @@ Arquivo inspecionado pelo usuário: `boot-v10.9/build-installed-initramfs.py`.
 **Próxima investigação:** localizar, no processo de build já existente, a rotina que constrói `boot-v10.9/initramfs` e produz o arquivo CPIO/GZIP incorporado como `/live/initramfs.cpio.gz`. Inspecionar essa rotina e seus parâmetros antes de editar qualquer coisa. Não criar uma segunda implementação nem reconstruir a ISO nesta etapa.
 
 **Estado GPU-001:** firmware Intel presente no SquashFS e ausente do initramfs Live RC4 continuam comprovados. Causa provável permanece em investigação; nenhuma correção aplicada ou validada.
+
+
+### 11.5 Identificação do gerador do initramfs Live RC4 — 2026-11-01
+
+A busca somente leitura feita pelo usuário encontrou a receita correta em `boot-v10.9/seal.py`:
+- Linha 18: `find . -print0 | cpio --null -o --format=newc | gzip -1 > ../iso-tree/live/initramfs.cpio.gz`, executada com `cwd=O/'initramfs'`.
+- Linha 19 contém comentário distinguindo o initramfs Live (`/live/initramfs.cpio.gz`) do initramfs do instalador.
+- A mesma busca encontrou apenas referências a `build-installed-initramfs.py` fora de `seal.py`; portanto, a receita instalada anteriormente inspecionada não é o gerador Live.
+
+**Estado confirmado:** `seal.py` é o ponto de empacotamento do diretório `boot-v10.9/initramfs` para a árvore ISO Live. O initramfs RC4 extraído contém `usr/lib/firmware/regulatory.db*`, mas não contém `usr/lib/firmware/i915/*`. O SquashFS RC4 contém os firmwares Intel ADLP DMC e GuC listados na seção anterior.
+
+**Próxima etapa:** inspecionar integralmente `seal.py`, a origem/configuração de `O` e o conteúdo de `boot-v10.9/initramfs/usr/lib/firmware` antes de propor qualquer alteração. Ainda não foi aplicada correção, não foi reconstruído initramfs e não foi criada ISO nova.
