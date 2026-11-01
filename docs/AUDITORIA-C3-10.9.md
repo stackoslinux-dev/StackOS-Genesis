@@ -378,3 +378,23 @@ Na inspeção estática da ISO RC4 em 2026-11-01, foram comprovados os seguintes
 | Gerar nova ISO | BLOQUEADO | Bugs corrigidos e QA pré-ISO concluído |
 
 **Limite operacional:** esta atualização foi feita no GitHub por leitura/escrita do documento. Nenhum comando foi executado no notebook/PC, nenhum arquivo local foi alterado e nenhum bug foi declarado corrigido. Para executar a próxima inspeção no ambiente de build, o usuário fornecerá a saída dos comandos propostos; as conclusões e decisões serão então registradas aqui.
+
+
+### 11.4 Inspeção da receita `build-installed-initramfs.py` — 2026-11-01
+
+Arquivo inspecionado pelo usuário: `boot-v10.9/build-installed-initramfs.py`.
+
+**Fatos comprovados pelo código apresentado:**
+- A receita usa `/usr/share/stackos/installed-initramfs-template` como template.
+- Copia `/usr/lib/modules/<versão>` para a árvore temporária do initramfs.
+- Copia ferramentas de recuperação (`sha256sum`, `rsync`, `findfs`, `blkid`, `mkfs.ext4`, `e2fsck`, `openssl`, `stty`, `tr`) e dependências ELF encontradas via `ldd`.
+- Copia o script `/etc/initramfs-tools/scripts/local-bottom/stackos-factory-reset`.
+- Empacota a árvore em CPIO newc + gzip e grava `/boot/initrd.img-<versão>`, atualizando o link `/boot/initrd.img`.
+- Não há no código apresentado cópia de `/usr/lib/firmware/i915` nem inclusão explícita dos firmwares DMC/GuC.
+- O grep apresentado pelo usuário em `boot-v10.9/logs` não retornou linhas para `initramfs`, `firmware/i915` ou `mkinitramfs` nos arquivos `*.log` pesquisados.
+
+**Conclusão limitada:** esta receita gera o initramfs do sistema instalado (`/boot/initrd.img-*`) e não demonstra ser a origem do initramfs Live `/live/initramfs.cpio.gz` da RC4. Não alterar esta receita como correção do problema Live sem evidência de que ela participa da geração da imagem Live. A ausência de cópia de firmware nesta receita pode ser uma questão separada para o initramfs do sistema instalado e deve ser avaliada no escopo próprio.
+
+**Próxima investigação:** localizar, no processo de build já existente, a rotina que constrói `boot-v10.9/initramfs` e produz o arquivo CPIO/GZIP incorporado como `/live/initramfs.cpio.gz`. Inspecionar essa rotina e seus parâmetros antes de editar qualquer coisa. Não criar uma segunda implementação nem reconstruir a ISO nesta etapa.
+
+**Estado GPU-001:** firmware Intel presente no SquashFS e ausente do initramfs Live RC4 continuam comprovados. Causa provável permanece em investigação; nenhuma correção aplicada ou validada.
