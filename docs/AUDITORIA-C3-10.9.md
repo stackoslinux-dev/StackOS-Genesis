@@ -410,3 +410,41 @@ A busca somente leitura feita pelo usuário encontrou a receita correta em `boot
 **Estado confirmado:** `seal.py` é o ponto de empacotamento do diretório `boot-v10.9/initramfs` para a árvore ISO Live. O initramfs RC4 extraído contém `usr/lib/firmware/regulatory.db*`, mas não contém `usr/lib/firmware/i915/*`. O SquashFS RC4 contém os firmwares Intel ADLP DMC e GuC listados na seção anterior.
 
 **Próxima etapa:** inspecionar integralmente `seal.py`, a origem/configuração de `O` e o conteúdo de `boot-v10.9/initramfs/usr/lib/firmware` antes de propor qualquer alteração. Ainda não foi aplicada correção, não foi reconstruído initramfs e não foi criada ISO nova.
+
+
+## 13. Auditoria adicional em hardware AMD — 2026-11-02
+
+**Origem:** relatório de terminal fornecido pelo usuário, `auditoria-stackos-amd-20261102-113400.txt`, StackOS C3 v10.9, kernel `7.2.13-stackos108`, host `gm-pc`. **Natureza:** evidência de execução real, não teste reproduzido pelo revisor. Nenhuma correção aplicada.
+
+### 13.1 Hardware e inicialização comprovados
+
+- GPU `1002:7480`, ASRock RX 7600 Challenger OC `1849:5313` (Navi 33), driver em uso `amdgpu`; módulo carregado.
+- VRAM de 8176 MiB, dispositivos `/dev/dri/card1` e `/dev/dri/renderD128`, DRM `amdgpu 3.64.0` inicializado; SMU inicializado com sucesso.
+- Firmware AMD presente em arquivos compactados `/lib/firmware/amdgpu/gc_11_0_3_*.bin.zst` e `dcn_3_2_1_dmcub.bin.zst`; logs indicam carregamento DMUB/VCN.
+- Sessão GNOME Wayland; `DISPLAY` vazio e `WAYLAND_DISPLAY=wayland-0`. A ausência de DISPLAY deve ser avaliada no contexto Wayland, não é prova isolada de falha.
+
+### 13.2 Novos achados e classificação
+
+| ID | Evidência | Classificação / ação pendente |
+|---|---|---|
+| AMD-001 | `glxinfo` e `vulkaninfo` não encontrados | Ferramentas diagnósticas ausentes; não comprova ausência do Mesa nem falha de aceleração |
+| AMD-002 | `ldconfig -p` lista `libGLX_mesa.so`, `libEGL_mesa.so`, `libGL.so`, `libEGL.so`, `libgbm.so`, `libdrm_amdgpu.so`; varredura de arquivos DRI encontrou somente `/usr/lib/dri/libdril_dri.so` | Mesa parcialmente presente; `radeonsi_dri.so` e `libvulkan_radeon.so` não localizados pelos padrões consultados. Verificar layout/empacotamento e ICD antes de concluir ausência funcional |
+| AMD-003 | `dpkg --print-architecture` = `amd64`; `dpkg --print-foreign-architectures` vazio | `i386` não habilitado nesta sessão; bloqueio provável para bibliotecas 32-bit necessárias a jogos e Wine |
+| AMD-004 | `dmesg`: dois `REG_WAIT timeout ... optc32_disable_crtc line:196` | Anomalia de inicialização do controlador de display; investigar repetição, conexão e impacto |
+| AMD-005 | `dmesg`: `Failed to setup vendor infoframe on connector HDMI-A-1: -22` | Falha específica de configuração HDMI; impacto ainda não demonstrado |
+| AMD-006 | `dpkg-query -W | grep -Ei 'mesa|vulkan|...'` não retornou pacotes, apesar de bibliotecas gráficas existentes | Rastreabilidade/registro de pacotes a investigar; não inferir ausência das bibliotecas |
+| AMD-007 | Fontes APT: StackOS C3 GitHub Pages, AMDGPU/ROCm para Ubuntu Noble e Debian Trixie simultaneamente | Fontes externas configuradas; auditar pinning, assinatura, compatibilidade ABI e política de mistura de distribuições. Não afirmar que GitHub Git e APT são a mesma coisa |
+
+**Fontes APT observadas literalmente:** `https://stackoslinux-dev.github.io/repo/c3`, `https://repo.radeon.com/amdgpu/31.60/ubuntu` (noble), `https://repo.radeon.com/rocmradeon/apt/26.16` (noble), `https://repo.radeon.com/graphics/26.16/ubuntu` (noble), `https://deb.debian.org/debian` (trixie). O relatório mostra configuração, **não** prova conectividade, atualização, resolução de dependências nem integridade do conteúdo desses repositórios.
+
+**Observações negativas relevantes:** `systemctl --failed` mostrou zero unidades falhadas; logs de GPU incluem avisos sobre RAS/RAP/SecureDisplay opcionais, insuficientes para declarar defeito.
+
+### 13.3 Próximos critérios de validação
+
+1. Identificar origem dos arquivos Mesa presentes, bibliotecas DRI efetivas, caminhos de ICD Vulkan e dependências ELF, sem instalar nem modificar nada.
+2. Testar renderer OpenGL e dispositivos Vulkan quando ferramentas estiverem disponíveis; diferenciar aceleração por hardware de software.
+3. Auditar suporte 32-bit e compatibilidade de pacotes para Steam/Proton/Wine antes de habilitar i386.
+4. Inspecionar prioridades APT e misturas de repositórios antes de qualquer instalação.
+5. Correlacionar `REG_WAIT` e infoframe HDMI com conectores, resolução, sintomas visíveis e novos boots.
+
+**Estado:** novos achados documentados; nenhuma falha declarada corrigida, nenhuma ISO reconstruída.
