@@ -644,3 +644,18 @@ A receita prepare-installer.py aplicava migrações antigas por s.index em códi
 Fontes/patches/receitas e resultados pequenos foram salvos no repositório privado, commit 1669f91a48c01e3241f440608464006d77368a88, sob CORRECOES/2026-11-05/. Binários e árvores grandes permanecem no SSD. O snapshot descreve X11 em correção; não contém chaves nem binaries de release.
 
 **Nenhuma ISO nova foi gerada e nenhuma release oficial foi aprovada.** Permanecem integração/assinatura produtiva, X11, i386/jogos, instalação/FirstBoot/recuperação, fluxos gráficos e testes físicos já exigidos no relatório.
+
+
+## 20. Continuidade: X11, provedores desktop e Calculator — 2026-11-05
+
+Retomada autorizada após relatório de parada. Preservados SDK/fontes/chaves/ISOs; nenhuma nova ISO gerada nesta atualização. O usuário pediu candidata para teste físico posterior, sem tratar renderização virtual como prova de hardware.
+
+Xwayland 24.1.14, Mutter 50.6 e GNOME Shell 50.6 com X11 foram compilados nativamente; o caminho DRI final é /usr/lib/dri. Corrigido initramfs diagnóstico desatualizado: boot frio com kernel fix2 passou em GNOME, GLX, EGL Wayland e janela glxgears. Vulkan vkcube passou em Wayland e XCB, 60 frames por backend. Renderer llvmpipe/Lavapipe/CPU, não GPU física. O antigo integrated-x11-initramfs antecede a correção e não deve ser reutilizado como aprovado.
+
+Core4+Desktop13 foram instalados por APT em laboratório assinado separado: dpkg --audit, apt-get check e dpkg -V aprovados, SHA256 de 307 arquivos nativos preexistentes preservado. GNOME Calculator Debian Bookworm 1:43.0.1-2 instalou pelo helper real, abriu janela e calculou 6*7=42; reinstalação e remoção aprovadas. Trixie 1:48.1-2+b1 recusada por GTK>=4.17; base4.16.7 preservada. Não equivale a aprovação geral de .deb nem teste completo das interfaces StackOS.
+
+O teste revelou libxml2 nativa2.13.5 sem versões de símbolos LIBXML2 requeridas pelo binário Debian. Recompilada a mesma versão com version-script upstream e THREAD_ALLOC, sem retirar funcionalidades ou as 1587 exportações anteriores. Atualização nativa 2.13.5+stackos2 via APT laboratório aprovada: único arquivo deliberadamente substituído usr/lib/libxml2.so.2.13.5; outros306 preexistentes com SHA igual. Teste conjunto .so.2/.so.16 leu/liberou100 documentos por ABI; Calculator repetida sem aviso de versionamento. Não constitui prova para todos os aplicativos ou de inexistência universal de conflitos ABI. Avisos GTK Compose>16bit e schemas antigos permanecem registrados.
+
+Evidências e diário detalhado: repositório privado StackOS-C3-Privado, DIARIO/2026-11-05.md e CORRECOES/2026-11-05/. SSD: /run/media/not/STACKOS_WORK/C3-BUILD/base-solo/C3-BUILD/codex-2026-11-04/compilacao-nativa-2026-11-05/, resultados sob work/. Chaves efêmeras de laboratório não são oficiais e não foram publicadas como chaves de release.
+
+Permanecem integração da raiz candidata, instalação/FirstBoot/recuperação, fluxos GUI completos, testes físicos GPU/áudio/rede/USB/BT, i386/jogos e demais registros não encerrados. Nenhum achado histórico foi apagado.
