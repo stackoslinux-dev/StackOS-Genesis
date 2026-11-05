@@ -448,3 +448,46 @@ A busca somente leitura feita pelo usuário encontrou a receita correta em `boot
 5. Correlacionar `REG_WAIT` e infoframe HDMI com conectores, resolução, sintomas visíveis e novos boots.
 
 **Estado:** novos achados documentados; nenhuma falha declarada corrigida, nenhuma ISO reconstruída.
+
+
+## 14. Revisão comparativa da candidata no mesmo PC AMD — 2026-11-04
+
+**Origem:** auditoria Live relatada pelo usuário em 04/11, no PC de testes com RX 7600, comparada à seção 13 de 02/11. A sessão atual se identifica como StackOS C3 Live v10.9, kernel 7.2.13-stackos108, GNOME Shell 50.6 / Wayland. **Não presumir que a ISO binária ou seu hash são idênticos aos da coleta anterior.**
+
+### 14.1 Revisão dos achados já existentes — não duplicar nem apagar
+
+| ID anterior | Situação na candidata de 04/11 |
+|---|---|
+| AMD-001 | `glxinfo` e `vulkaninfo` continuam ausentes; `eglinfo` também não encontrado. Não há teste de renderer. |
+| AMD-002 | RX 7600 usa `amdgpu`, mas `radeonsi_dri.so` e `libvulkan_radeon.so` não foram encontrados na varredura; existem bibliotecas GL/EGL/GBM. Mesa/Vulkan acelerados continuam não comprovados. |
+| AMD-003 | `dpkg --print-foreign-architectures` vazio: i386 ainda não habilitado. |
+| AMD-004 e AMD-005 | Os avisos anteriores REG_WAIT e HDMI infoframe não foram demonstrados como corrigidos; verificar recorrência e impacto em novo teste específico. |
+| AMD-006 | Só 17 pacotes StackOS registrados pelo dpkg, apesar de bibliotecas compiladas existentes: integração APT/dpkg continua pendente. |
+| AMD-007 | **Mudança observada:** APT da candidata aponta para repositório local StackOS e StackOS C3 no GitHub Pages. Fontes Debian Trixie e AMD Noble observadas no teste anterior não constam da configuração atual. Isso não prova correção definitiva da política de repositórios. |
+| AUD-001 | PulseAudio 17.0 fornece saídas em `pactl`; PipeWire 1.6.8/WirePlumber ativos, mas `wpctl` não enumera dispositivos ou saídas. Conflito de arquitetura de áudio permanece provável. |
+| FW-001 | Falha `regulatory.db` reaparece no boot; confirmar causa. |
+| SYS-003/SYS-004 | `systemctl --failed` sem falhas e `dpkg --audit` vazio nesta sessão: verificações aprovadas apenas localmente. |
+| APP-001 | 17 pacotes StackOS instalados; execução funcional dos aplicativos ainda não testada. |
+
+### 14.2 Achados novos ou mais específicos
+
+| ID | Evidência | Estado |
+|---|---|---|
+| AMD-008 | Não localizado driver Gallium RadeonSI para a RX 7600 na árvore DRI consultada. | PENDENTE CRÍTICO — testar OpenGL acelerado e corrigir cobertura de driver se ausência confirmada. |
+| AMD-009 | RADV `libvulkan_radeon.so` e ferramenta `vulkaninfo` não localizados; ICD Vulkan AMD não comprovado. | PENDENTE CRÍTICO — conferir ICD, loader e execução real. |
+| AUD-002 | Kernel registra `hdaudioC0D3: Unable to configure, disabling`; `aplay` ausente. | FALHA DE CONFIGURAÇÃO REGISTRADA; impacto funcional não medido. |
+| BOOT-004 | Boot medido em 67,831 s, com 28,967 s no loader e 14,691 s em `ldconfig.service`. | OTIMIZAÇÃO / INVESTIGAÇÃO. |
+| KERN-001 | Mensagens repetidas `watchdog_print_freq_timeout` no journal. | ANOMALIA REPRODUZIDA; causa não isolada. |
+| SYS-009 | Ausentes `uptime`, `free`, `ip`, `aplay`, `glxinfo`, `eglinfo` e `vulkaninfo`. | FERRAMENTAS AUSENTES; decidir pacote-base. |
+| MEM-001 | Sem swap ou ZRAM ativos na sessão Live (`SwapTotal: 0 kB`). | POLÍTICA/TESTE PENDENTE. |
+| SEC-003 | `sudo -n true` bem-sucedido no Live. | POLÍTICA LIVE CONFIRMADA; não transportar automaticamente para instalado. |
+
+### 14.3 Teste destrutivo anterior, separado da candidata
+
+Na instalação de teste anterior, após desativação deliberada do hook APT, a transação tentou instalar `libc6 2.41` Debian sobre glibc nativa 2.42. Após iniciar o desempacotamento, `dpkg-deb`/tar apresentou SIGSEGV para múltiplos .deb e a operação falhou. **DEB-011: falha grave de compatibilidade/integração em transação de pacotes Debian, confirmada naquele ambiente.** Não atribuir a falha à candidata atual: nesta, glibc 2.42 é relatada e `dpkg --audit` não acusou erros.
+
+### 14.4 Critério de remoção do registro ativo
+
+Nenhum ID antigo será apagado sem evidência de correção reproduzível; após reteste, mover o estado para **CORRIGIDO/VALIDADO** preservando o histórico. Achados específicos do notebook Acer (i915/NVIDIA/exFAT) não podem ser encerrados por testes no PC AMD. Permanecem não validados: instalação em disco, FirstBoot, reset/backups, áudio real, Bluetooth, OpenGL/Vulkan, jogos e compatibilidade geral de aplicativos Debian.
+
+**Conclusão:** sem correções confirmadas nesta atualização documental; foram acrescentadas evidências novas sem remover o histórico anterior.
