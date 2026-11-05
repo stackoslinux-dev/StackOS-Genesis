@@ -659,3 +659,20 @@ O teste revelou libxml2 nativa2.13.5 sem versões de símbolos LIBXML2 requerida
 Evidências e diário detalhado: repositório privado StackOS-C3-Privado, DIARIO/2026-11-05.md e CORRECOES/2026-11-05/. SSD: /run/media/not/STACKOS_WORK/C3-BUILD/base-solo/C3-BUILD/codex-2026-11-04/compilacao-nativa-2026-11-05/, resultados sob work/. Chaves efêmeras de laboratório não são oficiais e não foram publicadas como chaves de release.
 
 Permanecem integração da raiz candidata, instalação/FirstBoot/recuperação, fluxos GUI completos, testes físicos GPU/áudio/rede/USB/BT, i386/jogos e demais registros não encerrados. Nenhum achado histórico foi apagado.
+
+
+## 21. Interfaces, propriedade de pacotes e candidata limpa — 2026-11-05
+
+Os testes reais das interfaces passaram com callbacks GTK e helpers pkexec/APT: Package Installer instalou Calculator Bookworm após confirmação, cancelamento não instalou, Trixie incompatível foi recusada sem substituir GTK. Store cancelou plano, instalou/removeu Calculator e recusou remoção de pacote protegido. Updater ofereceu e aplicou atualização real de fixture e correção da Store. A fixture e a configuração/chave pública/fontes APT do laboratório foram posteriormente removidas da raiz candidata; fonte online StackOS preservada. Nenhuma chave oficial foi modificada.
+
+Divergências globais do dpkg foram investigadas contra o payload original da Dock5 e patches explícitos, antes do reempacotamento de 13 pacotes nativos já existentes. Não houve simples apagamento de checksums. Após adoção por APT: dpkg --audit e dpkg --verify globais vazios, apt-get check aprovado. O antigo bundle mantém md5sum histórico de arquivo transferido, mas não consta mais como proprietário no .list; o proprietário novo confere.
+
+Recovery permanente foi separado da interface Live. Seis pacotes migraram, com stackos-recovery-tools e stackos-install-tools protegidos e Installer/Live removíveis no alvo instalado. Uma transação parcial por conffile obsoleto foi diagnosticada e recuperada por pacotes autenticados; guard31 passou 31 testes host/nativos, exige origem/versão/arquitetura/SHA autenticados e migrações com Replaces limitado e Breaks declarado para o mesmo proprietário. Remoção de ferramentas críticas recusada com bytes preservados. Não é sandbox universal para maintainer scripts/root.
+
+Initramfs real fix2 foi regenerado com seleção de armazenamento/input e 168 arquivos de firmware necessários, incluindo i915 e regulatory; hashes e cabeçalhos uid/gid conferidos. Drivers AMD/Nouveau carregam depois de switch_root, com firmware da raiz. Não representa aprovação física. LLVM ativo foi identificado por dladdr e SHA, com backend AMDGPU presente.
+
+Raiz TEST-Fix6 montada a partir do checkpoint preservado e delta do filesystem mesclado: candidate-delta.tar SHA256 dd3ba093d96a2ea51f704a0aeb8eb9133b7e3461ecd968fffdf76c525ea16517, 156794880 bytes. Perfil Live limpo restaurado; 205 temporários sem dono removidos; permissões sudo/root e usuário Live verificadas no SquashFS. Manifesto contém kernel_release e kernel_sha256 para preflight do instalador.
+
+Instalação completa está EM TESTE em arquivo qcow2 descartável de 48 GiB, sem discos físicos e sem rede. Mídia antiga foi recusada antes de particionar; candidata nova passou preflight, cópia, configuração e instalação de GRUB UEFI. Imagem de fábrica em geração/verificação. Ainda não declarar instalação, FirstBoot, backups, reset ou restore aprovados. Nenhuma nova ISO gerada neste registro. Permanecem esses testes, boot BIOS/UEFI da ISO final, validação física e i386/jogos.
+
+Caminhos completos e continuidade: StackOS-C3-Privado/CONTINUAR-AQUI.md e DIARIO/2026-11-05.md. SSD de trabalho: /run/media/not/STACKOS_WORK/C3-BUILD/base-solo/C3-BUILD/codex-2026-11-04/compilacao-nativa-2026-11-05/work/. Receitas/guard31 registrados no commit privado 93ba5452655247e95ea27be950b6ffecfec09c13. Histórico anterior preservado.
