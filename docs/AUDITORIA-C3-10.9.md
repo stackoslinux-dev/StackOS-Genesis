@@ -625,3 +625,22 @@ MEM-001 continua em correção: kernel original não habilita ZRAM; foi iniciada
 Área: codex-2026-11-04/compilacao-nativa-2026-11-05/. Evidências: mesa-host-result.json, mesa-runtime-result.json, new-components-elf-manifest.json, keyboard-runtime-result.json, kernel-initrd-result.json e logs de runtime sob work/. Nenhum erro histórico foi apagado.
 
 Permanecem testes físicos de GPU/áudio/Bluetooth/USB/rede/energia, i386/jogos, interfaces gráficas, instalação/FirstBoot/recuperação, empacotamento/assinatura e integração dos candidatos. Não há declaração de que todos os erros estejam corrigidos.
+
+
+## 19. Kernel final, ZRAM e integração Wayland — 2026-11-05
+
+Kernel 7.2.13-stackos109-fix2 com ZRAM modular, LZ4, exFAT e PSI compilou com a toolchain C3. Nenhuma opção baseline y/m foi retirada. Boot, montagem exFAT e PSI passaram novamente; serviço ZRAM passou em start/stop e em ativação automática no boot integrado. Política: metade de MemTotal, máximo 4 GiB, prioridade 100, sem backing em disco. Na VM de 6 GiB, capacidade calculada 3.105.501.184 bytes.
+
+ALSA-utils 1.2.14 foi obtido do upstream, compilando aplay/arecord com GCC/libasound C3. Reprodução/captura de 48 kHz estéreo passaram no HDA virtual com backend nulo: valida o caminho virtual, não som físico. O comando lsinitramfs foi acrescentado às receitas de diagnóstico e listou o initramfs C3 real, sem extração.
+
+O SIGSEGV da enumeração EGL forçada foi isolado por stack trace em drisw_init_screen: LIBGL_ALWAYS_SOFTWARE chegava à plataforma de dispositivo físico com loader incompatível. Corrigida a recusa antecipada dessa combinação em platform_device.c. Reteste completo terminou com os erros esperados de plataformas indisponíveis, sem SIGSEGV; surfaceless e Vulkan continuaram aprovados.
+
+Foi criado somente um initramfs de diagnóstico que aplica em RAM kernel/módulos, Mesa/LLVM, Vulkan, teclado, ZRAM e ferramentas novos sobre a raiz da Dock5. Primeiro ensaio expôs comportamento de BusyBox cp -a ao substituir aliases existentes; a sobreposição foi corrigida para cp -af, testada e reiniciada. GNOME chegou ao desktop, carregou Mesa novo, EGL Wayland executado pelo usuário Live confirmou OpenGL 4.5/GLES3.2 por software; Vulkan passou em caminhos produtivos /usr. Nenhuma unidade de sistema falhada foi listada. Isso não é teste do bootloader normal de uma ISO reconstruída nem aprovação física.
+
+**Novo bloqueador confirmado de compatibilidade X11/jogos:** Xwayland está ausente, Mutter foi compilado com xwayland=false/HAVE_XWAYLAND indefinido e GNOME Shell também com HAVE_XWAYLAND indefinido. glxinfo não tem servidor DISPLAY; não é correto atribuir isso a falha do Mesa novo. Xwayland 24.1.14 e dependências libfontenc/libXfont2/libxkbfile/xkbcomp foram obtidos dos diretórios oficiais e compilados com C3. É necessária reconstrução específica de Mutter/Shell para habilitar essa função; em andamento, sem declarar X11 resolvido.
+
+A receita prepare-installer.py aplicava migrações antigas por s.index em código já migrado e referenciava desktop FirstBoot removido na preparação anterior. Foi substituída por preparação repetível em diretório separado, preservando a fonte existente; atualiza o gerador nativo de initramfs, templates, metadados/checksums e remove ttyS0 forçado das entradas normais instaladas. Dois preparos deram payload idêntico. Não comprova instalação/FirstBoot/reset; esses testes continuam pendentes.
+
+Fontes/patches/receitas e resultados pequenos foram salvos no repositório privado, commit 1669f91a48c01e3241f440608464006d77368a88, sob CORRECOES/2026-11-05/. Binários e árvores grandes permanecem no SSD. O snapshot descreve X11 em correção; não contém chaves nem binaries de release.
+
+**Nenhuma ISO nova foi gerada e nenhuma release oficial foi aprovada.** Permanecem integração/assinatura produtiva, X11, i386/jogos, instalação/FirstBoot/recuperação, fluxos gráficos e testes físicos já exigidos no relatório.
