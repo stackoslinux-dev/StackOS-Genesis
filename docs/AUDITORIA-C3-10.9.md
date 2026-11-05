@@ -527,3 +527,16 @@ A árvore mesa-24.3.4-amd-intel-ply tem configuração Gallium radeonsi/iris/llv
 - SHA-256 da fonte do hook: `d57bb5052f5e8a8c246bfda2050c0c0302b16e70b960eeb6184fb56e913727b8`.
 - As mudanças testadas existem nos fontes e na RAM da VM; **não estão incorporadas à ISO Dock5 distribuída**.
 - Permanecem pendentes Mesa/Vulkan, i386/jogos, kernel exFAT/PSI, integração de provedores/ABI, fluxos gráficos, instalação/FirstBoot/recuperação e testes físicos de GPU, áudio, USB e rede. Nenhum achado histórico foi apagado.
+
+
+## 16. Continuidade e limite de armazenamento — 2026-11-05
+
+O usuário autorizou corrigir as pendências e compilar os componentes faltantes, mas escolheu expressamente **manter o limite total de 40.000.000.000 bytes**, sem liberar temporários acima dele nesta etapa. O uso observado é aproximadamente 76,66 GB. Nenhuma compilação ou nova ISO foi iniciada.
+
+Inventário de espaço alocado (du; diretórios inacessíveis foram sinalizados, portanto não é uma auditoria completa de todos os arquivos): sources 28.545.916.928 bytes; lfs-root 16.907.653.120; boot-v10.9 8.661.639.168; builds-organizados 2.087.231.488; ISOs em 11-iso 14.525.894.656. O diretório Firefox de fontes ocupa 4,62 GB principalmente de fontes/testes/third_party; não foi tratado como cache descartável.
+
+A pasta C3-BUILD tem montagem separada rw. A montagem ro do diretório superior observada no sandbox **não comprova que o SSD do PC esteja com erro ou bloqueado para escrita**. As árvores antigas sources, lfs-root, builds-organizados e release-root não estão graváveis pelo usuário do processo nesta sessão. Foi solicitada ao usuário uma ACL restrita a sources e builds-organizados, preservando propriedade e o SDK. Nenhum arquivo dessas árvores foi apagado, compactado ou alterado nesta etapa.
+
+Foi preparado no harness QEMU o modo opcional --native-sdk, que exporta o SDK C3 por virtio-9p somente para leitura. A configuração do kernel existente inclui CONFIG_NET_9P_VIRTIO=y e CONFIG_9P_FS=y. Isso é preparação de uma rota para executar o compilador nativo dentro da C3 sem root no host; **o modo e o compilador ainda não foram validados em execução**. O bloqueio de orçamento foi testado: retorna 1 antes de iniciar QEMU ou extrair kernel/initramfs quando o limite seria excedido.
+
+Evidências locais: codex-2026-11-04/continuidade-2026-11-05/estado-bloqueios.json e teste-limite.json. Continuam abertos os bloqueadores da seção 15. Nenhuma correção adicional de Mesa/Vulkan/kernel/jogos foi declarada concluída.
