@@ -590,3 +590,38 @@ Foi preparada reconstrução incremental do kernel 7.2.13 com GCC/binutils C3 pa
 Continuam abertos testes físicos AMD/Intel/NVIDIA, áudio/USB/Bluetooth/rede, i386/jogos, fluxos gráficos, instalação/FirstBoot/recuperação e demais hipóteses do relatório. As correções e candidatos desta seção **não foram incorporados a uma ISO**.
 
 Evidências no SSD: codex-2026-11-04/compilacao-nativa-2026-11-05/, incluindo manifests de fontes, logs de build, native-providers-integrity.json, hello-compatibility-result.json, maintainer-lifecycle-result.json, probes do SDK e comparação de configuração do kernel. Os resultados da VM estão sob work/.
+
+
+## 18. Mesa, teclado GNOME e kernel — retestes de 2026-11-05
+
+**Nenhuma nova ISO foi gerada; Dock5 permanece inalterada.** Fontes/SDK originais preservados. Os resultados abaixo são dos artefatos em staging e de VM descartável, não aprovação de release nem de hardware físico.
+
+### 18.1 Mesa 24.3.4 / LLVM 19.1.7
+
+O runtime LLVM com RTTI passou no teste nativo Intel CLC, eliminando os erros de LLVM duplicado/typeinfo observados no build anterior. O Mesa completo compilou e instalou com GCC/G++ C3, sysroot C3 e dependências C3. Gallium inclui RadeonSI, Iris, Nouveau e software; Vulkan inclui RADV, Intel e Lavapipe; GLX/EGL/GBM habilitados.
+
+Foi corrigido um defeito de compilação adicional com Wayland 1.24: loader_wayland_helper.c usa timespec_sub_saturate mesmo quando a API de timeout do Wayland está disponível, mas não incluía util/timespec.h nesse caso. Patch mínimo registrado, sem editar a fonte original.
+
+Em QEMU/C3, os artefatos novos passaram em EGL 1.5, OpenGL 4.5, OpenGL ES 3.2 e Vulkan 1.3.296 com llvmpipe/Lavapipe, Mesa 24.3.4 e LLVM 19.1.7. **Isso é renderização por software**, não prova aceleração RX 7600/Intel/NVIDIA. A varredura genérica eglinfo -B de todas as plataformas apresentou SIGSEGV ao incluir dispositivos indisponíveis; o teste explícito surfaceless passou. A falha genérica permanece sob investigação, sem ser ocultada pelo teste limitado.
+
+Foram verificados 14 payloads ELF de Mesa/LLVM/teclado: sem RPATH temporário do diretório de build. Os caminhos produtivos dos manifests ICD não foram alterados; o teste usou JSON separado apontando ao staging.
+
+### 18.2 GNOME-004 — CORRIGIDO/VALIDADO no componente, integração pendente
+
+A causa foi confirmada em gnome-settings-daemon 50.1: g_settings_get_user_value pode retornar NULL, mas o gerenciador de teclado chamava g_variant_unref incondicionalmente após buscar a configuração XKB. Patch g_clear_pointer(&options, g_variant_unref), compilando somente o alvo de teclado e dependência comum necessária.
+
+Reteste comparativo na C3, com D-Bus privado, configurações novas e G_DEBUG=fatal-criticals: binário original terminou com 133 e a assertion registrada; o corrigido permaneceu ativo até timeout 124, sem a assertion. Aviso de SessionManager ausente é esperado nesse barramento privado. Isso não substitui teste da sessão gráfica completa. Patch e binário portátil estão em staging; não na Dock5.
+
+### 18.3 USB-001 / SYS-007 — kernel e reteste descartável
+
+Kernel 7.2.13-stackos109-fix1 compilado com GCC/binutils C3. EXFAT_FS=y e PSI=y; comparação do baseline não retirou opções y/m existentes. Módulos instalados/strip com ferramentas C3, depmod executado na VM; initramfs diagnóstico empacotado com BusyBox C3 e proprietário 0:0 conferido.
+
+Boot diagnóstico em QEMU UEFI passou usando kernel/initramfs novos e o SquashFS antigo somente como raiz de teste. uname confirmou fix1, /proc/pressure/memory apresentou métricas e exfat constou em /proc/filesystems. Em arquivo descartável de 64 MiB: mkfs.exfat, montagem, escrita, desmontagem, remontagem somente leitura, leitura do conteúdo e fsck.exfat -n passaram. O arquivo foi removido automaticamente. **Valida o suporte do kernel; o pendrive/controlador do Acer ainda requer reteste físico.**
+
+MEM-001 continua em correção: kernel original não habilita ZRAM; foi iniciada uma variante incremental fix2 com ZRAM/LZ4. Não declarar swap ativo antes de testar o serviço e o kernel correspondente.
+
+### 18.4 Evidências e bloqueadores
+
+Área: codex-2026-11-04/compilacao-nativa-2026-11-05/. Evidências: mesa-host-result.json, mesa-runtime-result.json, new-components-elf-manifest.json, keyboard-runtime-result.json, kernel-initrd-result.json e logs de runtime sob work/. Nenhum erro histórico foi apagado.
+
+Permanecem testes físicos de GPU/áudio/Bluetooth/USB/rede/energia, i386/jogos, interfaces gráficas, instalação/FirstBoot/recuperação, empacotamento/assinatura e integração dos candidatos. Não há declaração de que todos os erros estejam corrigidos.
