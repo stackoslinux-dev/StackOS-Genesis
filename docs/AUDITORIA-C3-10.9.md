@@ -491,3 +491,39 @@ Na instalação de teste anterior, após desativação deliberada do hook APT, a
 Nenhum ID antigo será apagado sem evidência de correção reproduzível; após reteste, mover o estado para **CORRIGIDO/VALIDADO** preservando o histórico. Achados específicos do notebook Acer (i915/NVIDIA/exFAT) não podem ser encerrados por testes no PC AMD. Permanecem não validados: instalação em disco, FirstBoot, reset/backups, áudio real, Bluetooth, OpenGL/Vulkan, jogos e compatibilidade geral de aplicativos Debian.
 
 **Conclusão:** sem correções confirmadas nesta atualização documental; foram acrescentadas evidências novas sem remover o histórico anterior.
+
+
+## 15. Correção incremental de proteção APT e diagnóstico — 2026-11-04
+
+**Escopo:** correções nos fontes do SSD e reteste descartável em QEMU. A ISO Dock5 existente não foi alterada, não foi gerada outra ISO e nenhuma release foi aprovada.
+
+### 15.1 DEB-004 / DEB-009 / DEB-011 — proteção antes do desempacotamento
+
+O hook anterior só comparava arquivos e proprietários. Foi criada a fonte `boot-v10.9/protect-c3-files.py` e integrada às receitas `build-lean-iso.py` e `seal.py`, usando o caminho do hook APT já existente. Store, Package Installer e Updater usam APT; seus fluxos gráficos completos ainda precisam de reteste próprio.
+
+A proteção exige correspondência exata entre nome, versão, arquitetura e SHA-256 do arquivo e um registro APT confiável com Origin StackOS/Codename c3 para alterações em pacotes centrais ou com nome StackOS. Confiança e hash são conferidos no mesmo registro de índice. Também rejeita substituições de arquivos da base por pacotes externos, caminhos inseguros, tipos especiais, colisões por hardlink, links de payload usados como diretório, entradas duplicadas e erros de descompressão.
+
+**Reteste executado:** 19 testes passaram no host e os mesmos 19 no Python/dpkg-deb nativos da C3 em QEMU. Dois registros de pacotes reais do catálogo nativo foram aceitos e hashes adulterados rejeitados. Uma reinstalação real de stackos-archive-keyring passou pelo hook novo.
+
+Um aplicativo sintético sem dependências externas foi criado com dpkg-deb dentro da C3, instalado pelo APT, executado, atualizado para versão 2, executado novamente e removido. Todos retornaram 0. Um pacote descartável chamado libc6 foi bloqueado pelo hook com APT=100 antes de dpkg desempacotar. O SHA-256 da libc permaneceu igual; dpkg --audit não apresentou pendências e apt-get check retornou 0.
+
+**Limites:** esse teste não instalou libc Debian real nem comprova compatibilidade geral com aplicativos Debian. Metadados de provedores nativos e análise ABI permanecem pendentes. O hook não é sandbox de scripts de mantenedor, não cobre dpkg -i direto e não impede que root desative a proteção deliberadamente. Portanto, DEB-011 não está encerrado como requisito geral.
+
+### 15.2 SYS-001 / SYS-009 — ferramentas básicas já disponíveis
+
+O BusyBox incluído na candidata contém ps, free, uptime e ip. A fonte configure-c3-diagnostics.py disponibiliza esses quatro comandos por links, sem substituir implementações completas existentes; foi integrada às duas receitas. Na sessão descartável, os quatro comandos foram executados com retorno 0. São implementações BusyBox, com opções mais limitadas que procps/iproute2. glxinfo, eglinfo, vulkaninfo, ferramentas ALSA e demais diagnósticos não foram declarados resolvidos.
+
+### 15.3 AMD-008 / AMD-009 — evidência adicional, sem correção declarada
+
+As bibliotecas da release-root libgallium-24.3.1.so e libgallium-24.3.4.so contêm a mensagem literal “radeonsi: driver missing”. A fonte Mesa 24.3.4 em target-helpers/drm_helper.h associa essa mensagem ao descriptor stub usado quando o driver não é compilado. Isso reforça que criar apenas um alias radeonsi_dri.so não é uma correção suficiente.
+
+A árvore mesa-24.3.4-amd-intel-ply tem configuração Gallium radeonsi/iris/llvmpipe, Vulkan amd/intel e LLVM habilitado, mas não foi encontrada sua biblioteca Gallium final no destino de build examinado. GLX está desabilitado nessa configuração. Não foi iniciada recompilação, nem validada aceleração física; RadeonSI, RADV e loader Vulkan continuam bloqueadores.
+
+### 15.4 Rastreabilidade e estado de entrega
+
+- ISO usada no teste: Dock5, SHA-256 `9ba30927c12aa6f1ecade54e3c48b7e7256714faf2965c2c41d127694dbf4c58`.
+- QEMU TCG, boot diagnóstico com kernel/initramfs extraídos dessa ISO; nenhuma unidade física e rede desabilitada. Não equivale a novo teste do bootloader normal nem de instalação.
+- Evidências no SSD: `C3-BUILD/base-solo/C3-BUILD/codex-2026-11-04/correcao-p0-apt/`: relatório original, snapshot desta auditoria anterior à alteração, backups dos fontes anteriores, testes, log serial e resultado.json.
+- SHA-256 da fonte do hook: `d57bb5052f5e8a8c246bfda2050c0c0302b16e70b960eeb6184fb56e913727b8`.
+- As mudanças testadas existem nos fontes e na RAM da VM; **não estão incorporadas à ISO Dock5 distribuída**.
+- Permanecem pendentes Mesa/Vulkan, i386/jogos, kernel exFAT/PSI, integração de provedores/ABI, fluxos gráficos, instalação/FirstBoot/recuperação e testes físicos de GPU, áudio, USB e rede. Nenhum achado histórico foi apagado.
