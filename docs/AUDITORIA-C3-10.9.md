@@ -540,3 +540,53 @@ A pasta C3-BUILD tem montagem separada rw. A montagem ro do diretório superior 
 Foi preparado no harness QEMU o modo opcional --native-sdk, que exporta o SDK C3 por virtio-9p somente para leitura. A configuração do kernel existente inclui CONFIG_NET_9P_VIRTIO=y e CONFIG_9P_FS=y. Isso é preparação de uma rota para executar o compilador nativo dentro da C3 sem root no host; **o modo e o compilador ainda não foram validados em execução**. O bloqueio de orçamento foi testado: retorna 1 antes de iniciar QEMU ou extrair kernel/initramfs quando o limite seria excedido.
 
 Evidências locais: codex-2026-11-04/continuidade-2026-11-05/estado-bloqueios.json e teste-limite.json. Continuam abertos os bloqueadores da seção 15. Nenhuma correção adicional de Mesa/Vulkan/kernel/jogos foi declarada concluída.
+
+
+## 17. Compilação C3, provedores reais e compatibilidade DEB — 2026-11-05
+
+**Autorização atualizada:** o usuário liberou ultrapassar temporariamente os 40 GB para concluir correções, com limpeza posterior, e reiterou: **não gerar outra ISO enquanto os defeitos relatados não estiverem corrigidos e validados**. As ACLs das duas pastas foram efetivamente aplicadas pelo usuário e o executor voltou a funcionar. Nenhuma ISO nova foi gerada.
+
+### 17.1 Ambiente e componentes compilados
+
+Foi iniciado QEMU com a Dock5 de hash já registrado, sem discos físicos e sem rede, exportando SDK/fontes originais somente para leitura e uma área nova de trabalho no SSD. O GCC/G++ nativo 15.2.0, glibc 2.42 e LLVM 19.1.7 foram executados dentro da C3; os módulos Python de build foram conferidos.
+
+Vulkan Headers/Loader/Tools 1.3.296 e a dependência volk indicada pelo known_good foram obtidos dos projetos oficiais com commits/hashes registrados. **Vulkan Loader e vulkaninfo compilaram na C3.** glxinfo e eglinfo também compilaram a partir de Mesa-demos 9.0.0. Estão em staging; enumeração Vulkan/renderização com os novos ICDs ainda aguarda o Mesa.
+
+O build Mesa 24.3.4 expôs defeitos concretos no encadeamento anterior: LLVM AMDGPU sem RTTI, PLY ausente e dois LLVM embutidos carregados pelo compilador Intel CLC. As bibliotecas compartilhadas Clang/LLVM-SPIRV antigas incorporam LLVM; o patch C3 passa a usar seus componentes estáticos com um runtime LLVM único. Os componentes Clang estáticos precisam de RTTI. Por isso foi recompilado **somente o runtime LLVM 19.1.7 com X86/AMDGPU e RTTI**, sem reconstruir GNOME ou o SDK inteiro. A compilação LLVM terminou com retorno 0 e exporta os typeinfos antes ausentes.
+
+Para acelerar o trabalho pesado, foram preparados adaptadores do SDK que executam o carregador, Clang 19.1.7/GCC 15.2.0 e binutils C3 com sysroot C3; CMake/Ninja do host apenas coordenam. Os testes C++ verificaram glibc 2.42, todos os caminhos de headers/LOAD e bibliotecas efetivamente carregadas no SDK, sem bibliotecas/headers do host no alvo. O produto libLLVM não tem RPATH temporário; o llvm-config de staging tem interpretador normal /lib64/ld-linux-x86-64.so.2. Os artefatos serão retestados dentro da C3.
+
+A comparação confirmou LLVM 19.1.7 e ABI-breaking-checks=0 nos dois conjuntos. RTTI é agora coerente no runtime reconstruído e na configuração Mesa. **O teste final do CLC e o build completo do Mesa permanecem em andamento; AMD-008/009 não estão encerrados.**
+
+### 17.2 DEB-001 a DEB-011 — provedores nativos com payload real
+
+A fonte package-native-core.py gera candidatos libc6/libc-bin 2.42+stackos1 e libgcc-s1/libstdc++6 15.2.0+stackos1 a partir dos arquivos reais da C3, com licenças, checksums e tamanhos. Não usa pacotes vazios Provides e não importa bibliotecas Debian/Ubuntu. Não habilita nem declara multiarch: a disposição atual foi inventariada somente para amd64.
+
+Na VM descartável foi criado um repositório assinado com **chave de laboratório efêmera, não a chave oficial**, separado da distribuição. O hook de proteção novo verificou os arquivos pelo índice autenticado; os quatro provedores foram instalados pelo APT. **284 arquivos nativos preexistentes permaneceram com SHA-256 idêntico.** dpkg --audit, apt-get check e dpkg -V dos quatro pacotes passaram. Os candidatos ainda precisam de assinatura/publicação oficiais e integração na receita da candidata; não estão na Dock5.
+
+### 17.3 Teste real de binários Debian
+
+As assinaturas InRelease de bookworm/trixie, hashes dos índices e os dois .deb GNU hello foram verificados; as chaves públicas foram conferidas com os fingerprints publicados pelo Debian. Nenhum repositório Debian foi adicionado à C3 e nenhuma biblioteca central Debian foi instalada.
+
+- hello 2.10-3: instalação pelo helper real do StackOS Package Installer, com checksum esperado; execução aprovada.
+- hello 2.10-5: atualização pelo APT e execução aprovadas.
+- Remoção, apt-get check, dpkg --audit e integridade dos provedores: aprovados.
+- Requisitos GLIBC dos ELF foram extraídos com LC_ALL=C e conferidos contra 110 versões exportadas pela base; o parser exige resultado não vazio. Foram encontrados requisitos até GLIBC_2.34 e GLIBC_2.38, todos presentes.
+- A rejeição de checksum adulterado pelo helper passou antes da instalação.
+- Os mesmos 284 arquivos da base permaneceram inalterados.
+
+Isso comprova compatibilidade **desses dois binários**, não de todos os aplicativos Debian. A interface gráfica do Package Installer/Store ainda precisa de reteste próprio; o helper e o APT foram efetivamente exercitados.
+
+### 17.4 Scripts de mantenedor e runtime C++
+
+Um programa de teste C++ nativo com exceções, thread/future, vector e filesystem foi compilado com GCC C3, em executável portátil sem RPATH temporário. Dois pacotes controlados foram instalados/atualizados pelo helper real e removidos. Os oito eventos esperados preinst/postinst/prerm/postrm ocorreram, o programa retornou o resultado 42 nas duas versões e seus arquivos/marcadores foram removidos. APT/dpkg e os 284 arquivos nativos continuaram íntegros.
+
+Isso valida esse fluxo controlado; não é sandbox de scripts arbitrários nem aprovação de todo pacote externo.
+
+### 17.5 Kernel e limites restantes
+
+Foi preparada reconstrução incremental do kernel 7.2.13 com GCC/binutils C3 para exFAT e PSI, em diretório novo, sem editar a árvore original. A comparação olddefconfig não desativou nenhuma opção preexistente y/m. O kernel está compilando; boot, montagem exFAT e métricas PSI ainda não foram retestados. Não declarar USB-001/SYS-007 corrigidos antes disso.
+
+Continuam abertos testes físicos AMD/Intel/NVIDIA, áudio/USB/Bluetooth/rede, i386/jogos, fluxos gráficos, instalação/FirstBoot/recuperação e demais hipóteses do relatório. As correções e candidatos desta seção **não foram incorporados a uma ISO**.
+
+Evidências no SSD: codex-2026-11-04/compilacao-nativa-2026-11-05/, incluindo manifests de fontes, logs de build, native-providers-integrity.json, hello-compatibility-result.json, maintainer-lifecycle-result.json, probes do SDK e comparação de configuração do kernel. Os resultados da VM estão sob work/.
