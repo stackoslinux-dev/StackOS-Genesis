@@ -23,6 +23,9 @@ def token(path=None):
 def redact(text,secret='',identities=None):
     text=str(text)
     if secret:text=text.replace(secret,'[CREDENCIAL REMOVIDA]')
+    # Oculta userinfo de URLs antes de incluir diagnósticos no relatório.
+    # Não altera host/caminho: a origem do erro continua identificável.
+    text=re.sub(r'(?i)\b(https?://)[^/\s@]+@',r'\1[CREDENCIAL REMOVIDA]@',text)
     text=re.sub(r'\b(?:github_pat_[A-Za-z0-9_]+|gh[pousr]_[A-Za-z0-9_]+)\b','[TOKEN REMOVIDO]',text)
     text=re.sub(r'(?i)(authorization\s*[:=]\s*)(?:bearer|token|basic)?\s*[^\s,;]+',r'\1[REMOVIDO]',text)
     text=re.sub(r'(?i)((?:password|passwd|senha|secret|api[_-]?key|access[_-]?token|github_token)\s*[:=]\s*)(?:"[^"]*"|\x27[^\x27]*\x27|[^\s,;]+)',r'\1[REMOVIDO]',text)
