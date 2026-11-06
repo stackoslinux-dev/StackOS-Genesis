@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "package": "stackos-bugreport",
+  "version": "1.1.1+stackos1+c3.2+test1",
+  "channel": "c3-testing",
+  "source_repository": "stackoslinux-dev/StackOS-Genesis",
+  "source_commit": "bb81e7a2b83a0fedf21a0735799301ed4dff1988",
+  "source_directory": "apps/stackos-bugreport",
+  "description": "Oculta credenciais HTTP/HTTPS em URLs locais antes de exportar relatórios",
+  "category": "isolated-python-app",
+  "native_build": "C3 Python 3.13 compileall + C3 dpkg-deb; no foreign target libraries",
+  "automatic_testing_approved": true
+}
