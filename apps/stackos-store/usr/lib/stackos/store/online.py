@@ -24,8 +24,8 @@ class Parser(HTMLParser):
 def search(query):
  query=query.strip()
  if len(query)<2:raise ValueError('Digite pelo menos dois caracteres para pesquisar na internet.')
- distro=platform.freedesktop_os_release();debian=distro.get('ID')=='debian';base='https://packages.debian.org' if debian else 'https://packages.ubuntu.com'
- url=base+'/search?'+urllib.parse.urlencode({'keywords':query,'searchon':'names','suite':distro.get('UBUNTU_CODENAME',distro.get('VERSION_CODENAME','stable' if debian else 'all')),'section':'all'})
+ distro=platform.freedesktop_os_release();c3=distro.get('ID')=='stackos';debian=c3 or distro.get('ID')=='debian';base='https://packages.debian.org' if debian else 'https://packages.ubuntu.com'
+ url=base+'/search?'+urllib.parse.urlencode({'keywords':query,'searchon':'names','suite':('bookworm' if c3 else distro.get('UBUNTU_CODENAME',distro.get('VERSION_CODENAME','stable' if debian else 'all'))),'section':'all'})
  req=urllib.request.Request(url,headers={'User-Agent':'StackOS-Store/2.0'})
  with open_https(req,timeout=15) as response:
   if urllib.parse.urlparse(response.url).netloc!=urllib.parse.urlparse(base).netloc:raise RuntimeError('O diretório oficial redirecionou para uma origem inesperada.')
@@ -33,7 +33,7 @@ def search(query):
   if len(document)>3_000_000:raise RuntimeError('A resposta excedeu o limite da pesquisa.')
  parser=Parser(base);parser.feed(document.decode('utf8',errors='replace'))
  words=query.casefold().split();items=[v for k,v in parser.items.items() if all(w in k for w in words)]
- return {'items':items[:80],'search_url':url,'source':base,'note':'Resultados de outras versões da distribuição podem exigir dependências diferentes. Instale pelo APT local quando disponível.'}
+ return {'items':items[:80],'search_url':url,'source':base,'note':'Pesquisa externa em diretório oficial. No C3, pacotes Debian Bookworm são candidatos de compatibilidade: o download não garante instalação. Dependências e componentes protegidos são conferidos antes de instalar; a base C3 não é substituída.'}
 
 # Endpoints de distribuição dos próprios fabricantes; nenhuma loja de terceiros.
 VENDORS=[
@@ -71,7 +71,7 @@ def search(query):
  try:result=_original_search(query)
  except Exception as e:
   if not vendors:raise
-  result={'items':[],'search_url':'https://packages.ubuntu.com/','source':'Fabricantes oficiais','note':'O diretório de pacotes não respondeu: '+str(e)}
+  result={'items':[],'search_url':'https://packages.debian.org/' if platform.freedesktop_os_release().get('ID')=='stackos' else 'https://packages.ubuntu.com/','source':'Fabricantes oficiais','note':'O diretório de pacotes não respondeu: '+str(e)}
  result['items']=vendors+result['items'];return result
 
 def download_deb(url,destination=None,progress=None):
@@ -134,7 +134,7 @@ def resolve_deb(item):
   raise RuntimeError('A publicação não disponibilizou um DEB oficial.')
  parsed=urllib.parse.urlparse(item['url']);allowed={'packages.ubuntu.com','packages.debian.org'}
  if parsed.scheme!='https' or parsed.netloc not in allowed:raise ValueError('Diretório de pacotes não autorizado.')
- distro=platform.freedesktop_os_release();suite=distro.get('UBUNTU_CODENAME',distro.get('VERSION_CODENAME',''))
+ distro=platform.freedesktop_os_release();suite='bookworm' if distro.get('ID')=='stackos' and parsed.netloc=='packages.debian.org' else distro.get('UBUNTU_CODENAME',distro.get('VERSION_CODENAME',''))
  if not suite:raise RuntimeError('Não foi possível determinar a versão-base do sistema.')
  arch=subprocess.check_output(['dpkg','--print-architecture'],text=True).strip()
  pkg=item['pkg']

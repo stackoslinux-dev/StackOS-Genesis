@@ -1,11 +1,7 @@
 Package: stackos-store
-Version: 2.0.1+stackos1+c3.2+fix10.9.1
-Section: admin
-Priority: optional
+Version: 2.0.1+stackos1+c3.2+fix10.9.4
 Architecture: all
-Maintainer: StackOS Linux <stackoslinux@gmail.com>
+Maintainer: StackOS C3
 Depends: stackos-c3-runtime (>= 10.7), stackos-display-support (>= 10.8)
-Homepage: https://github.com/stackoslinux-dev
-Description: Loja StackOS para aplicativos DEB nativos
- Catalogo APT/AppStream, aplicativos instalados e desinstalacao,
- pesquisa em fontes oficiais, download DEB, icones nativos e bloqueio de Snap.
+Description: Loja C3 com pesquisa externa corrigida
+ Pesquisa oficial de candidatos DEB sem substituir a base C3.

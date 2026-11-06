@@ -76,7 +76,7 @@ class Store(Gtk.Application):
   self.win=Gtk.ApplicationWindow(application=self,title='StackOS Store');stackos_window.fit_window(self.win);self.win.set_icon_name('org.stackos.Store');self.win.add_css_class('store');self.win.connect('close-request',self.on_close);self.win.connect('notify::is-active',self.focus_changed)
   bar=Gtk.HeaderBar();bar.add_css_class('chrome');bar.set_title_widget(label('StackOS Store','window-title'));self.win.set_titlebar(bar)
   root=box(spacing=0,css='root');self.win.set_child(root);header=box(False,18,'header');header.append(icon('store.svg',52));t=box(spacing=4);t.append(label('StackOS Store','brand-title'));t.append(label('POWERED BY MOSA','brand-sub'));header.append(t)
-  self.search=Gtk.SearchEntry(placeholder_text='Buscar aplicativos, jogos, ferramentas…');self.search.set_hexpand(True);self.search.connect('search-changed',self.search_changed);header.append(self.search);self.online_button=button('Internet',lambda *_:self.online_search(),'secondary','web-browser-symbolic');header.append(self.online_button);header.append(button('.deb',lambda *_:self.url_dialog(),'secondary','package-x-generic-symbolic'));header.append(button('Atualizar catálogo',lambda *_:self.refresh_indices(),'secondary','view-refresh-symbolic'));root.append(header)
+  self.search=Gtk.SearchEntry(placeholder_text='Buscar aplicativos, jogos, ferramentas…');self.search.set_hexpand(True);self.search.connect('search-changed',self.search_changed);header.append(self.search);self.online_button=button('Buscar online',lambda *_:self.online_search(),'secondary','web-browser-symbolic');header.append(self.online_button);header.append(button('.deb',lambda *_:self.url_dialog(),'secondary','package-x-generic-symbolic'));header.append(button('Atualizar catálogo',lambda *_:self.refresh_indices(),'secondary','view-refresh-symbolic'));root.append(header)
   body=box(False,0);body.set_vexpand(True);root.append(body);sidebar_scroll=Gtk.ScrolledWindow();sidebar_scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);sidebar_scroll.set_size_request(200,-1);sidebar=box(spacing=5,css='sidebar');sidebar_scroll.set_child(sidebar);body.append(sidebar_scroll);self.nav={}
   for cat,ico in zip(CATS,ICONS):b=button(cat,lambda _,c=cat:self.navigate(c),'nav',ico);sidebar.append(b);self.nav[cat]=b
   sp=box();sp.set_vexpand(True);sidebar.append(sp);promo=box(spacing=8,css='promo');promo.append(icon('store.svg',62));promo.append(label('StackOS Store','section-title'));promo.append(label('Aplicativos DEB nativos.\nModular. Leve. Poderoso.','muted',True));sidebar.append(promo);sidebar.append(signature_link())
@@ -143,7 +143,9 @@ class Store(Gtk.Application):
   page.append(label(f'{total} resultado(s) · catálogo C3','muted'));grid=Gtk.FlowBox();grid.set_selection_mode(Gtk.SelectionMode.NONE);grid.set_min_children_per_line(1);grid.set_max_children_per_line(4);grid.set_column_spacing(12);grid.set_row_spacing(12);grid.set_homogeneous(True)
   for app in apps[self.page*self.per_page:(self.page+1)*self.per_page]:grid.append(self.card(app))
   page.append(grid)
-  if not apps:page.append(label('Nenhum resultado no catálogo local. Use Internet para pesquisar em fontes oficiais.','muted',True))
+  if not apps:
+   page.append(label('Nenhum resultado no catálogo APT C3. Consultando o diretório oficial de aplicativos…' if self.query.strip() else 'O canal APT C3 ainda possui poucos aplicativos disponíveis para download.','muted',True))
+   if len(self.query.strip())>=2 and self.category!='Instalados':GLib.idle_add(lambda:(self.online_search(),False)[1])
   pager=box(False,15);pager.set_halign(Gtk.Align.CENTER);prev=button('Anterior',lambda *_:self.turn_page(-1));prev.set_sensitive(self.page>0);pager.append(prev);pager.append(label(f'Página {self.page+1} de {pages}','muted'));nxt=button('Próxima',lambda *_:self.turn_page(1));nxt.set_sensitive(self.page+1<pages);pager.append(nxt);page.append(pager)
   if self.query:page.append(button('Pesquisar também na internet',lambda *_:self.online_search(),'secondary','web-browser-symbolic'))
   return False
@@ -218,7 +220,7 @@ class Store(Gtk.Application):
   dialog.connect('response',response);dialog.present()
  def online_search(self):
   if not self.query:self.status.set_text('Digite o nome do aplicativo na busca para pesquisar na internet.');self.search.grab_focus();return
-  self.status.set_text('Pesquisando em fontes oficiais na internet…');query=self.query;generation=self.online_generation=getattr(self,'online_generation',0)+1;self.task(lambda:online.search(query),lambda result,error:self.online_results(result,error) if generation==self.online_generation and not self.closed else False)
+  self.status.set_text('Pesquisando em fontes oficiais na internet…');query=self.query;generation=self.online_generation=getattr(self,'online_generation',0)+1;self.task(lambda:online.search(query),lambda result,error:self.online_results(result,error) if generation==self.online_generation and query==self.query and not self.closed else False)
  def online_results(self,result,error):
   if self.closed:return False
   page=box(spacing=15,css='content');page.append(label('Pesquisa na internet','page-title'));self.scroll.set_child(page);self.stack.set_visible_child_name('catalog')

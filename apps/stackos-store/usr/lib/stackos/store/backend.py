@@ -16,6 +16,11 @@ def native(candidate):
  desc=(candidate.summary+' '+candidate.description).lower()
  return not ('snap' in desc and any(s in desc for s in ('transitional','transition','transição','dummy package','snap version','snap package')))
 
+def protected(package):
+ if package.essential or package.name in PROTECTED:return True
+ version=package.installed
+ return bool(version and version.record.get('Protected','').lower()=='yes')
+
 def trusted(version):return bool(version and any(o.trusted for o in version.origins if o.archive!='now'))
 
 def choose_text(value):
@@ -102,6 +107,12 @@ class Catalog:
     if entry.get('NoDisplay','false').lower()=='true':continue
     metadata[pkg]={'pkg':pkg,'name':entry.get('Name[pt_BR]',entry.get('Name',pkg)),'summary':entry.get('Comment[pt_BR]',entry.get('Comment','')),'description':'','category':category(set(entry.get('Categories','').split(';'))),'icon':entry.get('Icon','application-x-executable'),'desktop':Path(path).name,'url':'','license':'Não informada','appstream':False}
    except (OSError,KeyError,configparser.Error):pass
+  # Discover GNOME packages from authenticated native APT indexes.
+  for p in self.cache:
+   c=p.candidate
+   if p.name in metadata or not c or not native(c) or not trusted(c) or not c.downloadable:continue
+   if getattr(c,'section','').rsplit('/',1)[-1]!='gnome':continue
+   metadata[p.name]={'pkg':p.name,'name':p.name,'summary':c.summary,'description':c.description,'category':'Sistema','icon':'application-x-executable','url':c.homepage or '', 'desktop':'','license':'Não informada','appstream':False}
   for pkg,info in metadata.items():
    if pkg not in self.cache or pkg in BLOCKED:continue
    p=self.cache[pkg];c=p.candidate
@@ -117,7 +128,7 @@ class Catalog:
  def decorate(self,info,p):
   c=p.candidate;i=p.installed;v=c or i
   source=', '.join(dict.fromkeys((o.origin or o.site or 'APT')+(' · '+o.component if o.component else '') for o in v.origins if o.archive!='now')) if v else ''
-  return dict(info,upgradable=p.is_upgradable,installed=p.is_installed,version=i.version if i else None,candidate=c.version if c else None,summary=info.get('summary') or (v.summary if v else ''),description=info.get('description') or (v.description if v else ''),source=source or 'Instalação local / sem origem no índice atual',trusted=trusted(c),native=native(c),can_install=bool(c and trusted(c) and native(c) and c.downloadable),protected=p.essential or p.name in PROTECTED,size=c.size if c else None)
+  return dict(info,upgradable=p.is_upgradable,installed=p.is_installed,version=i.version if i else None,candidate=c.version if c else None,summary=info.get('summary') or (v.summary if v else ''),description=info.get('description') or (v.description if v else ''),source=source or 'Instalação local / sem origem no índice atual',trusted=trusted(c),native=native(c),can_install=bool(c and trusted(c) and native(c) and c.downloadable),protected=protected(p),size=c.size if c else None)
  def lookup(self,pkg):
   if pkg not in self.cache or pkg in BLOCKED:return None
   p=self.cache[pkg];c=p.candidate
@@ -143,6 +154,7 @@ def simulate(action,pkg,cache=None):
  p=cache[pkg]
  if action=='install' and not (native(p.candidate) and trusted(p.candidate) and p.candidate.downloadable):raise RuntimeError('O pacote não possui um DEB nativo disponível em origem confiável configurada.')
  if action=='remove' and not p.is_installed:raise RuntimeError('O pacote já não está instalado.')
+ if action=='remove' and protected(p):raise RuntimeError('A transação removeria um componente essencial: '+pkg)
  result=subprocess.run(['apt-get','-s',action,pkg],capture_output=True,text=True,timeout=45,env={**os.environ,'LC_ALL':'C'})
  if result.returncode:raise RuntimeError(result.stderr.strip() or result.stdout[-1500:])
  changes=[]
@@ -150,7 +162,7 @@ def simulate(action,pkg,cache=None):
   if line.startswith(('Inst ','Remv ')):
    kind,name=line.split()[:2]
    if kind=='Inst' and name.split(':')[0] in BLOCKED:raise RuntimeError('A transação tentaria instalar Snap; operação bloqueada.')
-   if kind=='Remv' and (name.split(':')[0] in PROTECTED or name in cache and cache[name].essential or name.startswith(('linux-image-','linux-modules-'))):raise RuntimeError('A transação removeria um componente essencial: '+name)
+   if kind=='Remv' and (name.split(':')[0] in PROTECTED or name in cache and protected(cache[name]) or name.startswith(('linux-image-','linux-modules-'))):raise RuntimeError('A transação removeria um componente essencial: '+name)
    changes.append(line)
  payload={'action':action,'package':pkg,'changes':changes,'candidate':p.candidate.version if p.candidate else None}
  payload['digest']=hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest();return payload
