@@ -693,3 +693,18 @@ Quatro snapshots completos foram criados pelo script produtivo. Após o quarto, 
 Raiz final de teste foi reconstruída do delta nativo9, retirando novamente machine-id/seed gerados no diagnóstico e sem fontes/chaves de laboratório. Delta target-safe-delta.tar SHAe1e40c7f70d47ad64d712550c6dfbcd53a0975d691eebe9105fca1cce009111d,409600bytes. Em andamento SEGUNDA instalação completa a partir de candidate-safe-media, já com esses dois P0 corrigidos; chegou à criação da recuperação. FirstBoot SEM senha, factoryreset da imagem corrigida e boot BIOS/UEFI da ISO final continuam pendentes. **Nenhuma nova ISO gerada e nenhuma release oficial aprovada nesta atualização.** GPU/áudio/rede/USB/BT físicos e i386/jogos continuam fora da aprovação virtual.
 
 Continuidade privada: CONTINUAR-AQUI.md, DIARIO/2026-11-05-P0-target-UI9.md, commit a03d3294a237726154a272aacf0ebacdbdaae7fc. SSD: /run/media/not/STACKOS_WORK/C3-BUILD/base-solo/C3-BUILD/codex-2026-11-04/compilacao-nativa-2026-11-05/work/. Resultados: backup-retention-result.json, snapshot-restore-result.json, mounted-partition-preflight-{before,after}-ui9.json, installer-target-safety-adoption-result.json, ui9-apt-sandbox-result.json e online-apt-validation-result.json. Histórico preservado; chaves oficiais não modificadas.
+
+
+## 23. Fix6 enxuta — validação final de software e boot (06/11/2026)
+
+Candidata `StackOS-C3-live-v10.9-TEST-Fix6-ONLINE.iso`, 1.883.242.496 bytes, SHA256 `52a5d253fed4011cdcefdbd77ec6c2e70c10b2625a3ca2da772c02e6d35b5f24`. Não é release oficial assinada.
+
+Instalação UEFI em disco virtual descartável, FirstBoot com e sem senha, sudo, retenção de três entre quatro backups, restauração de snapshot e recuperação de fábrica passaram. P0 corrigidos: autologin root TTY1/serial e detecção de filhos montados no preflight do instalador UI9. APT usa exclusivamente o canal HTTPS StackOS assinado; atualização e download autenticados aprovados.
+
+Retiradas somente da candidata48cópias offline redundantes (195.178.874 bytes), sem remover runtime ou drivers. Corrigidas tabelas de endereços BIOS/GRUB após reempacotamento; o hash final passou em boots normais BIOS e UEFI até GNOME, dock e instalador, sem kernel direto, SDK compartilhado ou discos reais. Conteúdo real da ISO e hashes dos três membros Live verificados.
+
+Removidos47.068.184.576bytes de temporários gerados, incluindo disco de teste, checkpoints e árvores de build. Evidências e scripts preservados. Inventário legível após limpeza: C3-BUILD72.619.204.608bytes e11-iso16.409.149.440bytes; há diretórios originais sem permissão de leitura, portanto isso não certifica uso total exato. Fontes e SDK preservados; não foi atingido teto40GB.
+
+Pendentes: validação em hardware físico/USB, GPU e áudio físicos, periféricos, Steam/Proton/i386 e assinatura de release. A instalação validada é UEFI; não afirmar instalação Legacy. Compatibilidade Debian foi demonstrada em aplicativos selecionados, não universal.
+
+Diário privado e receitas: commit `6e3f9eb0fd6718f078380b9186aeac6cb7febf77`, `DIARIO/2026-11-06-FIX6-ENTREGA.md`, com caminhos SSD completos e provas JSON.
